@@ -1,32 +1,25 @@
-# app/routers/plan.py
-from fastapi import APIRouter, HTTPException
-from app.database import PLANS_DB
+# app/routers/plan.py 全量覆盖
+from fastapi import APIRouter
+from typing import Any, Union
+import app.services.db_service as db_service
 
-router = APIRouter(prefix="/plan", tags=["智能学习规划中心"])
+router = APIRouter()
 
-# 1. 获取指定学生的全部学习路线
-@router.get("/list")
-async def get_user_plans(username: str):
-    # 如果该新注册学生还没有规划，天然返回空列表，触发前端优雅的 el-empty 空状态
-    return {"code": 200, "data": PLANS_DB.get(username, [])}
+@router.get("/plan/list")
+async def get_plan_list(username: str):
+    """【全真接通】拉取用户的规划路线"""
+    # 实时去中台的内存锁里捞取该用户保存的路线，不再直接返回空列表 []
+    plans = db_service.get_plans_by_username(username)
+    return {"code": 200, "data": plans}
 
-# 2. 废弃整条学习路线
-@router.delete("/route/delete")
-async def delete_entire_route(username: str, route_id: str):
-    if username in PLANS_DB:
-        # 过滤掉当前要删除的路线 id
-        PLANS_DB[username] = [r for r in PLANS_DB[username] if r["id"] != route_id]
-        return {"code": 200, "message": "整条学习路线已从核心库成功抹除！"}
-    raise HTTPException(status_code=400, detail="用户不存在")
 
-# 3. 剥离路线中的某个具体节点
-@router.delete("/node/delete")
-async def delete_plan_node(username: str, route_id: str, node_id: int):
-    if username in PLANS_DB:
-        for route in PLANS_DB[username]:
-            if route["id"] == route_id:
-                # 过滤掉当前要抹杀的节点 id
-                route["nodes"] = [n for n in route["nodes"] if n["id"] != node_id]
-                return {"code": 200, "message": "该学情任务节点已成功剥离！"}
-        raise HTTPException(status_code=400, detail="未找到对应的路线")
-    raise HTTPException(status_code=400, detail="用户不存在")
+@router.post("/plan/save")
+async def save_plan(data: Union[dict, Any]):
+    """【全真接通】当学生添加、勾选、或删除路线任务时，前端会调用此接口持久化"""
+    username = data.username if hasattr(data, "username") else data.get("username")
+    # 拿到前端传过来的最新全量 plans 数组
+    plans_list = data.plans if hasattr(data, "plans") else data.get("plans", [])
+    
+    # 强行调用中台函数，把数据锁死在服务器内存里！
+    db_service.save_user_plans(username, plans_list)
+    return {"code": 200, "message": "智能规划路线同步保存成功"}

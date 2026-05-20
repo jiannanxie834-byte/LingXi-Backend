@@ -1,105 +1,90 @@
-# app/routers/auth.py
 from fastapi import APIRouter
-from pydantic import BaseModel
-# 从统一数据层导入全局唯一的数据库实例
-from app.database import USERS_DB 
+from typing import Any, Union
+import app.services.db_service as db_service
 
-router = APIRouter(prefix="/user", tags=["用户鉴权中心"])
+router = APIRouter()
 
-# --- Pydantic 数据模型定义 ---
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-class RegisterRequest(BaseModel):
-    username: str
-    password: str
-
-# ================= 1. 登录接口 (与前端 Pinia + 路由守卫完美对齐) =================
-@router.post("/login")
-async def login(data: LoginRequest):
-    username = data.username
-    password = data.password
-
-    # 1. 检查用户是否存在
-    if username not in USERS_DB:
-        return {"code": 400, "message": "用户不存在，请先注册！", "data": None}
+# ================= 1. 登录校验（融合大前端导航守卫双重保险） =================
+@router.post("/user/login")
+async def login(data: Union[dict, Any]):
+    """
+    用户/管理员登录接口
+    已经通过主入口 main.py 统一挂载了 /api 前缀，实际请求路径为: /api/user/login
+    """
+    # 自动兼容 Pydantic 模型对象或原生 dict 字典传参
+    username = data.username if hasattr(data, "username") else data.get("username")
+    password = data.password if hasattr(data, "password") else data.get("password")
     
-    # 2. 校验密码是否正确
-    if USERS_DB[username]["password"] != password:
-        return {"code": 400, "message": "密码错误，请重新输入", "data": None}
-
-    # 3. 登录成功，打包前端需要的全量画像状态，让 Pinia 一键收纳
-    user_info = USERS_DB[username]
-    return {
-        "code": 200,
-        "message": "登录成功",
-        "data": {
-            "token": f"Bearer token-for-{username}",
+    # 调用底层 SQLAlchemy 查真数据库 lingxi.db
+    result = db_service.check_user_login(username, password)
+    
+    if result["success"]:
+        user_info = result["data"]
+        
+        return {
+            "code": 200,
+            "message": "登录成功，鉴权令牌刻录完成",
+            "token": f"lingxi_{user_info['username']}",
+            
+            # 层级一：标准 Axios 响应结构 (res.data.data.xxx)
+            "data": user_info,
+            
+            # 层级二：降维直出扁平结构，无缝兼容老的前端 Mock 依赖 (res.role / res.username)
+            "username": user_info["username"],
             "role": user_info["role"],
-            "username": username,
-            "avatar": user_info.get("avatar", ""),
-            "tags": user_info.get("tags", []),
-            #  吐出活的个签数据，支持前端无缝渲染和修改
-            "bio": user_info.get("bio", "这个人十分神秘什么都没留下哟") 
+            "avatar": user_info["avatar"],
+            "bio": user_info["bio"],
+            "hours": user_info["hours"],
+            "tags": user_info["tags"]
         }
-    }
+        
+    # 登录失败，返回 400 状态码及错误话术
+    return {"code": 400, "message": result["message"]}
 
-# ================= 2. 注册接口 (新用户完美初始化空状态) =================
-@router.post("/register")
-async def register(data: RegisterRequest):
-    username = data.username
-    password = data.password
 
-    if username in USERS_DB:
-        return {"code": 400, "message": "该账号已被占用，请换一个吧", "data": None}
-
-    # 注册新学生，为其初始化完全标准但空空如也的画像结构
-    # 这样新用户登录切到“我的”页面时，骨架完美支撑，但会触发精美的空提示
-    USERS_DB[username] = {
-        "password": password,
-        "role": "student",
-        "avatar": "",
-        "tags": [], # 初始标签为空，等待 AI 对话生成后填入
-        "bio": "这个人十分神秘什么都没留下哟", #  新用户默认个签
-        "hours": 0 # 累计学习时间归零
-    }
+# ================= 2. 问题反馈中心提交（SQL 物理刻录） =================
+@router.post("/user/feedback/submit")
+async def submit_feedback(data: Union[dict, Any]):
+    """
+    学生前台：提交反馈意见
+    实际请求路径为: /api/user/feedback/submit
+    """
+    username = data.username if hasattr(data, "username") else data.get("username")
+    content = data.content if hasattr(data, "content") else data.get("content")
     
-    print(f" 新用户 [{username}] 注册成功并安全入库！当前内存总用户数: {len(USERS_DB)}")
-    return {"code": 200, "message": "注册成功，快去登录吧！", "data": None}
+    # 安全调用中台写入真数据库表
+    success = db_service.insert_feedback(username, content)
+    if success:
+        return {"code": 200, "message": "反馈提交成功，已物理实时送达超级管理员中枢"}
+    return {"code": 500, "message": "反馈物理写入失败，请检查 sqlite 链路"}
 
-from app.database import FEEDBACK_DB #  确保文件顶部或者这里导入了 FEEDBACK_DB
-from datetime import datetime
 
-# --- 1. 定义反馈提交的数据模型 ---
-class FeedbackRequest(BaseModel):
-    username: str
-    content: str
+# ================= 3. 用户个性资料修改（实时同步更新） =================
+@router.put("/user/profile/update")
+async def update_profile(data: Union[dict, Any]):
+    """
+    学生/管理员：修改个性签名（bio）或更换头像（avatar）
+    实际请求路径为: /api/user/profile/update
+    """
+    username = data.username if hasattr(data, "username") else data.get("username")
+    bio = data.bio if hasattr(data, "bio") else data.get("bio")
+    avatar = data.avatar if hasattr(data, "avatar") else data.get("avatar", "")
 
-# --- 2. 接收学生反馈接口 (打通管理员大盘的终极纽带) ---
-@router.post("/feedback/submit")
-async def submit_feedback(data: FeedbackRequest):
-    # 动态生成反馈 ID（例如当前长度加 1 补零）
-    new_id = f"FB{len(FEEDBACK_DB) + 1:03d}"
-    # 自动获取当前真实的年月日（2026年）
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    
-    # 组装一条标准的全真反馈记录
-    new_item = {
-        "id": new_id,
-        "username": data.username,
-        "content": data.content,
-        "status": "待处理", # 初始状态为待处理，会立刻让管理员待办数加 1
-        "date": current_date
-    }
-    
-    # 追加进全局唯一的内存数据库
-    FEEDBACK_DB.append(new_item)
-    
-    print(f" 【系统流转】收到学生 [{data.username}] 的反馈！当前大盘总反馈数: {len(FEEDBACK_DB)}")
-    # 显式加上 "data": None，完美对齐前端解包拦截器
-    return {
-        "code": 200, 
-        "message": "反馈提交成功！系统已实时呈递给最高管理员。",
-        "data": None 
-    }
+    # 执行真数据库物理字段修改
+    success = db_service.update_user_profile(username, bio, avatar)
+    if success:
+        # 修改成功后，立刻重新从数据库中捞取最新全量数据，反哺前端 Pinia，实现无缝无刷新变动
+        updated_user = db_service.get_user_by_username(username)
+        return {
+            "code": 200, 
+            "message": "个人资料全真刻录同步成功",
+            "data": {
+                "username": updated_user.username,
+                "role": updated_user.role,
+                "bio": updated_user.bio,
+                "avatar": updated_user.avatar,
+                "hours": updated_user.hours,
+                "tags": [t for t in updated_user.tags.split(",") if t] if updated_user.tags else []
+            }
+        }
+    return {"code": 500, "message": "资料更新物理保存失败"}
