@@ -13,7 +13,7 @@ DEFAULT_RESOURCE_TYPES = [
     "不同类型练习题目",
     "拓展阅读材料",
     "错题诊断与学习反馈报告",
-    "代码类实操案例",
+    "学科实践应用任务",
 ]
 
 DEPRECATED_RESOURCE_TYPES = {
@@ -22,6 +22,7 @@ DEPRECATED_RESOURCE_TYPES = {
     "教学视频",
     "视频",
     "动画",
+    "代码类实操案例",
 }
 
 

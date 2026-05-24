@@ -28,7 +28,7 @@ FEEDBACK_DB = [
 
 # 3.  知识资源储备库
 RESOURCES_DB = [
-    {"id": "RES001", "title": "Vue3 组合式 API 核心进阶演练", "type": "代码类实操案例", "status": "已通过"},
+    {"id": "RES001", "title": "Vue3 组合式 API 核心进阶演练", "type": "学科实践应用任务", "status": "已通过"},
     {"id": "RES002", "title": "讯飞星火大模型 Agent 开发实战手册.pdf", "type": "文档", "status": "待审核"},
     {"id": "RES003", "title": "PyTorch 神经网络结构可视化工具", "type": "工具", "status": "待审核"}
 ]
@@ -54,7 +54,7 @@ PLANS_DB = {
             "isAiGenerated": False,
             "tasks": [
                 { "id": 201, "title": "TCP/IP 五层模型概述", "desc": "理清物理层到应用层的基本职责。", "status": "completed", "isCustom": False, "resources": [] },
-                { "id": 202, "title": "三次握手与四次挥手详解", "desc": "核心常考点，理解状态转移图。", "status": "pending", "isCustom": False, "resources": ["抓包实操案例"] }
+                { "id": 202, "title": "三次握手与四次挥手详解", "desc": "核心常考点，理解状态转移图。", "status": "pending", "isCustom": False, "resources": ["抓包实践任务"] }
             ]
         }
     ]
@@ -67,5 +67,5 @@ RESOURCE_TYPES_DB = [
     {"name": "不同类型练习题目", "status": "已通过"},
     {"name": "拓展阅读材料", "status": "已通过"},
     {"name": "错题诊断与学习反馈报告", "status": "已通过"},
-    {"name": "代码类实操案例", "status": "已通过"}
+    {"name": "学科实践应用任务", "status": "已通过"}
 ]

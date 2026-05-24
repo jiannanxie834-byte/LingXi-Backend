@@ -9,6 +9,8 @@ COURSE_KNOWLEDGE = [
         "core": "响应式数据、组件状态拆分、生命周期、路由与状态管理",
         "pitfalls": ["在 script 中忘记 ref 的 .value", "watch 监听源写错", "把业务逻辑全部堆在单组件中"],
         "practice": "实现一个可筛选、可编辑、可持久化的学习任务面板",
+        "practice_kind": "coding",
+        "practice_output": "可运行的小功能、关键代码片段和功能复盘",
         "code_lang": "javascript",
         "code": """import { ref, computed } from 'vue'
 
@@ -29,13 +31,8 @@ const filteredTasks = computed(() =>
         "core": "分层模型、可靠传输、拥塞控制、HTTP 请求响应与安全通信",
         "pitfalls": ["混淆 TCP 与 UDP 的适用场景", "只背三次握手流程而不理解状态变化", "忽略抓包验证"],
         "practice": "使用 Wireshark 抓取一次 HTTP 请求并标注每一层协议字段",
-        "code_lang": "python",
-        "code": """# 使用 Python 快速观察一次 HTTP 请求状态码
-import requests
-
-response = requests.get('https://example.com', timeout=5)
-print(response.status_code)
-print(response.headers.get('content-type'))""",
+        "practice_kind": "experiment",
+        "practice_output": "抓包截图、协议字段标注表和现象解释",
     },
     {
         "topic": "Python 数据分析",
@@ -44,6 +41,8 @@ print(response.headers.get('content-type'))""",
         "core": "数据读取、缺失值处理、分组统计、可视化表达",
         "pitfalls": ["没有检查缺失值就直接建模", "分组统计口径不一致", "图表只好看但没有表达结论"],
         "practice": "清洗一份学生学习行为数据并输出每周学习时长趋势",
+        "practice_kind": "coding",
+        "practice_output": "清洗后的数据表、统计结果和趋势图",
         "code_lang": "python",
         "code": """import pandas as pd
 
@@ -59,6 +58,8 @@ print(weekly.tail())""",
         "core": "监督学习、特征工程、训练验证划分、模型评估",
         "pitfalls": ["只看准确率不看混淆矩阵", "训练集和测试集泄漏", "没有记录实验参数"],
         "practice": "用鸢尾花数据集训练一个分类器并解释评估指标",
+        "practice_kind": "modeling",
+        "practice_output": "实验参数记录、评估结果和模型解释",
         "code_lang": "python",
         "code": """from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -69,6 +70,46 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 model = DecisionTreeClassifier(max_depth=3).fit(X_train, y_train)
 print(model.score(X_test, y_test))""",
     },
+    {
+        "topic": "高等数学",
+        "keywords": ["数学", "高数", "微积分", "导数", "积分", "极限", "函数", "建模"],
+        "chapter": "高等数学课程 / 函数、极限、导数与积分",
+        "core": "函数关系、极限思想、导数应用、积分累积与数学建模",
+        "pitfalls": ["只套公式不解释变量含义", "忽略定义域和边界条件", "把计算结果和实际问题脱节"],
+        "practice": "选择一个生活中的最优化问题，用函数建模并说明导数如何帮助决策",
+        "practice_kind": "modeling",
+        "practice_output": "问题描述、变量设定、函数模型、求解过程和结论解释",
+    },
+    {
+        "topic": "大学物理",
+        "keywords": ["物理", "力学", "电磁", "实验", "速度", "加速度", "牛顿", "能量"],
+        "chapter": "大学物理课程 / 力学实验与能量分析",
+        "core": "物理量测量、受力分析、能量守恒、实验误差与数据解释",
+        "pitfalls": ["只背公式不画受力图", "忽略单位和量纲", "实验结论没有误差分析"],
+        "practice": "设计一个小车斜面运动实验，记录数据并分析速度变化规律",
+        "practice_kind": "experiment",
+        "practice_output": "实验方案、数据记录表、图像分析和误差说明",
+    },
+    {
+        "topic": "大学英语",
+        "keywords": ["英语", "阅读", "写作", "作文", "口语", "听力", "翻译", "词汇"],
+        "chapter": "大学英语课程 / 阅读理解与写作表达",
+        "core": "主题句识别、段落结构、关键词推断、观点表达与语言修改",
+        "pitfalls": ["逐词翻译导致句意割裂", "作文观点缺少论据", "忽略段落之间的逻辑衔接"],
+        "practice": "围绕一个校园学习主题完成阅读批注，并改写一段 120 词短文",
+        "practice_kind": "writing",
+        "practice_output": "阅读批注、关键词表、改写短文和修改说明",
+    },
+    {
+        "topic": "历史与思政",
+        "keywords": ["历史", "思政", "政治", "材料分析", "近代史", "论述", "观点"],
+        "chapter": "历史与思政课程 / 材料阅读与观点论证",
+        "core": "史料提取、背景定位、观点判断、论据组织与价值分析",
+        "pitfalls": ["只复述材料不提出观点", "史实时间线混乱", "论证缺少材料证据支撑"],
+        "practice": "围绕一段历史材料提炼观点，并用两条史实论据完成短论证",
+        "practice_kind": "analysis",
+        "practice_output": "材料要点表、观点句、论据链和短论证文本",
+    },
 ]
 
 
@@ -77,7 +118,7 @@ def _infer_knowledge(message: str):
     for item in COURSE_KNOWLEDGE:
         if any(keyword in text for keyword in item["keywords"]):
             return item
-    return COURSE_KNOWLEDGE[-1]
+    return COURSE_KNOWLEDGE[3]
 
 
 def _infer_intent(message: str):
@@ -120,6 +161,122 @@ def _build_profile(user, message: str, knowledge: dict, intent: str):
     }
 
 
+def _build_practice_summary(knowledge: dict):
+    kind_labels = {
+        "coding": "代码项目与功能实现",
+        "experiment": "实验探究与数据记录",
+        "modeling": "建模分析与结果解释",
+        "writing": "语言表达与作品改写",
+        "analysis": "材料分析与观点论证",
+    }
+    label = kind_labels.get(knowledge.get("practice_kind"), "综合应用任务")
+    return f"{label}：{knowledge['practice']}。产出物包括{knowledge.get('practice_output', '过程记录和复盘说明')}。"
+
+
+def _build_practice_preview(knowledge: dict):
+    if knowledge.get("code"):
+        return f"""实践任务：{knowledge['practice']}
+
+```{knowledge.get('code_lang', '')}
+{knowledge['code']}
+```"""
+
+    return f"""实践任务：{knowledge['practice']}
+
+建议产出：{knowledge.get('practice_output', '过程记录、结论说明和复盘')}。"""
+
+
+def _build_practice_resource_content(resource: dict, knowledge: dict, intent: str):
+    kind = knowledge.get("practice_kind", "application")
+    if kind == "coding":
+        return f"""# {resource['title']}
+
+## 任务目标
+{knowledge['practice']}
+
+## 参考实现
+```{knowledge.get('code_lang', '')}
+{knowledge.get('code', '')}
+```
+
+## 产出要求
+- 提交可运行代码或关键截图。
+- 说明代码验证了 {knowledge['topic']} 的哪个核心概念。
+- 记录至少 2 条调试或错误排查过程。
+
+## 复盘问题
+1. 你把哪些知识点转化成了可运行功能？
+2. 哪个步骤最容易出错？
+3. 下次如何避免「{knowledge['pitfalls'][0]}」？
+"""
+
+    if kind == "experiment":
+        return f"""# {resource['title']}
+
+## 探究任务
+{knowledge['practice']}
+
+## 操作步骤
+1. 明确观察对象和关键变量。
+2. 设计记录表，采集至少 3 组有效数据或现象。
+3. 对照「{knowledge['core']}」解释结果。
+4. 写出误差来源或可能的干扰因素。
+
+## 产出要求
+- 实验或观察方案
+- 数据记录表
+- 现象解释
+- 误差/局限分析
+"""
+
+    if kind == "modeling":
+        return f"""# {resource['title']}
+
+## 应用任务
+{knowledge['practice']}
+
+## 完成步骤
+1. 把现实问题拆成变量、条件和目标。
+2. 建立可解释的模型或分析框架。
+3. 给出求解过程，说明每一步对应的知识点。
+4. 将结果放回真实情境中解释。
+
+## 产出要求
+{knowledge.get('practice_output', '模型说明、求解过程和结论解释')}
+"""
+
+    if kind == "writing":
+        return f"""# {resource['title']}
+
+## 表达任务
+{knowledge['practice']}
+
+## 完成步骤
+1. 先标注材料中的主题句和关键词。
+2. 整理观点、论据和连接词。
+3. 完成初稿后进行一次结构修改。
+4. 标出至少 3 处语言表达改进。
+
+## 产出要求
+{knowledge.get('practice_output', '批注文本、改写作品和修改说明')}
+"""
+
+    return f"""# {resource['title']}
+
+## 分析任务
+{knowledge['practice']}
+
+## 完成步骤
+1. 提取材料中的关键信息。
+2. 判断材料对应的背景、概念或观点。
+3. 用至少两条证据支撑自己的结论。
+4. 写出一段结构完整的分析文本。
+
+## 产出要求
+{knowledge.get('practice_output', '要点表、论证链和分析短文')}
+"""
+
+
 def _build_resources(knowledge: dict, intent: str):
     resources = [
         {
@@ -148,9 +305,9 @@ def _build_resources(knowledge: dict, intent: str):
             "summary": f"结合 {knowledge['topic']} 常见误区和当前学习意图，给出错因分析、补救建议和复习优先级。",
         },
         {
-            "type": "代码类实操案例",
-            "title": f"{knowledge['topic']} 实操案例",
-            "summary": knowledge["practice"],
+            "type": "学科实践应用任务",
+            "title": f"{knowledge['topic']} 学科实践应用任务",
+            "summary": _build_practice_summary(knowledge),
         },
     ]
     for item in resources:
@@ -216,7 +373,7 @@ def _build_resource_content(resource: dict, knowledge: dict, intent: str):
 2. 请列出你在学习 {knowledge['topic']} 时最可能出现的两个错误，并写出修正方法。
 
 ## 实践题
-完成任务：{knowledge['practice']}。提交内容包括操作步骤、关键截图或代码、遇到的问题和复盘。
+完成任务：{knowledge['practice']}。提交内容包括过程记录、关键证据或作品、遇到的问题和复盘。
 """
 
     if resource_type == "拓展阅读材料":
@@ -261,25 +418,12 @@ def _build_resource_content(resource: dict, knowledge: dict, intent: str):
 - 下次遇到同类问题时我要先检查：
 """
 
+    if resource_type == "学科实践应用任务":
+        return _build_practice_resource_content(resource, knowledge, intent)
+
     return f"""# {resource['title']}
 
-## 实操目标
-{knowledge['practice']}
-
-## 参考代码
-```{knowledge['code_lang']}
-{knowledge['code']}
-```
-
-## 完成标准
-- 能解释代码或步骤中的关键概念。
-- 能独立复现一次实践过程。
-- 能写出至少 2 条错误排查记录。
-
-## 复盘问题
-1. 这个案例验证了 {knowledge['topic']} 的哪个核心概念？
-2. 你遇到的主要问题是什么？
-3. 下次如何避免「{knowledge['pitfalls'][0]}」？
+暂无正文内容。
 """
 
 
@@ -287,7 +431,7 @@ def _build_learning_path(knowledge: dict, intent: str):
     return [
         f"第 1 步：快速定位你当前的问题属于「{intent}」，先阅读核心概念卡片。",
         f"第 2 步：对照「{knowledge['chapter']}」补齐 {knowledge['core']}。",
-        f"第 3 步：完成实操任务：{knowledge['practice']}。",
+        f"第 3 步：完成学科实践应用任务：{knowledge['practice']}。",
         "第 4 步：用练习题自测，把错题回填到画像中的易错点。",
         "第 5 步：根据自测结果重新生成下一轮资源和路径。",
     ]
@@ -635,10 +779,8 @@ def _format_reply(knowledge: dict, intent: str, profile: dict, resources: list, 
 **资源生成 Agent**
 {resource_lines}
 
-**代码实操 Agent**
-```{knowledge['code_lang']}
-{knowledge['code']}
-```
+**实践应用 Agent**
+{_build_practice_preview(knowledge)}
 
 **路径规划 Agent**
 {path_lines}
@@ -675,7 +817,7 @@ def handle_learning_chat(username: str, message: str, history=None):
 
     return {
         "reply": _format_reply(knowledge, intent, profile, resources, path, llm_guidance),
-        "agents": ["画像分析 Agent", "知识检索 Agent", "资源生成 Agent", "代码实操 Agent", "路径规划 Agent", "大模型教学 Agent", "安全校验 Agent"],
+        "agents": ["画像分析 Agent", "知识检索 Agent", "资源生成 Agent", "实践应用 Agent", "路径规划 Agent", "大模型教学 Agent", "安全校验 Agent"],
         "llm_enabled": llm_provider.is_enabled(),
         "profile": {
             "dimensions": profile["dimensions"],

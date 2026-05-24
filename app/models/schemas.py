@@ -21,7 +21,7 @@ class Resource(Base):
     
     id = Column(String, primary_key=True, index=True, comment="资源唯一编码")
     title = Column(String, nullable=False, comment="资源名称")
-    type = Column(String, nullable=False, comment="知识模态: 知识点思维导图、代码类实操案例等")
+    type = Column(String, nullable=False, comment="知识模态: 知识点思维导图、学科实践应用任务等")
     status = Column(String, default="待审核", comment="审核状态: 待审核、已通过")
     uploader = Column(String, default="system", comment="上传者或生成的智能体角色")
     time = Column(String, nullable=True, comment="提交时间")
