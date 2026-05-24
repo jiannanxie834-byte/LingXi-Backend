@@ -7,6 +7,10 @@ router = APIRouter(prefix="/resource", tags=["高校初始知识库模块"])
 class ResourceCreate(BaseModel):
     title: str
     type: str
+    summary: str = ""
+    content: str = ""
+    source: str = ""
+    agent_notes: str = ""
 
 class TypeCreateRequest(BaseModel):
     name: str
@@ -24,7 +28,7 @@ async def list_all():
 @router.post("/upload")
 async def upload_resource(data: ResourceCreate):
     """提交上传新资源"""
-    item = db_service.insert_new_resource(data.title, data.type)
+    item = db_service.insert_new_resource(data.title, data.type, data.summary, data.content, data.source, data.agent_notes)
     return {"code": 200, "message": "提交成功，已送往管理后台审核！", "data": item}
 
 @router.post("/approve/{res_id}")

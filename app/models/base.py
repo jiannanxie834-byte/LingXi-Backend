@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # 数据库连接配置 (SQLite 会直接在项目根目录下创建一个 lingxi.db 文件)
@@ -15,6 +15,24 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 所有数据库表模型的“亲生父亲” Base 基类
 Base = declarative_base()
+
+RESOURCE_EXTRA_COLUMNS = {
+    "summary": "TEXT DEFAULT ''",
+    "content": "TEXT DEFAULT ''",
+    "source": "VARCHAR DEFAULT ''",
+    "agent_notes": "TEXT DEFAULT ''",
+}
+
+
+def init_schema_migrations():
+    """补齐已有 SQLite 表的新字段。create_all 不会自动修改旧表结构。"""
+    with engine.begin() as conn:
+        existing_columns = {
+            row[1] for row in conn.execute(text("PRAGMA table_info(resources)")).fetchall()
+        }
+        for column_name, column_sql in RESOURCE_EXTRA_COLUMNS.items():
+            if column_name not in existing_columns:
+                conn.execute(text(f"ALTER TABLE resources ADD COLUMN {column_name} {column_sql}"))
 
 def get_db():
     """FastAPI 专属依赖项：每次请求自动创建数据库连接，用完自动关闭防止死锁"""

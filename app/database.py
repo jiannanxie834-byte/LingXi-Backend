@@ -23,12 +23,12 @@ USERS_DB = {
 # 2.  问题反馈中心模拟库
 FEEDBACK_DB = [
     {"id": "FB001", "username": "student", "content": "智能规划的节点数量建议能自由调控，现在有点多。", "status": "待处理", "date": "2026-05-15"},
-    {"id": "FB002", "username": "student", "content": "多模态资源库里的视频加载偶尔有点卡顿。", "status": "已处理", "date": "2026-05-16"}
+    {"id": "FB002", "username": "student", "content": "错题诊断报告里的复习建议希望能更具体一些。", "status": "已处理", "date": "2026-05-16"}
 ]
 
-# 3.  多模态资源储备库
+# 3.  知识资源储备库
 RESOURCES_DB = [
-    {"id": "RES001", "title": "Vue3 组合式 API 核心进阶演练", "type": "视频", "status": "已通过"},
+    {"id": "RES001", "title": "Vue3 组合式 API 核心进阶演练", "type": "代码类实操案例", "status": "已通过"},
     {"id": "RES002", "title": "讯飞星火大模型 Agent 开发实战手册.pdf", "type": "文档", "status": "待审核"},
     {"id": "RES003", "title": "PyTorch 神经网络结构可视化工具", "type": "工具", "status": "待审核"}
 ]
@@ -66,6 +66,6 @@ RESOURCE_TYPES_DB = [
     {"name": "知识点思维导图", "status": "已通过"},
     {"name": "不同类型练习题目", "status": "已通过"},
     {"name": "拓展阅读材料", "status": "已通过"},
-    {"name": "多模态教学视频/动画", "status": "已通过"},
+    {"name": "错题诊断与学习反馈报告", "status": "已通过"},
     {"name": "代码类实操案例", "status": "已通过"}
 ]

@@ -42,6 +42,25 @@ async def login(data: Union[dict, Any]):
     return {"code": 400, "message": result["message"]}
 
 
+# ================= 1.5 新用户注册 =================
+@router.post("/user/register")
+async def register(data: Union[dict, Any]):
+    """
+    普通学生注册接口
+    实际请求路径为: /api/user/register
+    """
+    username = data.username if hasattr(data, "username") else data.get("username")
+    password = data.password if hasattr(data, "password") else data.get("password")
+
+    if not username or not password:
+        return {"code": 400, "message": "账号和密码不能为空"}
+
+    result = db_service.create_user(username, password)
+    if result["success"]:
+        return {"code": 200, "message": "注册成功", "data": result["data"]}
+    return {"code": 400, "message": result["message"]}
+
+
 # ================= 2. 问题反馈中心提交（SQL 物理刻录） =================
 @router.post("/user/feedback/submit")
 async def submit_feedback(data: Union[dict, Any]):
@@ -69,9 +88,10 @@ async def update_profile(data: Union[dict, Any]):
     username = data.username if hasattr(data, "username") else data.get("username")
     bio = data.bio if hasattr(data, "bio") else data.get("bio")
     avatar = data.avatar if hasattr(data, "avatar") else data.get("avatar", "")
+    password = data.password if hasattr(data, "password") else data.get("password", "")
 
     # 执行真数据库物理字段修改
-    success = db_service.update_user_profile(username, bio, avatar)
+    success = db_service.update_user_profile(username, bio, avatar, password)
     if success:
         # 修改成功后，立刻重新从数据库中捞取最新全量数据，反哺前端 Pinia，实现无缝无刷新变动
         updated_user = db_service.get_user_by_username(username)
