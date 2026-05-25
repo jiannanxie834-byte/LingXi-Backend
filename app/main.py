@@ -1,21 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# 1. 引入拆分好的模块
-from app.routers import auth, admin, plan, resource, chat, evaluation
 
-# 把 base 里的三个宝贝合在一行引入，绝不重复
-from app.models.base import engine, Base, init_seeding_data, init_schema_migrations
-import app.models.schemas as schemas  
+from app.routers import (
+    auth,
+    admin,
+    plan,
+    resource,
+    chat,
+    evaluation,
+    todo
+)
 
-app = FastAPI()
+app = FastAPI(title="LingXi AI Learning Platform")
 
-# 1. 自动在真数据库（SQLite）里把所有的表创建出来
-Base.metadata.create_all(bind=engine)
-init_schema_migrations()
+# =========================
+# CORS
+# =========================
 
-# 2.  紧接着触发自动注入默认学生与管理员的种子数据
-init_seeding_data()
-# 解决跨域
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,14 +25,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#  2. 统一挂载到 /api 前缀下
+# =========================
+# routers
+# =========================
+
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(plan.router, prefix="/api")
 app.include_router(resource.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(evaluation.router, prefix="/api")
+app.include_router(todo.router, prefix="/api")
+
 
 @app.get("/")
 async def root():
-    return {"status": "online", "message": "运行正常"}
+    return {
+        "message": "LingXi Backend Running"
+    }

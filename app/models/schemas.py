@@ -1,5 +1,5 @@
 # app/models/schemas.py
-from sqlalchemy import Column, String, Integer, Text
+from sqlalchemy import Column, String, Integer, Text, DateTime
 from app.models.base import Base
 
 # ================= 1. 用户表模型 =================
@@ -58,8 +58,16 @@ class LearningPlan(Base):
     plans_json = Column(Text, default="[]", comment="该学生的完整学习路线 JSON")
     updated_at = Column(String, nullable=True, comment="最后更新时间")
 
+# ================= 6. 独立学习计划 =================
+class TodoList(Base):
+    __tablename__ = "todo_lists"
 
-# ================= 6. 学习评价与错题诊断记录表 =================
+    username = Column(String, primary_key=True)
+    todos_json = Column(Text)
+    updated_at = Column(String)
+
+
+# ================= 7. 学习评价与错题诊断记录表 =================
 class EvaluationRecord(Base):
     __tablename__ = "evaluation_records"
 
@@ -73,4 +81,24 @@ class EvaluationRecord(Base):
     wrong_notes = Column(Text, default="", comment="学生提交的错题或自测描述")
     answers_json = Column(Text, default="{}", comment="原始作答数据 JSON")
     generated_resource_id = Column(String, default="", comment="生成的诊断资源编码")
-    created_at = Column(String, nullable=True, comment="创建时间")
+    from sqlalchemy import DateTime
+    created_at = Column(DateTime, nullable=True, comment="创建时间")
+
+# ================= 8. 课程知识 =================
+class CourseKnowledge(Base):
+    __tablename__ = "course_knowledge"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    topic = Column(String(100))
+    keywords = Column(Text)  # JSON字符串 or 逗号分隔
+    chapter = Column(String(200))
+    core = Column(Text)
+
+    pitfalls = Column(Text)
+    practice = Column(Text)
+    practice_kind = Column(String(50))
+    practice_output = Column(Text)
+
+    code_lang = Column(String(50), nullable=True)
+    code = Column(Text, nullable=True)
