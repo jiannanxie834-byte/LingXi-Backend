@@ -1,5 +1,4 @@
 import datetime
-import uuid
 
 from sqlalchemy.orm import Session
 
@@ -8,10 +7,39 @@ from app.models.schemas import (
     ResourceType
 )
 
+DEFAULT_RESOURCE_TYPES = [
+    "专业课程讲解文档",
+    "知识点思维导图",
+    "不同类型练习题目",
+    "拓展阅读材料",
+    "错题诊断与学习反馈报告",
+    "学科实践应用任务",
+]
+
+DEPRECATED_RESOURCE_TYPES = {
+    "多模态教学视频/动画",
+    "多模态视频",
+    "教学视频",
+    "视频",
+    "动画",
+    "代码类实操案例",
+}
+
 
 # =========================
 # tools
 # =========================
+
+def _is_deprecated_resource_type(type_name: str):
+    normalized_type = (type_name or "").strip()
+    if normalized_type.isdigit():
+        return True
+    return any(item == normalized_type or item in normalized_type for item in DEPRECATED_RESOURCE_TYPES)
+
+
+def _new_resource_id():
+    return f"RES{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+
 
 def _resource_to_dict(resource: Resource):
 
@@ -40,6 +68,7 @@ def get_all_resources(db: Session):
         return [
             _resource_to_dict(r)
             for r in db.query(Resource).all()
+            if not _is_deprecated_resource_type(r.type)
         ]
 
     except Exception:
@@ -55,6 +84,7 @@ def get_passed_resources(db: Session):
             for r in db.query(Resource)
             .filter(Resource.status == "已通过")
             .all()
+            if not _is_deprecated_resource_type(r.type)
         ]
 
     except Exception:
@@ -69,11 +99,13 @@ def get_all_resource_types(db: Session):
 
     try:
 
-        types = db.query(ResourceType).all()
+        types = [
+            t for t in db.query(ResourceType).all()
+            if not _is_deprecated_resource_type(t.name)
+        ]
 
         return [
             {
-                "id": t.id,
                 "name": t.name,
                 "status": t.status
             }
@@ -94,13 +126,13 @@ def get_passed_resource_types(db: Session):
             .all()
         )
 
-        return [
-            {
-                "id": t.id,
-                "name": t.name
-            }
+        names = DEFAULT_RESOURCE_TYPES + [
+            t.name
             for t in types
+            if t.name not in DEFAULT_RESOURCE_TYPES and not _is_deprecated_resource_type(t.name)
         ]
+
+        return list(dict.fromkeys(names))
 
     except Exception:
         return []
@@ -122,11 +154,7 @@ def propose_new_type(
         if exists:
             return False
 
-        item = ResourceType(
-            id=str(uuid.uuid4()),
-            name=name,
-            status="待审核"
-        )
+        item = ResourceType(name=name, status="待审核")
 
         db.add(item)
         db.commit()
@@ -175,74 +203,76 @@ def save_ai_generated_resources(
     llm_outputs: list,
     uploader: str = "AI-Agent"
 ):
+    resources = []
 
+    for index, plan_item in enumerate(resource_plan.get("resources", [])):
+        llm_item = llm_outputs[index] if index < len(llm_outputs) else {}
+        title = plan_item.get("title") or plan_item.get("topic") or "未命名资源"
+        resources.append({
+            "title": title,
+            "type": plan_item.get("type", "专业课程讲解文档"),
+            "summary": llm_item.get("summary") or plan_item.get("summary", ""),
+            "content": llm_item.get("content") or plan_item.get("content", ""),
+            "source": llm_item.get("source") or plan_item.get("source", ""),
+            "agent_notes": plan_item.get("agent_notes", str(plan_item)),
+        })
+
+    return insert_generated_resources(db, resources, uploader=uploader)
+
+
+def insert_generated_resources(
+    db: Session,
+    resources: list,
+    uploader: str = "资源生成 Agent"
+):
     inserted = []
 
     try:
+        for item in resources:
+            title = (item.get("title") or "").strip()
+            r_type = (item.get("type") or "").strip()
+            if not title or not r_type or _is_deprecated_resource_type(r_type):
+                continue
 
-        for plan_item, llm_item in zip(
-            resource_plan["resources"],
-            llm_outputs
-        ):
+            existing = (
+                db.query(Resource)
+                .filter(Resource.title == title, Resource.type == r_type)
+                .first()
+            )
 
-            res = Resource(
-                id=f"RES{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}",
+            if existing:
+                existing.summary = item.get("summary", existing.summary or "")
+                existing.content = item.get("content", existing.content or "")
+                existing.source = item.get("source", existing.source or "")
+                existing.agent_notes = item.get("agent_notes", existing.agent_notes or "")
+                existing.uploader = uploader
+                existing.status = "待审核"
+                existing.time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                inserted.append(_resource_to_dict(existing))
+                continue
 
-                title=plan_item.get(
-                    "topic",
-                    "未命名资源"
-                ),
-
-                type=plan_item.get(
-                    "type",
-                    "文档"
-                ),
-
-                status="已生成",
-
-                summary=llm_item.get(
-                    "summary",
-                    ""
-                ),
-
-                content=llm_item.get(
-                    "content",
-                    ""
-                ),
-
-                source=llm_item.get(
-                    "source",
-                    ""
-                ),
-
+            resource = Resource(
+                id=_new_resource_id(),
+                title=title,
+                type=r_type,
+                status="待审核",
                 uploader=uploader,
-
-                time=datetime.datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-
-                agent_notes=str(plan_item)
+                time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                summary=item.get("summary", ""),
+                content=item.get("content", ""),
+                source=item.get("source", ""),
+                agent_notes=item.get("agent_notes", "")
             )
 
-            db.add(res)
-
+            db.add(resource)
             db.flush()
-
-            inserted.append(
-                _resource_to_dict(res)
-            )
+            inserted.append(_resource_to_dict(resource))
 
         db.commit()
-
-        return {
-    "success": True,
-    "data": inserted
-}
+        return inserted
 
     except Exception:
-
         db.rollback()
-
         return []
 
 
@@ -264,7 +294,7 @@ def insert_new_resource(
     try:
 
         resource = Resource(
-            id=f"RES{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}",
+            id=_new_resource_id(),
 
             title=title,
 

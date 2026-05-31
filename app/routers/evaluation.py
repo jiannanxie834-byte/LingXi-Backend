@@ -5,10 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.data_services import (
-    evaluation_service,
-    orchestrator_service
-)
+from app.services.data_services import evaluation_service
 
 router = APIRouter(
     prefix="/evaluation",
@@ -37,10 +34,9 @@ async def auto_evaluation(
     db: Session = Depends(get_db)
 ):
 
-    result = orchestrator_service.handle_learning_chat(
+    result = evaluation_service.handle_auto_evaluation(
+        db=db,
         username=data.username or "student",
-        message="自动学习诊断请求",
-        db=db
     )
 
     return {
@@ -65,17 +61,13 @@ async def submit_evaluation(
             "message": "请至少填写一个学习内容"
         }
 
-    message = f"""
-学习主题: {data.topic}
-错题记录: {data.wrong_notes}
-答案总结: {data.answer_summary}
-置信度: {data.confidence}
-"""
-
-    result = orchestrator_service.handle_learning_chat(
+    result = evaluation_service.handle_learning_evaluation(
+        db=db,
         username=data.username or "student",
-        message=message,
-        db=db
+        topic=data.topic.strip(),
+        wrong_notes=data.wrong_notes.strip(),
+        answer_summary=data.answer_summary.strip(),
+        confidence=data.confidence,
     )
 
     return {

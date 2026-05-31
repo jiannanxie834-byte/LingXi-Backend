@@ -42,6 +42,7 @@ def handle_learning_chat(username: str, message: str, db):
         knowledge_topic=topic,
         score=eval_result.get("score", 0)
     )
+    profile_update["tags"] = list(dict.fromkeys(profile_update.get("tags", []) + profile_result.get("tags", [])))
 
     # =========================
     # 4. 默认聊天回复
@@ -65,11 +66,14 @@ def handle_learning_chat(username: str, message: str, db):
         {"role": "user", "content": chat_prompt}
     ])
     print("LLM RESULT:", reply_res)
-    ai_reply = reply_res.get("content") if reply_res.get("ok") else "我暂时无法回复，请稍后再试"
+    ai_reply = reply_res.get("content") if reply_res.get("ok") else (
+        f"我先按本地课程知识库给你处理：当前识别到的主题是「{topic}」，"
+        f"学习意图是「{intent}」。如果你需要，我可以继续生成学习路线和配套资源。"
+    )
     # =========================
-    # 5. 是否生成学习路径
+    # 5. 是否生成学习路径和资源
     # =========================
-    should_plan = intent in ["路径规划", "生成学习路径", "制定计划"]
+    should_plan = intent in ["路径规划", "生成学习路径", "制定计划", "生成资源", "练习巩固", "实操训练"]
 
     path = None
     resources = []
@@ -113,25 +117,35 @@ def handle_learning_chat(username: str, message: str, db):
             content = res.get("content", "") if res.get("ok") else ""
 
             llm_outputs.append({
-                "summary": content[:200],
-                "content": content
+                "summary": content[:200] if content else item.get("summary", ""),
+                "content": content or item.get("content", ""),
+                "source": item.get("source", "")
             })
 
         # 6.5 保存资源
         resources = resource_service.save_ai_generated_resources(
             db=db,
             resource_plan=resource_plan,
-            llm_outputs=llm_outputs
+            llm_outputs=llm_outputs,
+            uploader="资源生成 Agent"
         )
+        ai_reply = f"""{ai_reply}
+
+已同步生成 1 条学习路线和 {len(resources)} 份配套资源，资源会先进入管理员审核队列，通过后再展示给学生端。"""
 
     # =========================
     # 7. 更新用户状态
     # =========================
-    user_service.update_user_learning_fields(
+    updated_user = user_service.update_user_learning_profile(
         db,
         username,
+        profile_update.get("tags", []),
         hours_delta=1
     )
+
+    if updated_user:
+        profile_update["tags"] = updated_user["tags"]
+        profile_update["hours"] = updated_user["hours"]
 
     # =========================
     # 8. 返回

@@ -1,47 +1,18 @@
 # app/database.py
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-
-DATABASE_URL = "sqlite:///./lingxi.db"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
+from app.models.base import (
+    Base,
+    SessionLocal,
+    engine,
+    get_db,
+    init_schema_migrations,
+    init_seeding_data,
 )
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
 
-Base = declarative_base()
-
-
-# =========================
-# FastAPI依赖注入
-# =========================
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# =========================
-# 初始化数据库
-# =========================
 def init_db():
-    from app.models.schemas import (
-        User,
-        Resource,
-        ResourceType,
-        LearningPlan,
-        EvaluationRecord,
-        TodoList,
-        Feedback
-    )
+    from app.models import schemas  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    init_schema_migrations()
+    init_seeding_data()

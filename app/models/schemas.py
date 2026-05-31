@@ -81,7 +81,6 @@ class EvaluationRecord(Base):
     wrong_notes = Column(Text, default="", comment="学生提交的错题或自测描述")
     answers_json = Column(Text, default="{}", comment="原始作答数据 JSON")
     generated_resource_id = Column(String, default="", comment="生成的诊断资源编码")
-    from sqlalchemy import DateTime
     created_at = Column(DateTime, nullable=True, comment="创建时间")
 
 # ================= 8. 课程知识 =================

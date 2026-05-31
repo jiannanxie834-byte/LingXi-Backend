@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.database import init_db
 
 from app.routers import (
     auth,
@@ -12,6 +13,7 @@ from app.routers import (
 )
 
 app = FastAPI(title="LingXi AI Learning Platform")
+init_db()
 
 # =========================
 # CORS

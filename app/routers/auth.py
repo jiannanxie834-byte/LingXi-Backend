@@ -68,7 +68,17 @@ async def register(data: Union[dict, Any]):
             password
         )
 
-        return result
+        if result["success"]:
+            return {
+                "code": 200,
+                "message": "注册成功",
+                "data": result["data"]
+            }
+
+        return {
+            "code": 400,
+            "message": result["message"]
+        }
 
     finally:
         db.close()
@@ -92,7 +102,17 @@ async def submit_feedback(data: Union[dict, Any]):
             content
         )
 
-        return result
+        if result["success"]:
+            return {
+                "code": 200,
+                "message": "反馈提交成功",
+                "data": result["data"]
+            }
+
+        return {
+            "code": 400,
+            "message": result.get("message", "反馈提交失败")
+        }
 
     finally:
         db.close()

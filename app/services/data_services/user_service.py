@@ -196,6 +196,39 @@ def update_user_learning_fields(
         return None
 
 
+def update_user_learning_profile(
+    db: Session,
+    username: str,
+    tags: list,
+    hours_delta: int = 0
+):
+    try:
+        user = db.query(User).filter(
+            User.username == username
+        ).first()
+
+        if not user:
+            return None
+
+        old_tags = [
+            tag.strip()
+            for tag in (user.tags or "").split(",")
+            if tag.strip()
+        ]
+        merged_tags = list(dict.fromkeys(old_tags + [tag for tag in tags if tag]))
+        user.tags = ",".join(merged_tags)
+        user.hours = max(0, (user.hours or 0) + hours_delta)
+
+        db.commit()
+        db.refresh(user)
+
+        return _user_to_dict(user)
+
+    except Exception:
+        db.rollback()
+        return None
+
+
 # =========================
 # GET ALL STUDENTS
 # =========================

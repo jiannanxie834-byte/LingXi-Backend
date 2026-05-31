@@ -27,6 +27,10 @@ async def dashboard_stats(db: Session = Depends(get_db)):
     f for f in feedbacks
     if (f.get("status") or "").strip() == "待处理"
 ])
+    pending_types = len([
+    t for t in resource_service.get_all_resource_types(db)
+    if (t.get("status") or "").strip() == "待审核"
+])
 
     return {
         "code": 200,
@@ -35,7 +39,7 @@ async def dashboard_stats(db: Session = Depends(get_db)):
             "total_resources": len(resources),
             "pending_resources": pending_resources,
             "pending_feedback": pending_feedback,
-            "todo_count": pending_resources + pending_feedback
+            "todo_count": pending_resources + pending_feedback + pending_types
         }
     }
 
