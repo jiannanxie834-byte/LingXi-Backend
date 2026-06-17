@@ -8,6 +8,7 @@ from app.services.data_services import (
     user_service,
     feedback_service
 )
+from app.services.data_services.knowledge_tag_service import summarize_knowledge_tags
 
 router = APIRouter()
 
@@ -60,12 +61,14 @@ async def register(data: Union[dict, Any]):
 
     try:
         username = data.username if hasattr(data, "username") else data.get("username")
+        nickname = data.nickname if hasattr(data, "nickname") else data.get("nickname", "")
         password = data.password if hasattr(data, "password") else data.get("password")
 
         result = auth_service.create_user(
             db,
             username,
-            password
+            password,
+            nickname
         )
 
         if result["success"]:
@@ -128,6 +131,7 @@ async def update_profile(data: Union[dict, Any]):
 
     try:
         username = data.username if hasattr(data, "username") else data.get("username")
+        nickname = data.nickname if hasattr(data, "nickname") else data.get("nickname", None)
         bio = data.bio if hasattr(data, "bio") else data.get("bio")
         avatar = data.avatar if hasattr(data, "avatar") else data.get("avatar", "")
         password = data.password if hasattr(data, "password") else data.get("password", "")
@@ -135,6 +139,7 @@ async def update_profile(data: Union[dict, Any]):
         result = user_service.update_user_profile(
             db=db,
             username=username,
+            nickname=nickname,
             bio=bio,
             avatar=avatar,
             password=password
@@ -151,14 +156,14 @@ async def update_profile(data: Union[dict, Any]):
             "message": "更新成功",
             "data": {
                 "username": result.username,
+                "nickname": result.nickname or result.username,
                 "role": result.role,
                 "avatar": result.avatar,
                 "bio": result.bio,
                 "hours": result.hours,
-                "tags": [
-                    t for t in (result.tags or "").split(",")
-                    if t.strip()
-                ]
+                "tags": summarize_knowledge_tags(
+                    [t for t in (result.tags or "").split(",") if t.strip()]
+                )
             }
         }
 

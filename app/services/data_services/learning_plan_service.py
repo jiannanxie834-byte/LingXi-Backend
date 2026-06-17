@@ -1,17 +1,9 @@
 import json
 import uuid
 import datetime
-from copy import deepcopy
 from sqlalchemy.orm import Session
 
 from app.models.schemas import LearningPlan, TodoList
-
-
-# =========================
-# 内存缓存（保留）
-# =========================
-TEMP_PLANS_STORAGE = {}
-TEMP_TODOS_STORAGE = {}
 
 
 # =========================
@@ -59,22 +51,11 @@ def _save_user_plans_to_db(db: Session, username: str, plans_list: list):
 
 
 def get_plans_by_username(db: Session, username: str):
-    """获取学习路线（缓存 + DB）"""
-
-    if username in TEMP_PLANS_STORAGE:
-        return deepcopy(TEMP_PLANS_STORAGE[username])
-
     stored = _load_user_plans_from_db(db, username)
-
-    if stored is not None:
-        TEMP_PLANS_STORAGE[username] = stored
-        return deepcopy(stored)
-
-    return []
+    return stored if stored is not None else []
 
 
 def save_user_plans(db: Session, username: str, plans_list: list):
-    TEMP_PLANS_STORAGE[username] = deepcopy(plans_list or [])
     return _save_user_plans_to_db(db, username, plans_list or [])
 
 
@@ -190,14 +171,9 @@ def _save_user_todos_to_db(db: Session, username: str, todos_list: list):
 
 
 def get_todos_by_username(db: Session, username: str):
-    if username in TEMP_TODOS_STORAGE:
-        return deepcopy(TEMP_TODOS_STORAGE[username])
-
     stored = _load_user_todos_from_db(db, username)
-
     if stored is not None:
-        TEMP_TODOS_STORAGE[username] = stored
-        return deepcopy(stored)
+        return stored
 
     default_todos = [
         {"id": 1, "content": "完成计网第三章课后习题", "done": True},
@@ -205,11 +181,8 @@ def get_todos_by_username(db: Session, username: str):
     ]
 
     _save_user_todos_to_db(db, username, default_todos)
-    TEMP_TODOS_STORAGE[username] = default_todos
-
-    return deepcopy(default_todos)
+    return default_todos
 
 
 def save_user_todos(db: Session, username: str, todos_list: list):
-    TEMP_TODOS_STORAGE[username] = deepcopy(todos_list or [])
     return _save_user_todos_to_db(db, username, todos_list or [])

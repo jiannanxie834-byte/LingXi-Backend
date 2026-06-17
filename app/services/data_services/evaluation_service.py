@@ -5,7 +5,9 @@ import uuid
 from sqlalchemy.orm import Session
 from app.models.schemas import EvaluationRecord
 from app.services.data_services import (
+    knowledge_service,
     learning_plan_service,
+    profile_service,
     resource_service,
     user_service,
 )
@@ -94,12 +96,18 @@ def _evaluation_to_dict(record: EvaluationRecord):
     }
 
 
-def _infer_knowledge(text: str):
+def _load_course_knowledge(db: Session):
+    knowledge_rows = knowledge_service.get_course_knowledge(db)
+    return knowledge_rows or COURSE_KNOWLEDGE
+
+
+def _infer_knowledge(text: str, knowledge_base: list = None):
     lowered = (text or "").lower()
-    for item in COURSE_KNOWLEDGE:
+    items = knowledge_base or COURSE_KNOWLEDGE
+    for item in items:
         if any(keyword in lowered for keyword in item["keywords"]):
             return item
-    return COURSE_KNOWLEDGE[2]
+    return items[2] if len(items) > 2 else COURSE_KNOWLEDGE[2]
 
 
 def _level_from_score(score: int):
@@ -247,7 +255,7 @@ def handle_learning_evaluation(
     confidence: int = 60
 ):
     merged_text = f"{topic}\n{wrong_notes}\n{answer_summary}"
-    knowledge = _infer_knowledge(merged_text)
+    knowledge = _infer_knowledge(merged_text, _load_course_knowledge(db))
     score, level = _score_evaluation(merged_text, confidence, knowledge)
 
     weak_points = [
@@ -281,8 +289,9 @@ def handle_learning_evaluation(
     updated_user = user_service.update_user_learning_profile(
         db,
         username,
-        [knowledge["topic"], "错题诊断", level],
+        [knowledge["topic"]],
         hours_delta=1 if score < 75 else 0,
+        replace_tags=True,
     )
 
     remedial_plan = None
@@ -313,6 +322,20 @@ def handle_learning_evaluation(
         generated_resource_id=generated_resource_id,
     )
 
+    profile_user = user_service.get_user_by_username(db, username)
+    profile = profile_service.build_profile(
+        user=profile_user,
+        message=merged_text,
+        intent="练习巩固",
+        knowledge_topic=knowledge["topic"],
+        score=score,
+        db=db,
+    )
+    if updated_user:
+        profile["tags"] = profile_service.merge_tags(updated_user["tags"], profile.get("tags", []))
+        profile["knowledge_tags"] = profile["tags"]
+        profile["hours"] = updated_user["hours"]
+
     return {
         "record": record,
         "score": score,
@@ -321,10 +344,7 @@ def handle_learning_evaluation(
         "suggestions": suggestions,
         "generated_resource": saved_resources[0] if saved_resources else diagnosis_resource,
         "remedial_plan": remedial_plan,
-        "profile": {
-            "tags": updated_user["tags"] if updated_user else [knowledge["topic"], "错题诊断", level],
-            "hours": updated_user["hours"] if updated_user else 0,
-        },
+        "profile": profile,
     }
 
 
@@ -356,7 +376,7 @@ def handle_auto_evaluation(db: Session, username: str):
         " ".join([item.get("topic", "") for item in recent_history]),
     ])
 
-    knowledge = _infer_knowledge(source_text)
+    knowledge = _infer_knowledge(source_text, _load_course_knowledge(db))
     hours = user.hours if user else 0
     score = 62 + min(12, hours // 4) + round(completion_rate * 0.18)
     if recent_avg_score is not None:
@@ -403,8 +423,9 @@ def handle_auto_evaluation(db: Session, username: str):
     updated_user = user_service.update_user_learning_profile(
         db,
         username,
-        [knowledge["topic"], "平台自动诊断", level],
+        [knowledge["topic"]],
         hours_delta=0,
+        replace_tags=True,
     )
 
     remedial_plan = None
@@ -436,6 +457,20 @@ def handle_auto_evaluation(db: Session, username: str):
         generated_resource_id=generated_resource_id,
     )
 
+    profile_user = user_service.get_user_by_username(db, username)
+    profile = profile_service.build_profile(
+        user=profile_user,
+        message=auto_notes,
+        intent="练习巩固",
+        knowledge_topic=knowledge["topic"],
+        score=score,
+        db=db,
+    )
+    if updated_user:
+        profile["tags"] = profile_service.merge_tags(updated_user["tags"], profile.get("tags", []))
+        profile["knowledge_tags"] = profile["tags"]
+        profile["hours"] = updated_user["hours"]
+
     return {
         "record": record,
         "score": score,
@@ -444,10 +479,7 @@ def handle_auto_evaluation(db: Session, username: str):
         "suggestions": suggestions,
         "generated_resource": saved_resources[0] if saved_resources else diagnosis_resource,
         "remedial_plan": remedial_plan,
-        "profile": {
-            "tags": updated_user["tags"] if updated_user else [knowledge["topic"], "平台自动诊断", level],
-            "hours": updated_user["hours"] if updated_user else 0,
-        },
+        "profile": profile,
         "auto_summary": auto_notes,
         "data_sources": ["学习画像", "规划任务状态", "历史评价记录", "Agent 生成资源"],
     }

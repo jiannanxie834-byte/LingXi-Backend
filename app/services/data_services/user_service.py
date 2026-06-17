@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.schemas import User
+from app.services.data_services.knowledge_tag_service import summarize_knowledge_tags
 
 
 # =========================
@@ -17,13 +18,17 @@ def get_db_context():
 # =========================
 
 def _user_to_dict(user: User):
+    tags = summarize_knowledge_tags(
+        [t for t in user.tags.split(",") if t] if user.tags else []
+    )
     return {
         "username": user.username,
+        "nickname": user.nickname or user.username,
         "role": user.role,
         "avatar": user.avatar,
         "bio": user.bio,
         "hours": user.hours,
-        "tags": [t for t in user.tags.split(",") if t] if user.tags else []
+        "tags": tags
     }
 
 
@@ -70,7 +75,7 @@ def check_user_login(username: str, password: str):
 # 注册用户
 # =========================
 
-def create_user(username: str, password: str):
+def create_user(username: str, password: str, nickname: str = ""):
     db = SessionLocal()
 
     try:
@@ -86,6 +91,7 @@ def create_user(username: str, password: str):
 
         user = User(
             username=username,
+            nickname=(nickname or username).strip(),
             password=password,
             role="student",
             avatar="",
@@ -136,6 +142,7 @@ def get_user_by_username(db: Session, username: str):
 def update_user_profile(
     db: Session,
     username: str,
+    nickname: str = None,
     bio: str = None,
     avatar: str = None,
     password: str = None
@@ -150,6 +157,9 @@ def update_user_profile(
 
         if bio is not None:
             user.bio = bio
+
+        if nickname is not None:
+            user.nickname = nickname.strip() or user.username
 
         if avatar is not None:
             user.avatar = avatar
@@ -200,7 +210,8 @@ def update_user_learning_profile(
     db: Session,
     username: str,
     tags: list,
-    hours_delta: int = 0
+    hours_delta: int = 0,
+    replace_tags: bool = False
 ):
     try:
         user = db.query(User).filter(
@@ -210,12 +221,12 @@ def update_user_learning_profile(
         if not user:
             return None
 
-        old_tags = [
+        old_tags = [] if replace_tags else [
             tag.strip()
             for tag in (user.tags or "").split(",")
             if tag.strip()
         ]
-        merged_tags = list(dict.fromkeys(old_tags + [tag for tag in tags if tag]))
+        merged_tags = summarize_knowledge_tags(old_tags + [tag for tag in tags if tag])
         user.tags = ",".join(merged_tags)
         user.hours = max(0, (user.hours or 0) + hours_delta)
 

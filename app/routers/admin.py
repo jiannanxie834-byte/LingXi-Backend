@@ -1,7 +1,10 @@
+import os
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from pydantic import BaseModel
+from app.models.schemas import ChatSession, CourseKnowledge, EvaluationRecord, ResourceType
 
 from app.services.data_services import (
     user_service,
@@ -38,8 +41,100 @@ async def dashboard_stats(db: Session = Depends(get_db)):
             "total_users": len(users),
             "total_resources": len(resources),
             "pending_resources": pending_resources,
+            "pending_types": pending_types,
             "pending_feedback": pending_feedback,
             "todo_count": pending_resources + pending_feedback + pending_types
+        }
+    }
+
+
+@router.get("/readiness")
+async def demo_readiness(db: Session = Depends(get_db)):
+    users = user_service.get_all_students(db)
+    resources = resource_service.get_all_resources(db)
+    feedbacks = feedback_service.get_all_feedbacks(db)
+    resource_types = resource_service.get_all_resource_types(db)
+
+    passed_resources = [
+        item for item in resources
+        if (item.get("status") or "").strip() == "已通过"
+    ]
+    pending_resources = [
+        item for item in resources
+        if (item.get("status") or "").strip() == "待审核"
+    ]
+    pending_types = [
+        item for item in resource_types
+        if (item.get("status") or "").strip() == "待审核"
+    ]
+    pending_feedback = [
+        item for item in feedbacks
+        if (item.get("status") or "").strip() == "待处理"
+    ]
+
+    checks = [
+        {
+            "key": "course_knowledge",
+            "label": "初始课程知识库",
+            "ok": db.query(CourseKnowledge).count() >= 8,
+            "value": f"{db.query(CourseKnowledge).count()} 个知识点",
+            "target": "不少于 1 门完整高校课程知识库",
+        },
+        {
+            "key": "resource_types",
+            "label": "个性化资源类型",
+            "ok": len(resource_service.get_passed_resource_types(db)) >= 6,
+            "value": f"{len(resource_service.get_passed_resource_types(db))} 类",
+            "target": "至少覆盖 5 类资源生成，本系统保留 7 类",
+        },
+        {
+            "key": "passed_resources",
+            "label": "已开放学习资源",
+            "ok": len(passed_resources) >= 10,
+            "value": f"{len(passed_resources)} 份",
+            "target": "演示资源库可查阅、可导出",
+        },
+        {
+            "key": "review_queue",
+            "label": "管理员审核队列",
+            "ok": len(pending_resources) + len(pending_types) + len(pending_feedback) > 0,
+            "value": f"{len(pending_resources)} 资源 / {len(pending_types)} 分类 / {len(pending_feedback)} 反馈",
+            "target": "可演示资源审核、分类审核、反馈处理",
+        },
+        {
+            "key": "evaluation",
+            "label": "学习效果评价",
+            "ok": db.query(EvaluationRecord).count() > 0,
+            "value": f"{db.query(EvaluationRecord).count()} 条记录",
+            "target": "可演示错题诊断、报告与路线调整",
+        },
+        {
+            "key": "chat_history",
+            "label": "对话历史沉淀",
+            "ok": db.query(ChatSession).count() > 0,
+            "value": f"{db.query(ChatSession).count()} 个会话",
+            "target": "刷新页面后可恢复对话",
+        },
+        {
+            "key": "llm",
+            "label": "大模型配置",
+            "ok": bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("SPARK_API_PASSWORD")),
+            "value": os.getenv("LINGXI_LLM_PROVIDER", "local"),
+            "target": "DeepSeek / 星火等模型密钥已配置即可调用",
+        },
+    ]
+
+    return {
+        "code": 200,
+        "data": {
+            "ready": all(item["ok"] for item in checks),
+            "checks": checks,
+            "summary": {
+                "students": len(users),
+                "resources": len(resources),
+                "resource_types": db.query(ResourceType).count(),
+                "feedbacks": len(feedbacks),
+            }
         }
     }
 

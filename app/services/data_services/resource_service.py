@@ -6,12 +6,14 @@ from app.models.schemas import (
     Resource,
     ResourceType
 )
+from app.services.data_services import content_guard_service
 
 DEFAULT_RESOURCE_TYPES = [
     "专业课程讲解文档",
     "知识点思维导图",
     "不同类型练习题目",
     "拓展阅读材料",
+    "多模态学习包",
     "错题诊断与学习反馈报告",
     "学科实践应用任务",
 ]
@@ -42,6 +44,8 @@ def _new_resource_id():
 
 
 def _resource_to_dict(resource: Resource):
+    raw_notes = resource.agent_notes or ""
+    safety_review = content_guard_service.extract_review(raw_notes)
 
     return {
         "id": resource.id,
@@ -53,7 +57,27 @@ def _resource_to_dict(resource: Resource):
         "summary": resource.summary or "",
         "content": resource.content or "",
         "source": resource.source or "",
-        "agent_notes": resource.agent_notes or "",
+        "agent_notes": content_guard_service.strip_review_block(raw_notes),
+        "safety_review": safety_review,
+    }
+
+
+def _with_content_review(item: dict, reviewer: str):
+    review = content_guard_service.review_resource_content(
+        title=item.get("title", ""),
+        resource_type=item.get("type", ""),
+        summary=item.get("summary", ""),
+        content=item.get("content", ""),
+        source=item.get("source", ""),
+        reviewer=reviewer,
+    )
+
+    return {
+        **item,
+        "agent_notes": content_guard_service.attach_review_note(
+            item.get("agent_notes", ""),
+            review
+        )
     }
 
 
@@ -89,6 +113,18 @@ def get_passed_resources(db: Session):
 
     except Exception:
         return []
+
+
+def get_resource_by_id(db: Session, resource_id: str):
+    try:
+        resource = (
+            db.query(Resource)
+            .filter(Resource.id == resource_id)
+            .first()
+        )
+        return _resource_to_dict(resource) if resource else None
+    except Exception:
+        return None
 
 
 # =========================
@@ -217,7 +253,12 @@ def save_ai_generated_resources(
             "agent_notes": plan_item.get("agent_notes", str(plan_item)),
         })
 
-    return insert_generated_resources(db, resources, uploader=uploader)
+    reviewed_resources = [
+        _with_content_review(item, "内容安全 Agent")
+        for item in resources
+    ]
+
+    return insert_generated_resources(db, reviewed_resources, uploader=uploader)
 
 
 def insert_generated_resources(
@@ -292,6 +333,17 @@ def insert_new_resource(
 ):
 
     try:
+        reviewed_item = _with_content_review(
+            {
+                "title": title,
+                "type": r_type,
+                "summary": summary,
+                "content": content,
+                "source": source,
+                "agent_notes": agent_notes,
+            },
+            "学生资源预审 Agent"
+        )
 
         resource = Resource(
             id=_new_resource_id(),
@@ -308,13 +360,13 @@ def insert_new_resource(
                 "%Y-%m-%d %H:%M:%S"
             ),
 
-            summary=summary,
+            summary=reviewed_item.get("summary", ""),
 
-            content=content,
+            content=reviewed_item.get("content", ""),
 
-            source=source,
+            source=reviewed_item.get("source", ""),
 
-            agent_notes=agent_notes
+            agent_notes=reviewed_item.get("agent_notes", "")
         )
 
         db.add(resource)
@@ -323,10 +375,7 @@ def insert_new_resource(
 
         db.refresh(resource)
 
-        return {
-    "success": True,
-    "data": _resource_to_dict(resource)
-}
+        return _resource_to_dict(resource)
 
     except Exception:
 

@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Depends
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.data_services import resource_service
+from app.services.data_services import pptx_export_service
+from app.services.data_services import knowledge_evidence_service
 
 router = APIRouter(prefix="/resource", tags=["知识库模块"])
 
@@ -52,6 +57,33 @@ async def list_all(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/evidence/search")
+async def search_evidence(query: str, db: Session = Depends(get_db)):
+    data = knowledge_evidence_service.search_course_evidence(db, query or "", limit=8)
+    return {
+        "code": 200,
+        "data": data
+    }
+
+
+@router.get("/export/pptx/{res_id}")
+async def export_resource_pptx(res_id: str, db: Session = Depends(get_db)):
+    resource = resource_service.get_resource_by_id(db, res_id)
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="资源不存在")
+
+    output, filename = pptx_export_service.build_resource_pptx(resource)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+        }
+    )
+
+
 # =========================
 # 上传资源
 # =========================
@@ -67,6 +99,13 @@ async def upload_resource(data: ResourceCreate, db: Session = Depends(get_db)):
         source=data.source,
         agent_notes=data.agent_notes
     )
+
+    if not item:
+        return {
+            "code": 400,
+            "message": "提交失败",
+            "data": None
+        }
 
     return {
         "code": 200,

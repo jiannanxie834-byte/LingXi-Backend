@@ -5,7 +5,7 @@ def run(user, message, eval_result):
 
     return {
         "level": "进阶" if hours >= 10 else "初学者",
-        "tags": [topic, intent],
+        "tags": [topic],
         "topic": topic,
         "knowledge_topic": topic,
         "intent": intent,

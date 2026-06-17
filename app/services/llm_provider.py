@@ -1,44 +1,15 @@
 import json
+import logging
 import os
-from pathlib import Path
 import urllib.error
 import urllib.request
 
+from app.config import load_env_file
 
-# =========================
-# 1. 加载 .env
-# =========================
-def _load_env_file():
-    project_root = Path(__file__).resolve().parents[2]
-    candidates = [
-        Path.cwd() / ".env",
-        project_root / ".env",
-    ]
 
-    env_path = next((path for path in candidates if path.exists()), None)
+load_env_file()
 
-    if not env_path:
-        print("[ENV] .env not found")
-        return
-
-    print("[ENV] loading:", env_path)
-
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-
-        k, v = line.split("=", 1)
-
-        os.environ[k.strip()] = v.strip().strip('"').strip("'")
-
-    print("[ENV CHECK]")
-    print("LINGXI_LLM_PROVIDER =", os.getenv("LINGXI_LLM_PROVIDER"))
-    print("SPARK_API_PASSWORD =", "SET" if os.getenv("SPARK_API_PASSWORD") else "EMPTY")
-    print("DEEPSEEK_API_KEY =", "SET" if os.getenv("DEEPSEEK_API_KEY") else "EMPTY")
-
-_load_env_file()
+logger = logging.getLogger(__name__)
 
 DEFAULT_SPARK_API_URL = "https://spark-api-open.xf-yun.com/v1/chat/completions"
 DEFAULT_DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
@@ -46,6 +17,15 @@ DEFAULT_DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 
 def _get_provider():
     return os.getenv("LINGXI_LLM_PROVIDER", "local").strip().lower()
+
+
+def _debug_enabled():
+    return os.getenv("LINGXI_DEBUG_LLM", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _debug(message, *args):
+    if _debug_enabled():
+        logger.info(message, *args)
 
 
 def _get_provider_config():
@@ -81,9 +61,6 @@ def _get_provider_config():
 def is_enabled():
     config = _get_provider_config()
     enabled = config["provider"] in {"spark", "deepseek"} and bool(config["api_key"])
-
-    print("[LLM ENABLE CHECK]", enabled)
-
     return enabled
 
 
@@ -101,7 +78,7 @@ def _parse_llm_response(data, provider):
         return {"ok": False, "error": "no response", "content": ""}
 
     first_choice = choices[0] or {}
-    print("[LLM RESPONSE]", {
+    _debug("LLM response metadata: %s", {
         "provider": provider,
         "choices": len(choices),
         "finish_reason": first_choice.get("finish_reason"),
@@ -155,10 +132,14 @@ def chat(messages, temperature=0.5, max_tokens=1200):
         "stream": False,
     }
 
-    print("[LLM REQUEST]", payload)
-    print("[LLM PROVIDER]", config["provider"])
-    print("[LLM URL]", config["api_url"])
-    print("[LLM MODEL]", config["model"])
+    _debug(
+        "LLM request provider=%s model=%s url=%s messages=%s max_tokens=%s",
+        config["provider"],
+        config["model"],
+        config["api_url"],
+        len(messages),
+        max_tokens,
+    )
 
     req = urllib.request.Request(
         config["api_url"],
@@ -175,13 +156,13 @@ def chat(messages, temperature=0.5, max_tokens=1200):
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="ignore")
-        print("[LLM HTTP ERROR BODY]", err_body)
+        logger.warning("LLM HTTP error: %s; body=%s", e, err_body[:500])
         return {"ok": False, "error": str(e), "content": ""}
     except urllib.error.URLError as e:
-        print("[LLM URL ERROR]", e)
+        logger.warning("LLM URL error: %s", e)
         return {"ok": False, "error": str(e), "content": ""}
     except TimeoutError as e:
-        print("[LLM TIMEOUT]", e)
+        logger.warning("LLM request timeout: %s", e)
         return {"ok": False, "error": "LLM request timeout", "content": ""}
 
     return _parse_llm_response(data, config["provider"])

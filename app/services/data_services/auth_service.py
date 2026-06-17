@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.schemas import User
+from app.services.data_services.knowledge_tag_service import summarize_knowledge_tags
 
 
 # =========================
@@ -8,16 +9,17 @@ from app.models.schemas import User
 
 def _format_user(user: User):
     """统一用户返回结构"""
+    tags = summarize_knowledge_tags(
+        [t for t in (user.tags or "").split(",") if t.strip()]
+    )
     return {
         "username": user.username,
+        "nickname": user.nickname or user.username,
         "role": user.role,
         "avatar": user.avatar,
         "bio": user.bio,
         "hours": user.hours,
-        "tags": [
-            t for t in (user.tags or "").split(",")
-            if t.strip()
-        ]
+        "tags": tags
     }
 
 
@@ -59,7 +61,7 @@ def check_user_login(db: Session, username: str, password: str):
 # =========================
 # 注册
 # =========================
-def create_user(db: Session, username: str, password: str):
+def create_user(db: Session, username: str, password: str, nickname: str = ""):
     """
     创建用户
     """
@@ -75,6 +77,7 @@ def create_user(db: Session, username: str, password: str):
 
         user = User(
             username=username,
+            nickname=(nickname or username).strip(),
             password=password,
             role="student",
             avatar="",
