@@ -19,6 +19,7 @@ router = APIRouter(prefix="/resource", tags=["知识库模块"])
 class ResourceCreate(BaseModel):
     title: str
     type: str
+    username: str = ""
     summary: str = ""
     content: str = ""
     source: str = ""
@@ -27,6 +28,8 @@ class ResourceCreate(BaseModel):
 
 class TypeCreateRequest(BaseModel):
     name: str
+    username: str = ""
+    reason: str = ""
 
 
 # =========================
@@ -36,6 +39,24 @@ class TypeCreateRequest(BaseModel):
 async def list_passed(db: Session = Depends(get_db)):
 
     data = resource_service.get_passed_resources(db)
+
+    return {
+        "code": 200,
+        "data": data or []
+    }
+
+
+@router.get("/recommendations")
+async def list_recommendations(
+    username: str = "",
+    limit: int = 12,
+    db: Session = Depends(get_db)
+):
+    data = resource_service.get_recommended_resources(
+        db=db,
+        username=username,
+        limit=limit
+    )
 
     return {
         "code": 200,
@@ -97,7 +118,9 @@ async def upload_resource(data: ResourceCreate, db: Session = Depends(get_db)):
         summary=data.summary,
         content=data.content,
         source=data.source,
-        agent_notes=data.agent_notes
+        agent_notes=data.agent_notes,
+        uploader=data.username or "student",
+        applicant_username=data.username or "",
     )
 
     if not item:
@@ -173,7 +196,7 @@ async def list_passed_types(db: Session = Depends(get_db)):
 @router.post("/types/propose")
 async def propose_type(data: TypeCreateRequest, db: Session = Depends(get_db)):
 
-    ok = resource_service.propose_new_type(db, data.name)
+    ok = resource_service.propose_new_type(db, data.name, data.username, data.reason)
 
     return {
         "code": 200 if ok else 400,

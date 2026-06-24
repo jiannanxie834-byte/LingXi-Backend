@@ -114,10 +114,127 @@ def _parse_llm_response(data, provider):
     }
 
 
+def extract_json_object(content: str):
+    text = (content or "").strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].strip().startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        return parsed
+    if parsed is not None:
+        raise ValueError("LLM JSON response must be an object")
+
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("LLM response does not contain a JSON object")
+
+    depth = 0
+    in_string = False
+    escaped = False
+    end = -1
+
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                end = index + 1
+                break
+
+    if end < 0:
+        raise ValueError("LLM response contains incomplete JSON object")
+
+    try:
+        parsed = json.loads(text[start:end])
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"LLM response is not valid JSON: {exc}") from exc
+
+    if not isinstance(parsed, dict):
+        raise ValueError("LLM JSON response must be an object")
+
+    return parsed
+
+
+def chat_json(messages, required_fields=None, temperature=0.2, max_tokens=1200):
+    strict_messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是内部结构化工具。只输出一个 JSON 对象；"
+                "不要输出解释、思考过程、Markdown 代码块或面向学生的话；"
+                "所有字符串必须是合法 JSON 字符串，字符串内部不要使用未转义的英文双引号。"
+            ),
+        },
+        *messages,
+    ]
+
+    result = chat(strict_messages, temperature=temperature, max_tokens=max_tokens, json_mode=True)
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "error": result.get("error", "LLM call failed"),
+            "content": result.get("content", ""),
+            "data": {},
+        }
+
+    content = result.get("content", "")
+    try:
+        data = extract_json_object(content)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+            "content": content,
+            "data": {},
+        }
+
+    missing = [
+        field
+        for field in (required_fields or [])
+        if field not in data
+    ]
+    if missing:
+        return {
+            "ok": False,
+            "error": f"LLM JSON response missing required fields: {', '.join(missing)}",
+            "content": content,
+            "data": data,
+        }
+
+    return {
+        "ok": True,
+        "content": content,
+        "data": data,
+    }
+
+
 # =========================
 # 3. 调用LLM
 # =========================
-def chat(messages, temperature=0.5, max_tokens=1200):
+def chat(messages, temperature=0.5, max_tokens=1200, json_mode=False):
     if not is_enabled():
         return {"ok": False, "error": "LLM disabled", "content": ""}
 
@@ -131,6 +248,8 @@ def chat(messages, temperature=0.5, max_tokens=1200):
         "max_tokens": max_tokens,
         "stream": False,
     }
+    if json_mode and config["provider"] == "deepseek":
+        payload["response_format"] = {"type": "json_object"}
 
     _debug(
         "LLM request provider=%s model=%s url=%s messages=%s max_tokens=%s",

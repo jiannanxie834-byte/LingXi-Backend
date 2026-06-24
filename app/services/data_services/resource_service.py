@@ -1,12 +1,25 @@
 import datetime
+import json
+import logging
+import re
+from collections import Counter
 
 from sqlalchemy.orm import Session
 
 from app.models.schemas import (
+    EvaluationRecord,
+    LearningPlan,
     Resource,
-    ResourceType
+    ResourceType,
+    User,
 )
-from app.services.data_services import content_guard_service
+from app.services.data_services import content_guard_service, system_message_service
+from app.services.data_services.knowledge_tag_service import (
+    extract_knowledge_tags_from_text,
+    summarize_knowledge_tags,
+)
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_RESOURCE_TYPES = [
     "专业课程讲解文档",
@@ -27,6 +40,14 @@ DEPRECATED_RESOURCE_TYPES = {
     "代码类实操案例",
 }
 
+SYSTEM_UPLOADERS = {
+    "system",
+    "课程知识库种子",
+    "资源生成 Agent",
+    "学习评价 Agent",
+    "AI-Agent",
+}
+
 
 # =========================
 # tools
@@ -43,6 +64,194 @@ def _new_resource_id():
     return f"RES{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}"
 
 
+def _now_text():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _safe_json_load(value, default):
+    try:
+        return json.loads(value) if value else default
+    except Exception:
+        return default
+
+
+def _compact_text(value):
+    return re.sub(r"\s+", "", str(value or "").lower())
+
+
+def _split_tags(value):
+    return [item.strip() for item in (value or "").split(",") if item.strip()]
+
+
+def _canonical_term(value):
+    term = str(value or "").strip(" ，,。.;；:：、/\\|[]（）()")
+    if term.endswith(("和", "与", "及", "或")) and len(term) > 2:
+        term = term[:-1]
+    upper_aliases = {
+        "ppt": "PPT",
+        "rag": "RAG",
+        "llm": "LLM",
+        "nlp": "NLP",
+        "tp": "TP",
+        "fp": "FP",
+        "tn": "TN",
+        "fn": "FN",
+    }
+    return upper_aliases.get(term.lower(), term)
+
+
+def _text_terms(values):
+    text = "\n".join(str(item or "") for item in values if item)
+    terms = set(extract_knowledge_tags_from_text(text))
+    raw_terms = re.findall(r"[a-z0-9_+#.]+|[\u4e00-\u9fff]{2,}", _compact_text(text))
+
+    stop_terms = {
+        "学习", "资源", "课程", "知识", "需要", "建议", "当前", "完成", "进行", "暂无",
+        "任务", "路线", "计划", "薄弱点", "诊断", "报告", "内容", "学生",
+        "学习资源", "课程资源", "资源生成", "多模态学习", "知识点", "系统",
+    }
+    for term in raw_terms:
+        term = _canonical_term(term)
+        if term in stop_terms:
+            continue
+        if 2 <= len(term) <= 18:
+            terms.add(term)
+
+    return list(terms)
+
+
+def _count_matches(resource_text, terms):
+    compact = _compact_text(resource_text)
+    matched = []
+    for term in terms:
+        term = _canonical_term(term)
+        compact_term = _compact_text(term)
+        if compact_term and compact_term in compact:
+            matched.append(term)
+    return list(dict.fromkeys(matched))
+
+
+def _resource_text(resource):
+    return "\n".join([
+        resource.title or "",
+        resource.type or "",
+        resource.summary or "",
+        resource.content or "",
+        resource.source or "",
+    ])
+
+
+def _load_recommendation_context(db: Session, username: str):
+    user = None
+    if username:
+        user = db.query(User).filter(User.username == username).first()
+
+    profile_tags = _split_tags(user.tags if user else "")
+    recent_records = []
+    weak_points = []
+    evaluated_topics = []
+    recent_scores = []
+    generated_resource_ids = []
+
+    if username:
+        recent_records = (
+            db.query(EvaluationRecord)
+            .filter(EvaluationRecord.username == username)
+            .order_by(EvaluationRecord.created_at.desc())
+            .limit(6)
+            .all()
+        )
+
+    for record in recent_records:
+        evaluated_topics.append(record.topic or "")
+        recent_scores.append(record.score or 0)
+        generated_resource_ids.append(record.generated_resource_id or "")
+        weak_points.extend(_safe_json_load(record.weak_points, []))
+        weak_points.append(record.wrong_notes or "")
+
+    plans = []
+    if username:
+        plan_record = (
+            db.query(LearningPlan)
+            .filter(LearningPlan.username == username)
+            .first()
+        )
+        plans = _safe_json_load(plan_record.plans_json if plan_record else "", [])
+
+    plan_fragments = []
+    active_fragments = []
+    completed_count = 0
+    total_count = 0
+
+    for plan in plans if isinstance(plans, list) else []:
+        plan_fragments.append(plan.get("title", ""))
+        for task in plan.get("tasks", []):
+            total_count += 1
+            status = str(task.get("status", "")).lower()
+            fragment = " ".join([
+                task.get("title", ""),
+                task.get("desc", ""),
+                " ".join(str(item) for item in task.get("resources", [])),
+            ])
+            plan_fragments.append(fragment)
+            if status in {"active", "pending", "进行中", "待开始"}:
+                active_fragments.append(fragment)
+            if status in {"completed", "done", "已完成"} or task.get("done"):
+                completed_count += 1
+
+    recent_avg_score = round(sum(recent_scores) / len(recent_scores)) if recent_scores else None
+    plan_completion_rate = round(completed_count / total_count * 100) if total_count else None
+    topic_candidates = summarize_knowledge_tags(profile_tags + evaluated_topics + _text_terms(active_fragments))
+
+    return {
+        "user": user,
+        "profile_tags": summarize_knowledge_tags(profile_tags),
+        "weak_points": weak_points,
+        "evaluated_topics": summarize_knowledge_tags(evaluated_topics),
+        "recent_avg_score": recent_avg_score,
+        "generated_resource_ids": [item for item in generated_resource_ids if item],
+        "plan_fragments": plan_fragments,
+        "active_fragments": active_fragments,
+        "plan_completion_rate": plan_completion_rate,
+        "topic_candidates": topic_candidates,
+    }
+
+
+def _preferred_resource_types(context):
+    preferred = Counter()
+    avg_score = context.get("recent_avg_score")
+    active_text = _compact_text(" ".join(context.get("active_fragments") or []))
+    weak_text = _compact_text(" ".join(context.get("weak_points") or []))
+
+    if avg_score is not None and avg_score < 75:
+        preferred["不同类型练习题目"] += 3
+        preferred["错题诊断与学习反馈报告"] += 3
+        preferred["知识点思维导图"] += 1
+
+    if any(word in active_text or word in weak_text for word in ["实践", "项目", "实验", "应用", "代码", "动手"]):
+        preferred["学科实践应用任务"] += 3
+        preferred["多模态学习包"] += 1
+
+    if any(word in active_text or word in weak_text for word in ["概念", "原理", "框架", "理解", "关系"]):
+        preferred["专业课程讲解文档"] += 2
+        preferred["知识点思维导图"] += 2
+
+    if any(word in active_text or word in weak_text for word in ["拓展", "阅读", "论文", "资料"]):
+        preferred["拓展阅读材料"] += 3
+
+    return preferred
+
+
+def _recommendation_source_text(context):
+    fragments = []
+    fragments.extend(context.get("evaluated_topics") or [])
+    fragments.extend(context.get("profile_tags") or [])
+    fragments.extend(context.get("topic_candidates") or [])
+    fragments.extend(context.get("active_fragments") or [])
+    fragments.extend(context.get("weak_points") or [])
+    return "\n".join(str(item or "") for item in fragments if item)
+
+
 def _resource_to_dict(resource: Resource):
     raw_notes = resource.agent_notes or ""
     safety_review = content_guard_service.extract_review(raw_notes)
@@ -53,12 +262,15 @@ def _resource_to_dict(resource: Resource):
         "type": resource.type,
         "status": resource.status,
         "uploader": resource.uploader,
+        "applicant_username": resource.applicant_username or "",
         "time": resource.time,
         "summary": resource.summary or "",
         "content": resource.content or "",
         "source": resource.source or "",
         "agent_notes": content_guard_service.strip_review_block(raw_notes),
         "safety_review": safety_review,
+        "review_comment": resource.review_comment or "",
+        "reviewed_at": resource.reviewed_at or "",
     }
 
 
@@ -79,6 +291,76 @@ def _with_content_review(item: dict, reviewer: str):
             review
         )
     }
+
+
+def _resource_recipient(db: Session, resource: Resource):
+    applicant = (resource.applicant_username or "").strip()
+    if applicant and system_message_service.user_exists(db, applicant):
+        return applicant
+
+    uploader = (resource.uploader or "").strip()
+    if uploader and uploader not in SYSTEM_UPLOADERS and system_message_service.user_exists(db, uploader):
+        return uploader
+
+    if system_message_service.user_exists(db, "student"):
+        return "student"
+
+    first_student = db.query(User).filter(User.role == "student").first()
+    return first_student.username if first_student else ""
+
+
+def _notify_resource_review(
+    db: Session,
+    resource: Resource,
+    action_label: str,
+    content: str,
+):
+    recipient = _resource_recipient(db, resource)
+    if not recipient:
+        return None
+
+    return system_message_service.create_message(
+        db=db,
+        username=recipient,
+        title=f"资源审核{action_label}",
+        content=content,
+        category="资源审核",
+        related_resource_id=resource.id,
+        commit=False,
+    )
+
+
+def _resource_type_recipient(db: Session, resource_type: ResourceType):
+    applicant = (resource_type.applicant_username or "").strip()
+    if applicant and system_message_service.user_exists(db, applicant):
+        return applicant
+
+    if system_message_service.user_exists(db, "student"):
+        return "student"
+
+    first_student = db.query(User).filter(User.role == "student").first()
+    return first_student.username if first_student else ""
+
+
+def _notify_type_review(
+    db: Session,
+    resource_type: ResourceType,
+    action_label: str,
+    content: str,
+):
+    recipient = _resource_type_recipient(db, resource_type)
+    if not recipient:
+        return None
+
+    return system_message_service.create_message(
+        db=db,
+        username=recipient,
+        title=f"资源分类审核{action_label}",
+        content=content,
+        category="分类审核",
+        related_resource_id="",
+        commit=False,
+    )
 
 
 # =========================
@@ -115,6 +397,120 @@ def get_passed_resources(db: Session):
         return []
 
 
+def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
+    """画像、错题、学习路线和内容质量共同参与的可解释混合推荐。"""
+
+    try:
+        resources = [
+            r
+            for r in db.query(Resource)
+            .filter(Resource.status == "已通过")
+            .all()
+            if not _is_deprecated_resource_type(r.type)
+        ]
+        if not resources:
+            return []
+
+        context = _load_recommendation_context(db, username)
+        preferred_types = _preferred_resource_types(context)
+
+        weak_terms = _text_terms(
+            context.get("weak_points", [])
+            + context.get("evaluated_topics", [])
+        )
+        profile_terms = summarize_knowledge_tags(
+            context.get("profile_tags", [])
+            + context.get("topic_candidates", [])
+        )
+        plan_terms = _text_terms(
+            context.get("active_fragments", [])
+            or context.get("plan_fragments", [])
+        )
+        topic_terms = summarize_knowledge_tags(profile_terms + context.get("evaluated_topics", []))
+        recent_avg_score = context.get("recent_avg_score")
+        generated_resource_ids = set(context.get("generated_resource_ids", []))
+
+        scored = []
+        for resource in resources:
+            resource_text = _resource_text(resource)
+            resource_type = resource.type or ""
+            weak_matches = _count_matches(resource_text, weak_terms)
+            profile_matches = _count_matches(resource_text, profile_terms)
+            plan_matches = _count_matches(resource_text, plan_terms)
+            topic_matches = _count_matches(resource_text, topic_terms)
+            safety_review = content_guard_service.extract_review(resource.agent_notes or "")
+
+            preferred_type_weight = 0
+            for type_name, weight in preferred_types.items():
+                if type_name == resource_type or type_name in resource_type or resource_type in type_name:
+                    preferred_type_weight = max(preferred_type_weight, weight)
+
+            weak_score = min(30, len(weak_matches) * 7 + len(topic_matches) * 3)
+            profile_score = min(18, len(profile_matches) * 6)
+            plan_score = min(12, len(plan_matches) * 4)
+            type_score = min(10, preferred_type_weight * 4)
+
+            evaluation_score = 0
+            if resource.id in generated_resource_ids:
+                evaluation_score += 8
+            if recent_avg_score is not None and recent_avg_score < 75:
+                if any(key in resource_type for key in ["练习", "题", "诊断", "反馈", "导图"]):
+                    evaluation_score += 7
+            elif recent_avg_score is not None and recent_avg_score >= 85:
+                if any(key in resource_type for key in ["拓展", "实践", "多模态"]):
+                    evaluation_score += 6
+            evaluation_score = min(10, evaluation_score)
+
+            quality_score = min(5, max(0, round(safety_review.get("score", 0) / 20))) if safety_review else 0
+            freshness_score = 3 if resource.uploader in SYSTEM_UPLOADERS else 2
+            if len((resource.content or "").strip()) >= 500:
+                freshness_score += 2
+            diversity_score = min(5, freshness_score)
+
+            score = min(
+                100,
+                20
+                + weak_score
+                + profile_score
+                + plan_score
+                + type_score
+                + evaluation_score
+                + quality_score
+                + diversity_score
+            )
+
+            item = _resource_to_dict(resource)
+            item["_recommend_rank"] = int(score)
+            scored.append(item)
+
+        limit_value = max(1, min(int(limit or 12), 30))
+
+        from app.services.data_services import teaching_source_service
+        teaching_context = _recommendation_source_text(context)
+        pushed_cards = teaching_source_service.build_pushed_teaching_resource_cards(
+            teaching_context,
+            limit=4,
+        )
+        scored.extend(pushed_cards)
+
+        scored.sort(
+            key=lambda item: (
+                item.get("_recommend_rank", 0),
+                item.get("auto_pushed", False),
+                item.get("title", ""),
+            ),
+            reverse=True,
+        )
+        result = scored[:limit_value]
+        for item in result:
+            item.pop("_recommend_rank", None)
+
+        return result
+
+    except Exception as exc:
+        raise RuntimeError("推荐资源计算失败") from exc
+
+
 def get_resource_by_id(db: Session, resource_id: str):
     try:
         resource = (
@@ -143,7 +539,11 @@ def get_all_resource_types(db: Session):
         return [
             {
                 "name": t.name,
-                "status": t.status
+                "status": t.status,
+                "applicant_username": t.applicant_username or "",
+                "reason": t.reason or "",
+                "review_comment": t.review_comment or "",
+                "reviewed_at": t.reviewed_at or "",
             }
             for t in types
         ]
@@ -176,7 +576,9 @@ def get_passed_resource_types(db: Session):
 
 def propose_new_type(
     db: Session,
-    name: str
+    name: str,
+    username: str = "",
+    reason: str = "",
 ):
 
     try:
@@ -190,7 +592,12 @@ def propose_new_type(
         if exists:
             return False
 
-        item = ResourceType(name=name, status="待审核")
+        item = ResourceType(
+            name=name,
+            status="待审核",
+            applicant_username=(username or "").strip(),
+            reason=(reason or "").strip(),
+        )
 
         db.add(item)
         db.commit()
@@ -219,6 +626,86 @@ def approve_resource_type(
             return False
 
         item.status = "已通过"
+        item.reviewed_at = _now_text()
+
+        item.review_comment = "分类申请已通过，可在学生端资源库中使用。"
+
+        _notify_type_review(
+            db,
+            item,
+            "通过",
+            f"你申请的新资源分类「{item.name}」已通过审核，现在可以在资源库中使用。",
+        )
+
+        db.commit()
+
+        return True
+
+    except Exception:
+        db.rollback()
+        return False
+
+
+def reject_resource_type(
+    db: Session,
+    name: str,
+    comment: str = "",
+):
+    try:
+        item = (
+            db.query(ResourceType)
+            .filter(ResourceType.name == name)
+            .first()
+        )
+
+        if not item:
+            return False
+
+        item.status = "未通过"
+        item.review_comment = (comment or "该分类暂未通过审核，请根据管理员意见调整后重新申请。").strip()
+        item.reviewed_at = _now_text()
+
+        _notify_type_review(
+            db,
+            item,
+            "未通过",
+            f"你申请的新资源分类「{item.name}」暂未通过审核。\n\n修改意见：{item.review_comment}",
+        )
+
+        db.commit()
+
+        return True
+
+    except Exception:
+        db.rollback()
+        return False
+
+
+def update_resource_type_comment(
+    db: Session,
+    name: str,
+    comment: str,
+):
+    try:
+        item = (
+            db.query(ResourceType)
+            .filter(ResourceType.name == name)
+            .first()
+        )
+
+        if not item:
+            return False
+
+        item.status = "未通过"
+        item.review_comment = (comment or "请根据管理员意见修改后重新申请。").strip()
+        item.reviewed_at = _now_text()
+
+        _notify_type_review(
+            db,
+            item,
+            "意见更新",
+            f"资源分类「{item.name}」收到新的修改意见。\n\n修改意见：{item.review_comment}",
+        )
 
         db.commit()
 
@@ -237,7 +724,8 @@ def save_ai_generated_resources(
     db: Session,
     resource_plan: dict,
     llm_outputs: list,
-    uploader: str = "AI-Agent"
+    uploader: str = "AI-Agent",
+    applicant_username: str = "",
 ):
     resources = []
 
@@ -250,7 +738,7 @@ def save_ai_generated_resources(
             "summary": llm_item.get("summary") or plan_item.get("summary", ""),
             "content": llm_item.get("content") or plan_item.get("content", ""),
             "source": llm_item.get("source") or plan_item.get("source", ""),
-            "agent_notes": plan_item.get("agent_notes", str(plan_item)),
+            "agent_notes": plan_item.get("agent_notes", ""),
         })
 
     reviewed_resources = [
@@ -258,13 +746,19 @@ def save_ai_generated_resources(
         for item in resources
     ]
 
-    return insert_generated_resources(db, reviewed_resources, uploader=uploader)
+    return insert_generated_resources(
+        db,
+        reviewed_resources,
+        uploader=uploader,
+        applicant_username=applicant_username,
+    )
 
 
 def insert_generated_resources(
     db: Session,
     resources: list,
-    uploader: str = "资源生成 Agent"
+    uploader: str = "资源生成 Agent",
+    applicant_username: str = "",
 ):
     inserted = []
 
@@ -287,8 +781,11 @@ def insert_generated_resources(
                 existing.source = item.get("source", existing.source or "")
                 existing.agent_notes = item.get("agent_notes", existing.agent_notes or "")
                 existing.uploader = uploader
+                existing.applicant_username = applicant_username or existing.applicant_username or ""
                 existing.status = "待审核"
-                existing.time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                existing.review_comment = ""
+                existing.reviewed_at = ""
+                existing.time = _now_text()
                 inserted.append(_resource_to_dict(existing))
                 continue
 
@@ -298,7 +795,8 @@ def insert_generated_resources(
                 type=r_type,
                 status="待审核",
                 uploader=uploader,
-                time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                applicant_username=applicant_username or "",
+                time=_now_text(),
                 summary=item.get("summary", ""),
                 content=item.get("content", ""),
                 source=item.get("source", ""),
@@ -312,9 +810,10 @@ def insert_generated_resources(
         db.commit()
         return inserted
 
-    except Exception:
+    except Exception as exc:
+        logger.exception("Insert generated resources failed")
         db.rollback()
-        return []
+        raise RuntimeError(f"AI 资源落库失败：{str(exc)[:120]}") from exc
 
 
 # =========================
@@ -329,7 +828,8 @@ def insert_new_resource(
     content: str = "",
     source: str = "",
     agent_notes: str = "",
-    uploader: str = "student"
+    uploader: str = "student",
+    applicant_username: str = "",
 ):
 
     try:
@@ -355,10 +855,9 @@ def insert_new_resource(
             status="待审核",
 
             uploader=uploader,
+            applicant_username=(applicant_username or uploader or "").strip(),
 
-            time=datetime.datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
+            time=_now_text(),
 
             summary=reviewed_item.get("summary", ""),
 
@@ -386,7 +885,8 @@ def insert_new_resource(
 
 def approve_resource(
     db: Session,
-    resource_id: str
+    resource_id: str,
+    comment: str = "",
 ):
 
     try:
@@ -401,6 +901,15 @@ def approve_resource(
             return False
 
         r.status = "已通过"
+        r.review_comment = (comment or "资源内容已通过管理员审核，可在学生端资源库正常查看。").strip()
+        r.reviewed_at = _now_text()
+
+        _notify_resource_review(
+            db,
+            r,
+            "通过",
+            f"你提交或生成的资源「{r.title}」已通过审核，现已在学生端资源库开放。\n\n审核意见：{r.review_comment}",
+        )
 
         db.commit()
 
@@ -415,7 +924,8 @@ def approve_resource(
 
 def reject_resource(
     db: Session,
-    resource_id: str
+    resource_id: str,
+    comment: str = "",
 ):
 
     try:
@@ -429,7 +939,53 @@ def reject_resource(
         if not r:
             return False
 
-        db.delete(r)
+        r.status = "未通过"
+        r.review_comment = (comment or "资源暂未通过审核，请根据管理员意见修改后重新提交。").strip()
+        r.reviewed_at = _now_text()
+
+        _notify_resource_review(
+            db,
+            r,
+            "未通过",
+            f"你提交或生成的资源「{r.title}」暂未通过审核。\n\n修改意见：{r.review_comment}",
+        )
+
+        db.commit()
+
+        return True
+
+    except Exception:
+
+        db.rollback()
+
+        return False
+
+
+def update_resource_review_comment(
+    db: Session,
+    resource_id: str,
+    comment: str,
+):
+    try:
+        r = (
+            db.query(Resource)
+            .filter(Resource.id == resource_id)
+            .first()
+        )
+
+        if not r:
+            return False
+
+        r.status = "未通过"
+        r.review_comment = (comment or "请根据管理员意见修改后重新提交。").strip()
+        r.reviewed_at = _now_text()
+
+        _notify_resource_review(
+            db,
+            r,
+            "意见更新",
+            f"资源「{r.title}」收到新的修改意见。\n\n修改意见：{r.review_comment}",
+        )
 
         db.commit()
 

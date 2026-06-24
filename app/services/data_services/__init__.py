@@ -6,5 +6,8 @@ from . import knowledge_service
 from . import profile_service
 from . import feedback_service
 from . import chat_history_service
+from . import system_message_service
 from . import knowledge_evidence_service
+from . import teaching_source_service
+from . import final_response_composer
 from . import orchestrator_service

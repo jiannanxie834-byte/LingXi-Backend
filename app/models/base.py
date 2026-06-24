@@ -34,6 +34,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 RESOURCE_EXTRA_COLUMNS = {
+    "applicant_username": {
+        "default": "VARCHAR(64) DEFAULT ''",
+    },
     "summary": {
         "default": "TEXT",
         "sqlite": "TEXT DEFAULT ''",
@@ -48,6 +51,30 @@ RESOURCE_EXTRA_COLUMNS = {
     "agent_notes": {
         "default": "TEXT",
         "sqlite": "TEXT DEFAULT ''",
+    },
+    "review_comment": {
+        "default": "TEXT",
+        "sqlite": "TEXT DEFAULT ''",
+    },
+    "reviewed_at": {
+        "default": "VARCHAR(32) DEFAULT ''",
+    },
+}
+
+RESOURCE_TYPE_EXTRA_COLUMNS = {
+    "applicant_username": {
+        "default": "VARCHAR(64) DEFAULT ''",
+    },
+    "reason": {
+        "default": "TEXT",
+        "sqlite": "TEXT DEFAULT ''",
+    },
+    "review_comment": {
+        "default": "TEXT",
+        "sqlite": "TEXT DEFAULT ''",
+    },
+    "reviewed_at": {
+        "default": "VARCHAR(32) DEFAULT ''",
     },
 }
 
@@ -79,6 +106,13 @@ def init_schema_migrations():
                 f"UPDATE resources SET {column_name} = '' WHERE {column_name} IS NULL"
             ))
 
+        if resource_columns and "applicant_username" in _existing_columns(conn, "resources"):
+            conn.execute(text(
+                "UPDATE resources SET applicant_username = uploader "
+                "WHERE (applicant_username IS NULL OR applicant_username = '') "
+                "AND uploader NOT IN ('system', '课程知识库种子', '资源生成 Agent', '学习评价 Agent')"
+            ))
+
         user_columns = _existing_columns(conn, "users")
         if "nickname" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN nickname VARCHAR(64) DEFAULT ''"))
@@ -89,6 +123,30 @@ def init_schema_migrations():
             conn.execute(text("ALTER TABLE chat_messages ADD COLUMN metadata_json TEXT"))
         if chat_message_columns:
             conn.execute(text("UPDATE chat_messages SET metadata_json = '{}' WHERE metadata_json IS NULL OR metadata_json = ''"))
+
+        chat_session_columns = _existing_columns(conn, "chat_sessions")
+        if chat_session_columns and "last_topic" not in chat_session_columns:
+            conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN last_topic VARCHAR(255) DEFAULT ''"))
+        if chat_session_columns and "state_json" not in chat_session_columns:
+            state_column_sql = "TEXT DEFAULT '{}'" if engine.dialect.name == "sqlite" else "TEXT"
+            conn.execute(text(f"ALTER TABLE chat_sessions ADD COLUMN state_json {state_column_sql}"))
+        if chat_session_columns:
+            conn.execute(text("UPDATE chat_sessions SET last_topic = '' WHERE last_topic IS NULL"))
+            if "state_json" in _existing_columns(conn, "chat_sessions"):
+                conn.execute(text("UPDATE chat_sessions SET state_json = '{}' WHERE state_json IS NULL OR state_json = ''"))
+
+        resource_type_columns = _existing_columns(conn, "resource_types")
+        for column_name, column_sql in RESOURCE_TYPE_EXTRA_COLUMNS.items():
+            if resource_type_columns and column_name not in resource_type_columns:
+                conn.execute(text(
+                    f"ALTER TABLE resource_types ADD COLUMN {column_name} {_dialect_column_sql(column_sql)}"
+                ))
+
+        for column_name in RESOURCE_TYPE_EXTRA_COLUMNS:
+            if column_name in _existing_columns(conn, "resource_types"):
+                conn.execute(text(
+                    f"UPDATE resource_types SET {column_name} = '' WHERE {column_name} IS NULL"
+                ))
 
 def get_db():
     """FastAPI 专属依赖项：每次请求自动创建数据库连接，用完自动关闭防止死锁"""

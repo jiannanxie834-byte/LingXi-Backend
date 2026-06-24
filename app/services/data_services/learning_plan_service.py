@@ -74,20 +74,36 @@ def save_generated_plan(
         if item.get("title")
     ]
 
+    def _task_from_step(step, idx):
+        if isinstance(step, dict):
+            return {
+                "id": idx + 1,
+                "title": step.get("title") or f"任务 {idx + 1}",
+                "desc": step.get("objective") or "",
+                "status": step.get("status") or ("active" if idx == 0 else "pending"),
+                "isCustom": False,
+                "resources": resource_titles[:3],
+                "resource_focus": step.get("resource_focus") or [],
+            }
+
+        text = str(step or "")
+        return {
+            "id": idx + 1,
+            "title": text.split("：", 1)[0] if "：" in text else f"任务 {idx + 1}",
+            "desc": text.split("：", 1)[1] if "：" in text else text,
+            "status": "active" if idx == 0 else "pending",
+            "isCustom": False,
+            "resources": resource_titles[:3],
+            "resource_focus": [],
+        }
+
     new_plan = {
         "id": f"route_{uuid.uuid4().hex[:8]}",
         "title": title,
         "isCollapsed": False,
         "isAiGenerated": True,
         "tasks": [
-            {
-                "id": idx + 1,
-                "title": step.split("：", 1)[0] if "：" in step else f"任务 {idx + 1}",
-                "desc": step.split("：", 1)[1] if "：" in step else step,
-                "status": "active" if idx == 0 else "pending",
-                "isCustom": False,
-                "resources": resource_titles[:3],
-            }
+            _task_from_step(step, idx)
             for idx, step in enumerate(path_steps)
         ],
     }

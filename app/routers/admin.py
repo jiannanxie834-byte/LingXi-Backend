@@ -159,13 +159,14 @@ async def list_all_resources(
 
 class ResourceActionRequest(BaseModel):
     id: str
+    comment: str = ""
 
 @router.post("/resources/approve")
 async def approve_resource(
     data: ResourceActionRequest,
     db: Session = Depends(get_db)
 ):
-    ok = resource_service.approve_resource(db, data.id)
+    ok = resource_service.approve_resource(db, data.id, data.comment)
 
     if ok:
         return {"code": 200, "message": "资源已通过审核"}
@@ -177,15 +178,46 @@ async def reject_resource(
     data: ResourceActionRequest,
     db: Session = Depends(get_db)
 ):
-    ok = resource_service.reject_resource(db, data.id)
+    ok = resource_service.reject_resource(db, data.id, data.comment)
 
     if ok:
-        return {"code": 200, "message": "资源已驳回"}
+        return {"code": 200, "message": "资源已归入未通过"}
+
+    raise HTTPException(status_code=400, detail="操作失败")
+
+
+@router.post("/resources/reopen")
+async def reopen_resource(
+    data: ResourceActionRequest,
+    db: Session = Depends(get_db)
+):
+    ok = resource_service.approve_resource(
+        db,
+        data.id,
+        data.comment or "资源已根据审核要求重新上线。"
+    )
+
+    if ok:
+        return {"code": 200, "message": "资源已重新上线"}
+
+    raise HTTPException(status_code=400, detail="操作失败")
+
+
+@router.post("/resources/comment")
+async def update_resource_comment(
+    data: ResourceActionRequest,
+    db: Session = Depends(get_db)
+):
+    ok = resource_service.update_resource_review_comment(db, data.id, data.comment)
+
+    if ok:
+        return {"code": 200, "message": "修改意见已发送"}
 
     raise HTTPException(status_code=400, detail="操作失败")
 
 class TypeActionRequest(BaseModel):
     name: str
+    comment: str = ""
 
 
 @router.post("/types/approve")
@@ -202,6 +234,54 @@ async def approve_resource_type(
         return {
             "code": 200,
             "message": f"分类 {data.name} 已通过"
+        }
+
+    raise HTTPException(status_code=400, detail="分类不存在")
+
+
+@router.post("/types/reject")
+async def reject_resource_type(
+    data: TypeActionRequest,
+    db: Session = Depends(get_db)
+):
+    ok = resource_service.reject_resource_type(db, data.name, data.comment)
+
+    if ok:
+        return {
+            "code": 200,
+            "message": f"分类 {data.name} 已归入未通过"
+        }
+
+    raise HTTPException(status_code=400, detail="分类不存在")
+
+
+@router.post("/types/reopen")
+async def reopen_resource_type(
+    data: TypeActionRequest,
+    db: Session = Depends(get_db)
+):
+    ok = resource_service.approve_resource_type(db, data.name)
+
+    if ok:
+        return {
+            "code": 200,
+            "message": f"分类 {data.name} 已重新上线"
+        }
+
+    raise HTTPException(status_code=400, detail="分类不存在")
+
+
+@router.post("/types/comment")
+async def update_resource_type_comment(
+    data: TypeActionRequest,
+    db: Session = Depends(get_db)
+):
+    ok = resource_service.update_resource_type_comment(db, data.name, data.comment)
+
+    if ok:
+        return {
+            "code": 200,
+            "message": "分类修改意见已发送"
         }
 
     raise HTTPException(status_code=400, detail="分类不存在")

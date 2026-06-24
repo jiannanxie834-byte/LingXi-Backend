@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from typing import Optional
+
 # app/models/schemas.py
 from sqlalchemy import Column, String, Integer, Text, DateTime
 from app.models.base import Base
@@ -23,13 +26,16 @@ class Resource(Base):
     id = Column(String(64), primary_key=True, index=True, comment="资源唯一编码")
     title = Column(String(255), nullable=False, comment="资源名称")
     type = Column(String(128), nullable=False, comment="知识模态: 知识点思维导图、学科实践应用任务等")
-    status = Column(String(32), default="待审核", comment="审核状态: 待审核、已通过")
+    status = Column(String(32), default="待审核", comment="审核状态: 待审核、已通过、未通过")
     uploader = Column(String(64), default="system", comment="上传者或生成的智能体角色")
+    applicant_username = Column(String(64), default="", comment="资源提交学生账号，系统生成资源可为空")
     time = Column(String(32), nullable=True, comment="提交时间")
     summary = Column(Text, default="", comment="资源摘要")
     content = Column(Text, default="", comment="资源正文，Markdown 格式")
     source = Column(String(255), default="", comment="知识来源或课程章节")
     agent_notes = Column(Text, default="", comment="智能体生成说明与审核提示")
+    review_comment = Column(Text, default="", comment="管理员审核意见或修改建议")
+    reviewed_at = Column(String(32), default="", comment="最近一次审核时间")
 
 
 # ================= 3. 动态分类标签表模型 =================
@@ -37,7 +43,11 @@ class ResourceType(Base):
     __tablename__ = "resource_types"
     
     name = Column(String(128), primary_key=True, index=True, comment="分类名称")
-    status = Column(String(32), default="待审核", comment="状态: 待审核、已通过")
+    status = Column(String(32), default="待审核", comment="状态: 待审核、已通过、未通过")
+    applicant_username = Column(String(64), default="", comment="分类申请学生账号")
+    reason = Column(Text, default="", comment="分类申请说明")
+    review_comment = Column(Text, default="", comment="管理员审核意见或修改建议")
+    reviewed_at = Column(String(32), default="", comment="最近一次审核时间")
 
 
 # ================= 4. 问题反馈表模型 =================
@@ -49,6 +59,20 @@ class Feedback(Base):
     content = Column(Text, nullable=False, comment="反馈具体内容")
     status = Column(String(32), default="待处理", comment="状态: 待处理、已处理")
     date = Column(String(32), nullable=False, comment="提交日期")
+
+
+# ================= 4.1 系统消息表模型 =================
+class SystemMessage(Base):
+    __tablename__ = "system_messages"
+
+    id = Column(String(64), primary_key=True, index=True, comment="消息编码")
+    username = Column(String(64), nullable=False, index=True, comment="接收学生账号")
+    title = Column(String(255), nullable=False, comment="消息标题")
+    content = Column(Text, nullable=False, comment="消息正文")
+    category = Column(String(64), default="资源审核", comment="消息类型")
+    related_resource_id = Column(String(64), default="", comment="关联资源编码")
+    status = Column(String(16), default="未读", comment="未读或已读")
+    created_at = Column(DateTime, nullable=True, comment="创建时间")
 
 
 # ================= 5. 个性化学习规划表 =================
@@ -111,6 +135,8 @@ class ChatSession(Base):
     id = Column(String(64), primary_key=True, index=True, comment="对话会话编码")
     username = Column(String(64), nullable=False, index=True, comment="所属学生账号")
     title = Column(String(255), default="新对话", comment="会话标题")
+    last_topic = Column(String(255), default="", comment="最近一次明确学习主题")
+    state_json = Column(Text, default="{}", comment="会话状态，如上一轮意图、动作和待确认事项")
     created_at = Column(DateTime, nullable=True, comment="创建时间")
     updated_at = Column(DateTime, nullable=True, comment="最后更新时间")
 
@@ -126,3 +152,17 @@ class ChatMessage(Base):
     content = Column(Text, nullable=False, comment="消息内容")
     metadata_json = Column(Text, default="{}", comment="消息附加展示数据，如链路、依据与安全摘要")
     created_at = Column(DateTime, nullable=True, comment="创建时间")
+
+
+@dataclass
+class TurnRoute:
+    route_type: str
+    should_run_full_agents: bool = False
+    should_run_intent_agent: bool = False
+    should_run_retrieval: bool = False
+    should_run_planner: bool = False
+    should_generate_resources: bool = False
+    should_update_profile: bool = False
+    should_clear_topic: bool = False
+    topic: Optional[str] = None
+    student_reply: Optional[str] = None

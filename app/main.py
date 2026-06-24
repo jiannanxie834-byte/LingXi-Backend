@@ -9,7 +9,8 @@ from app.routers import (
     resource,
     chat,
     evaluation,
-    todo
+    todo,
+    notification,
 )
 
 app = FastAPI(title="LingXi AI Learning Platform")
@@ -38,6 +39,7 @@ app.include_router(resource.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(evaluation.router, prefix="/api")
 app.include_router(todo.router, prefix="/api")
+app.include_router(notification.router, prefix="/api")
 
 
 @app.get("/")

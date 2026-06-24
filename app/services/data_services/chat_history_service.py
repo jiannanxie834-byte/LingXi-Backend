@@ -22,11 +22,44 @@ def _build_title(message: str):
     return text[:18] + ("..." if len(text) > 18 else "")
 
 
+PUBLIC_PROGRESS = {
+    "intent": ("understand", "理解学习需求"),
+    "evidence": ("collect", "整理课程资料"),
+    "profile": ("profile", "更新学习画像"),
+    "answer": ("answer", "生成学习建议"),
+    "teaching-source": ("match", "匹配学习资料"),
+    "plan": ("plan", "生成学习路线"),
+    "resource-plan": ("resources", "准备配套资源"),
+    "safety": ("check", "完成内容检查"),
+}
+
+
+def _public_progress_from_metadata(metadata: dict):
+    progress = metadata.get("progress")
+    if isinstance(progress, list) and progress:
+        return progress
+
+    result = []
+    for step in metadata.get("pipeline_steps") or []:
+        if not isinstance(step, dict) or step.get("status") == "skipped":
+            continue
+        public_step = PUBLIC_PROGRESS.get(step.get("key") or "")
+        if public_step:
+            public_key, label = public_step
+            result.append({
+                "key": public_key,
+                "label": label,
+                "status": step.get("status") or "completed",
+            })
+    return result
+
+
 def _session_to_dict(session: ChatSession):
     return {
         "id": session.id,
         "username": session.username,
         "title": session.title or "新对话",
+        "last_topic": session.last_topic or "",
         "created_at": session.created_at.isoformat(sep=" ", timespec="seconds") if session.created_at else "",
         "updated_at": session.updated_at.isoformat(sep=" ", timespec="seconds") if session.updated_at else "",
     }
@@ -48,12 +81,18 @@ def _message_to_dict(message: ChatMessage):
     }
 
     if isinstance(metadata, dict):
+        student_message = metadata.get("student_message") if isinstance(metadata.get("student_message"), dict) else {}
+        content_type = student_message.get("content_type") or ("student_answer" if message.role != "user" else "user_text")
         data.update({
-            "progress_steps": metadata.get("pipeline_steps") or metadata.get("progress_steps") or [],
-            "pipeline_steps": metadata.get("pipeline_steps") or [],
-            "safety_summary": metadata.get("safety_summary"),
-            "evidence": metadata.get("evidence") or [],
-            "intent": metadata.get("intent") or "",
+            "message": {
+                "content": student_message.get("content") or message.content,
+                "content_type": content_type,
+            },
+            "content_type": content_type,
+            "progress": _public_progress_from_metadata(metadata),
+            "cards": metadata.get("cards") if isinstance(metadata.get("cards"), list) else [],
+            "trace_id": metadata.get("trace_id") or message.id,
+            "route_type": metadata.get("route_type") or "",
         })
 
     return data
@@ -147,4 +186,18 @@ def save_message(db: Session, username: str, session_id: str, role: str, content
 
 
 def to_session_dict(session: ChatSession):
+    return _session_to_dict(session)
+
+
+def update_session_context(db: Session, username: str, session_id: str, last_topic: str = ""):
+    session = get_session(db, username, session_id)
+    if not session:
+        return None
+
+    topic = " ".join((last_topic or "").split()).strip()
+    if topic:
+        session.last_topic = topic[:255]
+    session.updated_at = _now()
+    db.commit()
+    db.refresh(session)
     return _session_to_dict(session)

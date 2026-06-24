@@ -282,7 +282,8 @@ def handle_learning_evaluation(
     saved_resources = resource_service.insert_generated_resources(
         db,
         [diagnosis_resource],
-        uploader="学习评价 Agent"
+        uploader="学习评价 Agent",
+        applicant_username=username,
     )
     generated_resource_id = saved_resources[0]["id"] if saved_resources else ""
 
@@ -416,7 +417,8 @@ def handle_auto_evaluation(db: Session, username: str):
     saved_resources = resource_service.insert_generated_resources(
         db,
         [diagnosis_resource],
-        uploader="学习评价 Agent"
+        uploader="学习评价 Agent",
+        applicant_username=username,
     )
     generated_resource_id = saved_resources[0]["id"] if saved_resources else ""
 

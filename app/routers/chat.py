@@ -1,6 +1,7 @@
 from typing import List, Optional
+import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -81,6 +82,7 @@ def list_chat_messages(
 @router.post("/send")
 def send_message(
     data: ChatRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
@@ -119,10 +121,14 @@ def send_message(
         result = orchestrator_service.handle_learning_chat(
             username=username,
             message=message,
-            db=db
+            db=db,
+            background_tasks=background_tasks,
+            session_id=session.id
         )
 
-        reply = result.get("reply", "")
+        trace_id = f"trace_{uuid.uuid4().hex[:12]}"
+        student_response = orchestrator_service.build_student_response(result, trace_id)
+        reply = student_response.get("message", {}).get("content", "")
         chat_history_service.save_message(
             db=db,
             username=username,
@@ -130,20 +136,38 @@ def send_message(
             role="ai",
             content=reply,
             metadata={
+                "student_message": student_response.get("message", {}),
+                "progress": student_response.get("progress", []),
+                "cards": student_response.get("cards", []),
+                "trace_id": trace_id,
                 "pipeline_steps": result.get("pipeline_steps", []),
                 "safety_summary": result.get("safety_summary"),
                 "evidence": result.get("evidence", []),
                 "intent": result.get("intent", ""),
+                "topic": result.get("topic", ""),
+                "route_type": result.get("route_type", ""),
+                "session_state": result.get("session_state", {}),
             }
         )
 
-        result["session_id"] = session.id
-        result["session"] = chat_history_service.to_session_dict(session)
+        if result.get("topic") and result.get("route_type") == "learning_request":
+            session_data = chat_history_service.update_session_context(
+                db,
+                username,
+                session.id,
+                result.get("topic", "")
+            )
+            if session_data:
+                student_response["session"] = session_data
+
+        student_response["session_id"] = session.id
+        if not student_response.get("session"):
+            student_response["session"] = chat_history_service.to_session_dict(session)
 
         return {
             "code": 200,
-            "message": "多智能体协作完成",
-            "data": result
+            "message": result.get("response_message") or "学习建议已生成",
+            "data": student_response
         }
 
     except Exception as e:
