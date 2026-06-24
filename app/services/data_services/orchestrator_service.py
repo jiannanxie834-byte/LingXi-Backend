@@ -16,6 +16,7 @@ from app.services.data_services import (
     final_response_composer,
     system_message_service,
     conversation_router,
+    semantic_analysis_service,
 )
 
 from app.agents.evaluation_agent import run as eval_run
@@ -52,6 +53,10 @@ KNOWN_TOPIC_ALIASES = {
     "机器学习": "机器学习",
     "深度学习": "深度学习",
     "神经网络": "神经网络",
+    "法语": "法语",
+    "英语": "英语",
+    "日语": "日语",
+    "德语": "德语",
 }
 
 
@@ -305,8 +310,23 @@ def _render_resource_content(summary, sections):
 
 
 def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
+    subject_category = item.get("subject_category", "unknown")
+    level = item.get("level") or profile_result.get("level") or "未确认"
+    level_source = item.get("level_source") or profile_result.get("level_source") or "none"
+    allow_code = bool(item.get("allow_code_content"))
+    quality_constraints = "\n".join([f"- {rule}" for rule in item.get("quality_constraints", [])])
+    forbidden_terms = "、".join(item.get("forbidden_terms", [])) or "无"
+    foreign_language_rules = ""
+    if subject_category == "foreign_language":
+        foreign_language_rules = """
+外语学习资源额外规则：
+- 资源应围绕词汇、语法、例句、阅读、听说、写作和文化语境。
+- 练习题必须包含参考答案和解析。
+- 多模态学习包应包含对话脚本、词汇卡片、语法图解、角色扮演任务和 PPT 页纲。
+- 不得出现代码注释、伪代码、函数、算法实现、模型训练或编程框架。
+"""
     return f"""
-你是大学学习资源内容生成工具。
+你是高校课程学习资源生成助手，请严格根据“学科类型”和“资源类型”生成内容。
 
 输出边界：
 - 只输出 JSON 对象
@@ -317,11 +337,17 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 - sections 必须是对象数组，items 必须是字符串数组
 - items 中不要出现英文双引号、反引号或多行字符串；需要强调时使用中文括号或单引号
 
-类型：{item.get('type')}
+学科类型：{subject_category}
 主题：{item.get('topic')}
-学生水平：{profile_result.get('level')}
+学生水平：{level}
+水平证据：{level_source}
+资源类型：{item.get('type')}
+是否允许代码内容：{"true" if allow_code else "false"}
 学习目标：{intent}
 资源规格：{'、'.join(item.get('requirements') or [])}
+禁止词/禁用方向：{forbidden_terms}
+质量约束：
+{quality_constraints or "- 练习题必须考查主题本身，不得改写成学习规划题"}
 
 可参考的课程资料：
 {evidence_prompt}
@@ -331,14 +357,19 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 
 要求：
 - 内容必须适合高校课程学习场景
-- 优先使用课程资料，不确定的事实必须标注“需人工复核”
+- 如果学生水平为“未确认”，不得写“进阶学习者”“高阶学习者”“B1/B2/C1/C2”“已经具备”等具体水平。
+- 如果学科类型不是 computer_science，且是否允许代码内容为 false，不得生成代码、伪代码、函数、编程框架、算法实现。
+- 练习题必须考查主题本身，不得考查“如何规划学习路径”。
+- 拓展阅读材料必须给出具体阅读短文或明确外部来源条目，不能只有泛泛推荐。
+- 不得虚构已引用教材、MOOC、官方链接或外部资料。
+- 无依据内容可在来源说明中标注“需管理员复核”，但正文仍要保持学生可读。
 - 优先把外部教学资料作为学生可用的学习入口，不要把论文作为主要学习材料
 - 结合外部教学资料时必须保留来源平台、标题和链接
 - 教材正文、课件包、视频内容只能引用公开入口或授权内容，不得虚构“已节选”的正文
 - 避免绝对化和不可验证结论
-- 尽量补充课程章节、资料来源或需要人工复核的位置
-- 如果类型是多模态学习包，请输出文字讲解、Mermaid 流程图思路、代码注释案例、分步题解、PPT 页纲和实践任务
+- 如果类型是多模态学习包，请按当前学科类型输出合适模态；不得默认加入代码注释案例。
 - Mermaid 和代码示例也必须作为普通 JSON 字符串逐条放入 items，不要使用 Markdown 围栏
+{foreign_language_rules}
 
 JSON 字段：
 {{
@@ -428,20 +459,27 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
             evidence_prompt=evidence_prompt,
             teaching_sources_prompt=teaching_sources_prompt,
         )
-        resources = resource_service.save_ai_generated_resources(
+        save_result = resource_service.save_ai_generated_resources(
             db=db,
             resource_plan=resource_plan,
             llm_outputs=llm_outputs,
             uploader="资源生成 Agent",
             applicant_username=username,
         )
+        if isinstance(save_result, dict):
+            resources = save_result.get("resources", [])
+            skipped_resources = save_result.get("skipped_resources", [])
+        else:
+            resources = save_result
+            skipped_resources = []
         count = len(resources)
         if count:
+            skipped_text = f"；{len(skipped_resources)} 份资源因语义门禁未入库" if skipped_resources else ""
             _notify_resource_generation(
                 db,
                 username,
                 "配套资料已进入审核队列",
-                f"本轮学习需求的 {count} 份配套资料已整理完成，正在等待管理员审核；审核通过后会进入资源库。",
+                f"本轮学习需求的 {count} 份配套资料已整理完成，正在等待管理员审核；审核通过后会进入资源库{skipped_text}。",
             )
         else:
             _notify_resource_generation(
@@ -583,13 +621,14 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
 
     eval_result = eval_run(message)
     intent = eval_result.get("intent", "") or "概念讲解"
-    topic = eval_result.get("topic", "") or route.topic or _fallback_topic_from_message(message)
+    semantic_result = semantic_analysis_service.analyze_learning_request(db, username, message, eval_result)
+    topic = semantic_result.get("topic") or eval_result.get("topic", "") or route.topic or _fallback_topic_from_message(message)
 
     evidence_query = " ".join([message, topic or "", intent or ""]).strip()
     evidence = knowledge_evidence_service.search_course_evidence(db, evidence_query, limit=4)
     evidence_prompt = knowledge_evidence_service.format_evidence_for_prompt(evidence)
 
-    profile_result = profile_run(user, message, eval_result)
+    profile_result = profile_run(user, message, eval_result, semantic_result=semantic_result, db=db)
     profile_update = profile_service.build_profile(
         user=user,
         message=message,
@@ -597,6 +636,7 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
         knowledge_topic=topic,
         score=eval_result.get("score", 0),
         db=db,
+        semantic_result=semantic_result,
     )
 
     prompt = f"""
@@ -612,6 +652,9 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
 
 学生问题：{message}
 识别主题：{topic}
+学科类型：{semantic_result.get("subject_category", "unknown")}
+学生水平：{semantic_result.get("level", "未确认")}
+水平证据：{semantic_result.get("level_source", "none")}
 可参考的课程资料：
 {evidence_prompt}
 
@@ -619,6 +662,7 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
 - 直接解释概念，语言自然清楚
 - 如果课程资料不足，也不要暴露检索状态；可以用通用专业知识给出基础解释
 - 不要以“基于当前课程资料”作为开头
+- 若学生水平为“未确认”，不得写“进阶学习者”“高阶学习者”或具体等级
 - 给出 2-4 个关键理解点和 1-3 个下一步建议
 - caveats 尽量为空，除非确实需要提醒学生补充前置背景
 
@@ -721,13 +765,14 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     # =========================
     eval_result = eval_run(message)
     intent = eval_result.get("intent", "")
-    topic = eval_result.get("topic", "") or _fallback_topic_from_message(message)
+    semantic_result = semantic_analysis_service.analyze_learning_request(db, username, message, eval_result)
+    topic = semantic_result.get("topic") or eval_result.get("topic", "") or _fallback_topic_from_message(message)
     pipeline_steps = [
         _pipeline_step(
             "intent",
             "识别学习意图与课程主题",
             "意图识别 Agent",
-            detail=f"{intent} / {topic}"
+            detail=f"{intent} / {topic} / {semantic_result.get('subject_category', 'unknown')}"
         )
     ]
 
@@ -752,7 +797,7 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     # =========================
     # 5. 用户画像分析
     # =========================
-    profile_result = profile_run(user, message, eval_result)
+    profile_result = profile_run(user, message, eval_result, semantic_result=semantic_result, db=db)
 
     profile_update = profile_service.build_profile(
         user=user,
@@ -760,7 +805,8 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
         intent=intent,
         knowledge_topic=topic,
         score=eval_result.get("score", 0),
-        db=db
+        db=db,
+        semantic_result=semantic_result,
     )
     pipeline_steps.append(_pipeline_step(
         "profile",
@@ -789,10 +835,14 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
 
 当前用户状态：
 - 意图：{intent}
-- 知识水平：{profile_result.get("level")}
+- 学科类型：{semantic_result.get("subject_category", "unknown")}
+- 知识水平：{semantic_result.get("level", "未确认")}
+- 水平证据：{semantic_result.get("level_source", "none")}
 
 要求：
 - 优先依据课程资料回答，并把无法确定的内容放入 caveats
+- 如果学科类型为 unknown 或主题为“未确认主题”，必须先追问具体课程/语言/知识点，不要生成学习路线或资源建议。
+- 如果知识水平为“未确认”，必须自然说明“我还不知道你的{topic}基础，先按入门诊断和基础路线帮你开始”，不得写进阶、高阶或具体等级。
 - 不要使用“我先分析”“下面是我的推理”这类过程性说法
 - 不要使用“基于当前课程资料”“当前课程库资料不足”“资料局限”“需要人工复核”“本回答基于当前课程库状态”等后台审核措辞
 - 不要输出相关性分数、置信度、内部评分、命中条数、匹配标签等系统检索指标
@@ -833,7 +883,13 @@ JSON 字段：
     # =========================
     # 7. 是否生成学习路径和资源
     # =========================
-    should_plan = turn_route.should_generate_resources or intent in ["路径规划", "生成学习路径", "制定计划", "生成资源", "练习巩固", "实操训练"]
+    should_plan = (
+        semantic_result.get("should_generate_resources", True)
+        and (
+            turn_route.should_generate_resources
+            or intent in ["路径规划", "生成学习路径", "制定计划", "生成资源", "练习巩固", "实操训练"]
+        )
+    )
 
     path = None
     resources = []
@@ -861,7 +917,7 @@ JSON 字段：
         ))
 
         # 6.1 规划路径
-        plan_result = planner_run(profile_result)
+        plan_result = planner_run(profile_result, semantic_result=semantic_result)
         pipeline_steps.append(_pipeline_step(
             "plan",
             "规划学习路径",
@@ -870,7 +926,7 @@ JSON 字段：
         ))
 
         # 6.2 资源规划
-        resource_plan = resource_run(plan_result, profile_result)
+        resource_plan = resource_run(plan_result, profile_result, semantic_result=semantic_result)
         pipeline_steps.append(_pipeline_step(
             "resource-plan",
             "规划配套资源类型",
@@ -946,15 +1002,17 @@ JSON 字段：
     # =========================
     # 9. 返回
     # =========================
-    last_assistant_action = "generated_learning_path" if should_plan else "answered_learning_question"
-    pending_action = "resource_review_pending" if resource_status.get("status") == "queued" else "continue_learning_help"
+    is_unknown_semantic = semantic_result.get("subject_category") == "unknown"
+    public_route_type = "clarification_needed" if is_unknown_semantic else turn_route.route_type
+    last_assistant_action = "asked_clarification" if is_unknown_semantic else ("generated_learning_path" if should_plan else "answered_learning_question")
+    pending_action = "awaiting_topic" if is_unknown_semantic else ("resource_review_pending" if resource_status.get("status") == "queued" else "continue_learning_help")
     session_state = _save_session_state(
         db,
         username,
         session_id,
-        last_topic=topic,
+        last_topic=None if is_unknown_semantic else topic,
         last_intent=intent,
-        last_route_type=turn_route.route_type,
+        last_route_type=public_route_type,
         last_assistant_action=last_assistant_action,
         pending_action=pending_action,
     )
@@ -968,12 +1026,14 @@ JSON 字段：
         "resource_status": resource_status,
         "intent": intent,
         "topic": topic,
-        "route_type": turn_route.route_type,
+        "route_type": public_route_type,
         "session_state": session_state,
         "auto_generated": should_plan,
-        "pipeline_steps": pipeline_steps,
+        "pipeline_steps": [] if is_unknown_semantic else pipeline_steps,
         "safety_summary": _summarize_safety(resources),
         "evidence": evidence,
         "teaching_sources": teaching_sources,
         "external_evidence": external_evidence,
+        "content_type": "conversation_reply" if is_unknown_semantic else "student_answer",
+        "response_message": "已回复" if is_unknown_semantic else None,
     }

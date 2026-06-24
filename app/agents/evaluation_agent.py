@@ -23,6 +23,52 @@ INTENT_ALIASES = {
     "项目实践": "实操训练",
 }
 
+
+TOPIC_KEYWORDS = [
+    ("法语", ["法语", "french", "delf", "dalf", "cefr", "法语语法", "法语口语"]),
+    ("英语", ["英语", "english", "cet", "ielts", "toefl", "英语语法"]),
+    ("日语", ["日语", "japanese", "jlpt", "日语语法"]),
+    ("德语", ["德语", "german", "德语语法"]),
+    ("西班牙语", ["西班牙语", "spanish"]),
+    ("韩语", ["韩语", "korean"]),
+    ("俄语", ["俄语", "russian"]),
+    ("意大利语", ["意大利语", "italian"]),
+    ("信息安全", ["信息安全", "网络安全", "密码学", "访问控制"]),
+    ("人工智能", ["人工智能", "人工智能导论", "ai"]),
+    ("机器学习", ["机器学习", "machine learning", "ml"]),
+    ("深度学习", ["深度学习", "神经网络", "rnn", "lstm", "transformer"]),
+    ("数学", ["数学", "高等数学", "线性代数", "概率论", "微积分"]),
+    ("物理", ["物理", "大学物理", "力学", "电磁学", "光学"]),
+]
+
+
+def _compact(text: str):
+    return "".join(str(text or "").lower().split())
+
+
+def _infer_topic_by_rule(message: str):
+    compact = _compact(message)
+    for topic, aliases in TOPIC_KEYWORDS:
+        if any(_compact(alias) in compact for alias in aliases):
+            return topic
+    return ""
+
+
+def _infer_intent_by_rule(message: str):
+    compact = _compact(message)
+    if any(word in compact for word in ["练习", "刷题", "题目", "测试", "错题"]):
+        return "练习巩固"
+    if any(word in compact for word in ["资源", "资料", "课件", "ppt", "导图"]):
+        return "生成资源"
+    if any(word in compact for word in ["代码", "项目", "实验", "实操", "实践"]):
+        return "实操训练"
+    if any(word in compact for word in ["规划", "路线", "计划", "学习一下", "想学习", "我要学习", "想学", "入门"]):
+        return "路径规划"
+    if any(word in compact for word in ["是什么", "什么意思", "解释", "介绍", "原理"]):
+        return "概念讲解"
+    return ""
+
+
 def _normalize_intent(intent: str):
     normalized = (intent or "").strip()
     normalized = INTENT_ALIASES.get(normalized, normalized)
@@ -54,7 +100,8 @@ def _infer_by_llm(message: str):
 主题要求：
 - 如果能识别具体课程或知识点，返回简短主题，例如“计算机网络”“数据库索引”“三次握手”。
 - 当输入是“我要学习/我想学/想了解/准备学 + 学科、课程或方向”时，必须把后面的学科、课程或方向作为 topic，例如“我要学习信息安全”的 topic 是“信息安全”。
-- 如果完全无法判断，topic 返回空字符串，confidence 不超过 30。
+- 如果完全无法判断，topic 返回“未确认主题”，confidence 不超过 50。
+- 不得把未知主题默认成“人工智能导论”。
 
 判断要求：
 - 当学生表达想开始学习某个学科、课程或方向时，intent 优先选择“路径规划”。
@@ -107,12 +154,26 @@ JSON 字段：
 
 
 def run(message: str):
+    topic_by_rule = _infer_topic_by_rule(message)
+    intent_by_rule = _infer_intent_by_rule(message)
+    if topic_by_rule and intent_by_rule:
+        return {
+            "intent": intent_by_rule,
+            "topic": topic_by_rule,
+            "score": 90,
+            "intent_source": "rule",
+            "topic_source": "rule",
+        }
+
     llm_result = _infer_by_llm(message)
+    topic = llm_result["topic"] or "未确认主题"
+    if topic == "人工智能导论" and not _infer_topic_by_rule(message):
+        topic = "未确认主题"
 
     return {
         "intent": llm_result["intent"],
-        "topic": llm_result["topic"],
-        "score": llm_result["score"],
+        "topic": topic,
+        "score": llm_result["score"] if topic != "未确认主题" else min(llm_result["score"], 50),
         "intent_source": "llm",
-        "topic_source": "llm",
+        "topic_source": "llm" if topic != "未确认主题" else "unknown",
     }

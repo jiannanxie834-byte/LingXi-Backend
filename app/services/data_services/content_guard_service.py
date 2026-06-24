@@ -1,6 +1,8 @@
 import re
 from typing import Dict, List
 
+from app.services.data_services import resource_quality_gate
+
 
 REVIEW_START = "[[LINGXI_CONTENT_REVIEW]]"
 REVIEW_END = "[[/LINGXI_CONTENT_REVIEW]]"
@@ -43,6 +45,7 @@ def review_resource_content(
     content: str,
     source: str = "",
     reviewer: str = "内容安全 Agent",
+    semantic_result: Dict = None,
 ) -> Dict:
     text = "\n".join([title or "", resource_type or "", summary or "", content or "", source or ""])
     score = 100
@@ -86,14 +89,47 @@ def review_resource_content(
     else:
         checks.append("结构化：具备可读结构")
 
+    subject_category = (semantic_result or {}).get("subject_category", "")
+    allow_code = bool((semantic_result or {}).get("should_generate_code_content")) or subject_category == "computer_science"
+
     if "多模态" in (resource_type or ""):
-        multimodal_markers = ["PPT", "图解", "分镜", "画面", "镜头", "字幕", "素材", "Mermaid", "流程图", "代码注释", "题解"]
+        if subject_category == "foreign_language":
+            multimodal_markers = ["PPT", "图解", "对话", "词汇卡片", "语法", "角色扮演", "听说", "口语"]
+            multimodal_suggestion = "建议补充对话脚本、词汇卡片、语法图解、角色扮演任务和 PPT 页纲。"
+            multimodal_pass = "多模态表达：包含外语学习所需的图解、对话、词汇卡片或听说任务"
+        elif allow_code:
+            multimodal_markers = ["PPT", "图解", "分镜", "画面", "镜头", "字幕", "素材", "Mermaid", "流程图", "代码注释", "题解"]
+            multimodal_suggestion = "建议补充 Mermaid 流程图、PPT 页纲、代码注释、分步题解或实践任务。"
+            multimodal_pass = "多模态表达：包含图示、课件、代码注释、题解或分镜设计"
+        else:
+            multimodal_markers = ["PPT", "图解", "分镜", "画面", "镜头", "字幕", "素材", "流程图", "题解", "案例卡片"]
+            multimodal_suggestion = "建议补充图解、PPT 页纲、案例卡片、分步题解或讨论任务。"
+            multimodal_pass = "多模态表达：包含图示、课件、题解或案例化表达"
         if not any(marker in (content or "") for marker in multimodal_markers):
             score -= 12
-            checks.append("多模态表达：缺少图示、代码、题解、课件或分镜信息")
-            suggestions.append("建议补充 Mermaid 流程图、PPT 页纲、代码注释、分步题解或实践任务。")
+            checks.append("多模态表达：缺少适合当前学科的图示、课件、题解或任务信息")
+            suggestions.append(multimodal_suggestion)
         else:
-            checks.append("多模态表达：包含图示、课件、代码注释、题解或分镜设计")
+            checks.append(multimodal_pass)
+
+    if semantic_result:
+        semantic_review = resource_quality_gate.validate_resource_semantics(
+            {
+                "title": title,
+                "type": resource_type,
+                "summary": summary,
+                "content": content,
+                "source": source,
+            },
+            {
+                **semantic_result,
+                "resource_type": resource_type,
+            },
+        )
+        checks.extend([f"语义一致性：{item}" for item in semantic_review.get("issues", [])])
+        suggestions.extend(semantic_review.get("suggestions", []))
+        if semantic_review.get("fatal"):
+            score -= 40
 
     score = max(0, min(100, score))
     if sensitive_hits or score < 70:

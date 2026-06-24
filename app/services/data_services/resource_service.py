@@ -13,7 +13,7 @@ from app.models.schemas import (
     ResourceType,
     User,
 )
-from app.services.data_services import content_guard_service, system_message_service
+from app.services.data_services import content_guard_service, resource_quality_gate, system_message_service
 from app.services.data_services.knowledge_tag_service import (
     extract_knowledge_tags_from_text,
     summarize_knowledge_tags,
@@ -274,7 +274,7 @@ def _resource_to_dict(resource: Resource):
     }
 
 
-def _with_content_review(item: dict, reviewer: str):
+def _with_content_review(item: dict, reviewer: str, semantic_result: dict = None):
     review = content_guard_service.review_resource_content(
         title=item.get("title", ""),
         resource_type=item.get("type", ""),
@@ -282,6 +282,7 @@ def _with_content_review(item: dict, reviewer: str):
         content=item.get("content", ""),
         source=item.get("source", ""),
         reviewer=reviewer,
+        semantic_result=semantic_result,
     )
 
     return {
@@ -728,30 +729,59 @@ def save_ai_generated_resources(
     applicant_username: str = "",
 ):
     resources = []
+    skipped = []
+    semantic_result = resource_plan.get("semantic_result") or {}
 
     for index, plan_item in enumerate(resource_plan.get("resources", [])):
         llm_item = llm_outputs[index] if index < len(llm_outputs) else {}
         title = plan_item.get("title") or plan_item.get("topic") or "未命名资源"
-        resources.append({
+        item = {
             "title": title,
             "type": plan_item.get("type", "专业课程讲解文档"),
             "summary": llm_item.get("summary") or plan_item.get("summary", ""),
             "content": llm_item.get("content") or plan_item.get("content", ""),
             "source": llm_item.get("source") or plan_item.get("source", ""),
             "agent_notes": plan_item.get("agent_notes", ""),
-        })
+            "subject_category": plan_item.get("subject_category") or semantic_result.get("subject_category", "unknown"),
+            "level": plan_item.get("level") or semantic_result.get("level", "未确认"),
+            "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
+            "allow_code_content": plan_item.get("allow_code_content", False),
+        }
+        quality_context = {
+            **semantic_result,
+            "resource_type": item.get("type"),
+            "subject_category": item.get("subject_category"),
+            "level": item.get("level"),
+            "level_source": item.get("level_source"),
+            "should_generate_code_content": item.get("allow_code_content", False),
+        }
+        quality = resource_quality_gate.validate_resource_semantics(item, quality_context)
+        item["agent_notes"] = resource_quality_gate.attach_quality_note(item.get("agent_notes", ""), quality)
+        if quality.get("fatal"):
+            skipped.append({
+                "title": item.get("title"),
+                "type": item.get("type"),
+                "issues": quality.get("issues", []),
+            })
+            continue
+        item["_semantic_context"] = quality_context
+        resources.append(item)
 
-    reviewed_resources = [
-        _with_content_review(item, "内容安全 Agent")
-        for item in resources
-    ]
+    reviewed_resources = []
+    for item in resources:
+        semantic_context = item.pop("_semantic_context", None)
+        reviewed_resources.append(_with_content_review(item, "内容安全 Agent", semantic_context))
 
-    return insert_generated_resources(
+    inserted = insert_generated_resources(
         db,
         reviewed_resources,
         uploader=uploader,
         applicant_username=applicant_username,
     )
+    return {
+        "resources": inserted,
+        "skipped_resources": skipped,
+    }
 
 
 def insert_generated_resources(

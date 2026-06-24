@@ -56,6 +56,153 @@ def _is_task_completed(task: dict) -> bool:
     return bool(task.get("done")) or status in {"completed", "done", "已完成", "finished"}
 
 
+def _compact_text(value: str) -> str:
+    return "".join(str(value or "").lower().split())
+
+
+def _topic_matches_text(topic: str, subject_category: str, text: str) -> bool:
+    compact = _compact_text(text)
+    topic_compact = _compact_text(topic)
+    if topic_compact and topic_compact in compact:
+        return True
+
+    subject_aliases = {
+        "foreign_language": ["法语", "英语", "日语", "德语", "西班牙语", "韩语", "俄语", "意大利语", "语法", "词汇", "口语", "阅读"],
+        "computer_science": ["人工智能", "机器学习", "深度学习", "信息安全", "编程", "代码", "算法", "数据库", "计算机网络"],
+        "mathematics": ["数学", "高等数学", "线性代数", "概率论", "统计学", "微积分"],
+        "physics": ["物理", "力学", "电磁学", "热学", "光学"],
+        "general_course": ["管理学", "经济学", "心理学", "历史", "文学", "哲学", "通识"],
+    }.get(subject_category, [])
+    return any(_compact_text(alias) in compact for alias in subject_aliases)
+
+
+def _level_from_explicit_text(message: str) -> Dict:
+    text = str(message or "")
+    compact = _compact_text(text)
+    explicit_patterns = [
+        ("零基础", ["零基础", "完全不会", "没学过", "从零开始"]),
+        ("入门", ["入门", "初学", "初级", "刚开始"]),
+        ("基础", ["有基础", "学过一点", "基础"]),
+        ("进阶", ["进阶", "中级", "b1", "b2", "n2", "n1", "四级", "六级"]),
+        ("高级", ["高级", "熟练", "c1", "c2", "专八"]),
+    ]
+    for level, aliases in explicit_patterns:
+        if any(_compact_text(alias) in compact for alias in aliases):
+            return {
+                "level": level,
+                "level_source": "user_explicit",
+                "level_evidence": f"本轮输入包含水平表达：{level}",
+                "needs_level_diagnosis": False,
+            }
+    return {}
+
+
+def _level_from_score(score: int) -> str:
+    if score < 60:
+        return "入门"
+    if score < 75:
+        return "基础"
+    if score < 88:
+        return "进阶"
+    return "高级"
+
+
+def infer_topic_level_from_evidence(db, username: str, topic: str, subject_category: str, message: str) -> Dict:
+    explicit = _level_from_explicit_text(message)
+    if explicit:
+        return explicit
+
+    result = {
+        "level": "未确认",
+        "level_source": "none",
+        "level_evidence": "",
+        "needs_level_diagnosis": True,
+    }
+    if not db or not username or not topic or topic == "未确认主题":
+        return result
+
+    try:
+        records = (
+            db.query(EvaluationRecord)
+            .filter(EvaluationRecord.username == username)
+            .order_by(EvaluationRecord.created_at.desc())
+            .limit(20)
+            .all()
+        )
+        matched_scores = [
+            record.score or 0
+            for record in records
+            if _topic_matches_text(topic, subject_category, " ".join([
+                record.topic or "",
+                record.level or "",
+                record.weak_points or "",
+                record.suggestions or "",
+            ]))
+        ]
+        if matched_scores:
+            avg_score = round(sum(matched_scores) / len(matched_scores))
+            return {
+                "level": _level_from_score(avg_score),
+                "level_source": "same_topic_evaluation",
+                "level_evidence": f"同主题评价记录 {len(matched_scores)} 条，均分 {avg_score}",
+                "needs_level_diagnosis": False,
+            }
+    except Exception:
+        pass
+
+    try:
+        plan_record = (
+            db.query(LearningPlan)
+            .filter(LearningPlan.username == username)
+            .first()
+        )
+        plans = _safe_json_load(plan_record.plans_json if plan_record else "", [])
+        matched_total = 0
+        matched_done = 0
+        for plan in plans:
+            plan_text = " ".join([plan.get("title", ""), json.dumps(plan.get("tasks", []), ensure_ascii=False)])
+            if not _topic_matches_text(topic, subject_category, plan_text):
+                continue
+            for task in plan.get("tasks", []):
+                matched_total += 1
+                if _is_task_completed(task):
+                    matched_done += 1
+        if matched_total and matched_done:
+            rate = round(matched_done / matched_total * 100)
+            return {
+                "level": "基础" if rate < 70 else "进阶",
+                "level_source": "same_topic_plan",
+                "level_evidence": f"同主题学习路线完成 {matched_done}/{matched_total}",
+                "needs_level_diagnosis": False,
+            }
+    except Exception:
+        pass
+
+    try:
+        todo_record = (
+            db.query(TodoList)
+            .filter(TodoList.username == username)
+            .first()
+        )
+        todos = _safe_json_load(todo_record.todos_json if todo_record else "", [])
+        matched = [
+            item for item in todos
+            if _topic_matches_text(topic, subject_category, json.dumps(item, ensure_ascii=False))
+        ]
+        done = [item for item in matched if item.get("done")]
+        if matched and done:
+            return {
+                "level": "基础",
+                "level_source": "same_topic_todo",
+                "level_evidence": f"同主题待办完成 {len(done)}/{len(matched)}",
+                "needs_level_diagnosis": False,
+            }
+    except Exception:
+        pass
+
+    return result
+
+
 def _load_profile_evidence(db, username: str) -> Dict:
     evidence = {
         "evaluation_count": 0,
@@ -193,7 +340,8 @@ def build_profile(
     intent: str,
     knowledge_topic: str,
     score: Optional[int] = None,
-    db=None
+    db=None,
+    semantic_result: Optional[Dict] = None
 ) -> Dict:
     """
     构建学习画像（核心函数）
@@ -203,6 +351,12 @@ def build_profile(
     hours = user.hours if user else 0
     username = user.username if user else ""
     evidence = _load_profile_evidence(db, username)
+    semantic_result = semantic_result or {}
+    subject_category = semantic_result.get("subject_category", "unknown")
+    topic_level = semantic_result.get("level") or "未确认"
+    level_source = semantic_result.get("level_source") or "none"
+    level_evidence = semantic_result.get("level_evidence") or ""
+    needs_level_diagnosis = semantic_result.get("needs_level_diagnosis", True)
 
     # 学习意图影响
     intent_boost_map = {
@@ -219,7 +373,7 @@ def build_profile(
     engagement = calculate_engagement(len(message))
 
     # 综合评分（画像基础值）
-    base_score = 50 + min(30, hours * 1.2)
+    base_score = 50
     recent_avg_score = evidence.get("recent_avg_score")
     history_score = recent_avg_score if recent_avg_score is not None else (score or 70)
 
@@ -230,8 +384,14 @@ def build_profile(
         )
     )
 
-    level = calculate_level(hours, score or 0)
     intensity = calculate_learning_intensity(hours)
+    knowledge_base_score = {
+        "零基础": 35,
+        "入门": 45,
+        "基础": 60,
+        "进阶": 75,
+        "高级": 88,
+    }.get(topic_level, 50)
 
     topic_candidates = (
         [knowledge_topic]
@@ -292,11 +452,11 @@ def build_profile(
         "knowledge_tags": tags,
         "updated_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "dimensions": {
-            "知识基础": round(final_score),
+            "知识基础": knowledge_base_score,
             "自驱探索力": self_drive_score,
             "学习强度": intensity,
             "学习目标": intent,
-            "认知水平": level,
+            "认知水平": topic_level,
             "认知风格": style,
             "高频主题": "、".join(high_frequency_topics) if high_frequency_topics else (tags[0] if tags else knowledge_topic),
             "知识短板": "；".join(weak_points[:3]),
@@ -305,10 +465,12 @@ def build_profile(
             "计划完成率": f"{plan_rate}%" if plan_rate is not None else "暂无计划完成记录",
             "待办完成率": f"{todo_rate}%" if todo_rate is not None else "暂无待办完成记录",
             "历史评价均分": recent_avg_score if recent_avg_score is not None else "暂无评价记录",
-            "画像依据": "近期知识点、历史诊断、学习计划、待办完成度、本轮交互",
+            "画像依据": "同主题证据、本轮交互、平台活跃度；全局学习时长不作为当前学科水平依据",
+            "水平证据": level_evidence or "暂无同主题水平证据",
+            "学科分类": subject_category,
         },
         "radar": {
-            "知识基础": _clamp(final_score),
+            "知识基础": _clamp(knowledge_base_score),
             "自驱探索力": self_drive_score,
             "实践动手能力": practice_score,
             "学习专注度": focus_score,
@@ -324,6 +486,11 @@ def build_profile(
             "todo_completion_rate": todo_rate,
             "high_frequency_topics": high_frequency_topics,
             "knowledge_tags": tags,
+            "topic_level": topic_level,
+            "level_source": level_source,
+            "level_evidence": level_evidence,
+            "needs_level_diagnosis": needs_level_diagnosis,
+            "subject_category": subject_category,
         }
     }
 
