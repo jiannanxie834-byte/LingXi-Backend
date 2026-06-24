@@ -399,11 +399,11 @@ def build_pushed_teaching_resource_cards(query: str, limit: int = 4) -> List[Dic
     exercise_sources = [item for item in sources if "exercise" in item.get("modalities", [])]
 
     if video_sources:
-        title = f"{topic}多模态导学包"
+        title = f"{topic}主题导学包"
         card = _card_common(
             "MEDIA",
             title,
-            "多模态学习包",
+            "主题学习包",
             concept_ids,
             video_sources,
             _card_score(76, concept_ids, video_sources),
@@ -411,7 +411,7 @@ def build_pushed_teaching_resource_cards(query: str, limit: int = 4) -> List[Dic
         )
         card.update({
             "summary": f"围绕「{topic}」推送公开视频/公开课入口，并组织成可执行的观看与复盘任务。",
-            "content": f"""## {topic}多模态导学包
+            "content": f"""## {topic}主题导学包
 
 ### 学习方式
 1. 先看课程/视频入口，建立整体印象。

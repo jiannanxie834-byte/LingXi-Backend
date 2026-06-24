@@ -14,9 +14,10 @@ BASE_LEARNING_RESOURCE_TYPES = [
     "知识点思维导图",
     "不同类型练习题目",
     "拓展阅读材料",
-    "多模态学习包",
     "学科实践应用任务",
 ]
+
+DEPRECATED_RESOURCE_TYPES = ["多模态学习包"]
 
 FEEDBACK_INTENTS = {"学习评价", "错题诊断", "反馈分析", "补弱路线"}
 

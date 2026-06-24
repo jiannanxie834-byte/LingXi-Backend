@@ -333,7 +333,6 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 外语学习资源额外规则：
 - 资源应围绕词汇、语法、例句、阅读、听说、写作和文化语境。
 - 练习题必须包含参考答案和解析。
-- 多模态学习包应包含对话脚本、词汇卡片、语法图解、角色扮演任务和 PPT 页纲。
 - 不得出现代码注释、伪代码、函数、算法实现、模型训练或编程框架。
 """
     return f"""
@@ -378,8 +377,9 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 - 结合外部教学资料时必须保留来源平台、标题和链接
 - 教材正文、课件包、视频内容只能引用公开入口或授权内容，不得虚构“已节选”的正文
 - 避免绝对化和不可验证结论
-- 如果类型是多模态学习包，请按当前学科类型输出合适模态；不得默认加入代码注释案例。
-- Mermaid 和代码示例也必须作为普通 JSON 字符串逐条放入 items，不要使用 Markdown 围栏
+- 多模态效果由同一主题下的讲解、导图、练习、阅读和实践任务组合呈现，不要生成“多模态学习包”正文。
+- 计算机学科如需代码，应放在“专业课程讲解文档”或“学科实践应用任务”中；其他学科不得加入代码。
+- Mermaid 和代码示例如确有必要，也必须作为普通 JSON 字符串逐条放入 items，不要使用 Markdown 围栏。
 {foreign_language_rules}
 {feedback_rules}
 

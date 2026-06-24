@@ -85,7 +85,7 @@ async def demo_readiness(db: Session = Depends(get_db)):
             "label": "个性化资源类型",
             "ok": len(resource_service.get_passed_resource_types(db)) >= 6,
             "value": f"{len(resource_service.get_passed_resource_types(db))} 类",
-            "target": "至少覆盖 5 类资源生成，本系统保留 7 类",
+            "target": "至少覆盖 5 类具体资源生成，主题学习包由多类资源聚合呈现",
         },
         {
             "key": "passed_resources",

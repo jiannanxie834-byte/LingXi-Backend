@@ -68,6 +68,14 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
     }
 
     generation_context = semantic_result.get("generation_context") or {}
+    if resource_type == "多模态学习包":
+        _append_issue(
+            result,
+            "资源类型已停用：多模态学习包应作为同主题资源聚合视图，不再作为独立资源正文生成。",
+            "请改为生成讲解文档、思维导图、练习题、拓展阅读或实践任务，并由前端聚合成主题学习包。",
+            fatal=True,
+        )
+
     if (
         resource_type == resource_policy_service.FEEDBACK_RESOURCE_TYPE
         and not resource_policy_service.has_feedback_context(generation_context)

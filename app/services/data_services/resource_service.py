@@ -31,10 +31,13 @@ DEFAULT_RESOURCE_TYPES = [
     "知识点思维导图",
     "不同类型练习题目",
     "拓展阅读材料",
-    "多模态学习包",
     "错题诊断与学习反馈报告",
     "学科实践应用任务",
 ]
+
+DEPRECATED_AI_RESOURCE_TYPES = {
+    "多模态学习包",
+}
 
 DEPRECATED_RESOURCE_TYPES = {
     "多模态教学视频/动画",
@@ -235,7 +238,7 @@ def _preferred_resource_types(context):
 
     if any(word in active_text or word in weak_text for word in ["实践", "项目", "实验", "应用", "代码", "动手"]):
         preferred["学科实践应用任务"] += 3
-        preferred["多模态学习包"] += 1
+        preferred["学科实践应用任务"] += 1
 
     if any(word in active_text or word in weak_text for word in ["概念", "原理", "框架", "理解", "关系"]):
         preferred["专业课程讲解文档"] += 2
@@ -403,6 +406,12 @@ def get_passed_resources(db: Session):
         return []
 
 
+def get_passed_resource_bundles(db: Session):
+    from app.services.data_services import resource_bundle_service
+
+    return resource_bundle_service.build_topic_bundles(get_passed_resources(db))
+
+
 def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
     """画像、错题、学习路线和内容质量共同参与的可解释混合推荐。"""
 
@@ -440,6 +449,8 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
         for resource in resources:
             resource_text = _resource_text(resource)
             resource_type = resource.type or ""
+            if resource_type in DEPRECATED_AI_RESOURCE_TYPES:
+                continue
             weak_matches = _count_matches(resource_text, weak_terms)
             profile_matches = _count_matches(resource_text, profile_terms)
             plan_matches = _count_matches(resource_text, plan_terms)
@@ -571,7 +582,9 @@ def get_passed_resource_types(db: Session):
         names = DEFAULT_RESOURCE_TYPES + [
             t.name
             for t in types
-            if t.name not in DEFAULT_RESOURCE_TYPES and not _is_deprecated_resource_type(t.name)
+            if t.name not in DEFAULT_RESOURCE_TYPES
+            and t.name not in DEPRECATED_AI_RESOURCE_TYPES
+            and not _is_deprecated_resource_type(t.name)
         ]
 
         return list(dict.fromkeys(names))
@@ -753,6 +766,13 @@ def save_ai_generated_resources(
             "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
             "allow_code_content": plan_item.get("allow_code_content", False),
         }
+        if item.get("type") in DEPRECATED_AI_RESOURCE_TYPES:
+            skipped.append({
+                "title": item.get("title"),
+                "type": item.get("type"),
+                "issues": ["多模态学习包已改为主题资源包聚合视图，不再作为独立 AI 资源正文生成。"],
+            })
+            continue
         if (
             item.get("type") == resource_policy_service.FEEDBACK_RESOURCE_TYPE
             and not resource_policy_service.has_feedback_context(generation_context)

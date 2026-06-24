@@ -190,9 +190,9 @@ def _seed_users(db: Session):
         "password": "123456",
         "role": "student",
         "avatar": "",
-        "bio": "人工智能导论课程学习者，当前重点补强监督学习、模型评估和多模态资源表达。",
+        "bio": "人工智能导论课程学习者，当前重点补强监督学习、模型评估和主题资源包表达。",
         "hours": 42,
-        "tags": "人工智能导论,监督学习与模型评估,混淆矩阵,大语言模型,RAG,多模态学习包,实践驱动",
+        "tags": "人工智能导论,监督学习与模型评估,混淆矩阵,大语言模型,RAG,主题学习包,实践驱动",
     })
     _upsert_user(db, {
         "username": "demo_basic",
@@ -278,13 +278,13 @@ TP=36，FP=12，FN=9，TN=143。
         },
         {
             "id": "DEMO_RES_PENDING_MULTIMODAL",
-            "title": "监督学习多模态学习包",
-            "type": "多模态学习包",
+            "title": "监督学习展示讲解文档",
+            "type": "专业课程讲解文档",
             "status": "待审核",
             "uploader": "资源生成 Agent",
-            "summary": "包含文字讲解、流程图、代码注释、题解和 PPT 页纲，用于演示多模态资源审核。",
+            "summary": "包含文字讲解、流程图、代码注释和分步题解，用于演示计算机课程资源审核。",
             "source": "人工智能导论初始知识库 / 第 4 章 监督学习与模型评估",
-            "content": """# 监督学习多模态学习包
+            "content": """# 监督学习展示讲解文档
 
 ## 文字讲解
 监督学习的核心是从带标签样本中学习输入到输出的映射。分类任务关注类别，回归任务关注连续数值。
@@ -312,7 +312,7 @@ recall = tp / (tp + fn)     # 真实正类中有多少被找出来
 2. 再定位 TP、FP、FN、TN。
 3. 根据场景判断更重视精确率还是召回率。
 
-## PPT 页纲
+## 课堂展示页纲
 1. 监督学习任务定义。
 2. 分类与回归区别。
 3. 混淆矩阵。
@@ -459,7 +459,7 @@ def _student_plans() -> List[Dict]:
         },
         {
             "id": "route_demo_multimodal",
-            "title": "多模态学习包 · 项目展示路线",
+            "title": "主题学习包 · 项目展示路线",
             "isCollapsed": False,
             "isAiGenerated": True,
             "tasks": [
@@ -473,11 +473,11 @@ def _student_plans() -> List[Dict]:
                 },
                 {
                     "id": "task_multi_2",
-                    "title": "查看监督学习多模态学习包",
-                    "desc": "观察文字、流程图、代码注释、题解和 PPT 页纲是否完整。",
+                    "title": "查看监督学习主题学习包",
+                    "desc": "观察讲解文档、思维导图、练习题、阅读材料和实践任务是否形成完整资源组合。",
                     "status": "active",
                     "isCustom": False,
-                    "resources": ["监督学习多模态学习包"],
+                    "resources": ["监督学习展示讲解文档"],
                 },
                 {
                     "id": "task_multi_3",
@@ -485,7 +485,7 @@ def _student_plans() -> List[Dict]:
                     "desc": "在资源详情页点击导出 PPT，检查文件是否能正常打开。",
                     "status": "pending",
                     "isCustom": False,
-                    "resources": ["监督学习多模态学习包"],
+                    "resources": ["监督学习展示讲解文档"],
                 },
             ],
         },
@@ -527,7 +527,7 @@ def _seed_plans_and_todos(db: Session):
     _upsert_todos(db, "student", [
         {"id": "todo_demo_1", "content": "完成混淆矩阵分层练习第 2 题", "done": False},
         {"id": "todo_demo_2", "content": "把错题原因写入学习评价", "done": False},
-        {"id": "todo_demo_3", "content": "审核通过后回到资源库查看多模态学习包", "done": True},
+        {"id": "todo_demo_3", "content": "审核通过后回到资源库查看主题学习包", "done": True},
         {"id": "todo_demo_4", "content": "导出一份监督学习 PPT 作为演示素材", "done": False},
     ])
     _upsert_todos(db, "demo_basic", [
@@ -584,14 +584,14 @@ def _seed_chats(db: Session):
         -116,
     )
 
-    _upsert_chat_session(db, "CHAT_DEMO_MULTIMODAL", "多模态学习包生成", "student", -60)
+    _upsert_chat_session(db, "CHAT_DEMO_MULTIMODAL", "主题学习包生成", "student", -60)
     _add_chat_message(
         db,
         "CHAT_DEMO_MULTIMODAL_M1",
         "CHAT_DEMO_MULTIMODAL",
         "student",
         "user",
-        "给监督学习生成一份适合演示的多模态学习资源。",
+        "给监督学习整理一组适合演示的主题学习资源。",
         -59,
     )
     _add_chat_message(
@@ -600,16 +600,15 @@ def _seed_chats(db: Session):
         "CHAT_DEMO_MULTIMODAL",
         "student",
         "ai",
-        """已生成“监督学习多模态学习包”，包含：
+        """已整理“监督学习主题学习包”，包含：
 
 - 文字讲解
 - Mermaid 流程图
 - 代码注释案例
 - 分步题解
-- PPT 页纲
 - 实践任务
 
-资源已进入管理员审核队列，通过后会在学生端资源库展示，并可导出 PPT。""",
+这些内容会以讲解文档、导图、练习题、阅读材料和实践任务组合展示，通过审核后会在学生端资源库形成主题学习包。""",
         -58,
     )
 

@@ -1,12 +1,14 @@
-RESOURCE_TYPES = [
+ACTIVE_RESOURCE_TYPES = [
     "专业课程讲解文档",
     "知识点思维导图",
     "不同类型练习题目",
     "拓展阅读材料",
-    "多模态学习包",
     "学科实践应用任务",
-    "错题诊断与学习反馈报告",
 ]
+
+FEEDBACK_RESOURCE_TYPE = "错题诊断与学习反馈报告"
+DEPRECATED_RESOURCE_TYPES = ["多模态学习包"]
+SUPPORTED_RESOURCE_TYPES = ACTIVE_RESOURCE_TYPES + [FEEDBACK_RESOURCE_TYPE] + DEPRECATED_RESOURCE_TYPES
 
 
 RESOURCE_REQUIREMENTS = {
@@ -14,9 +16,8 @@ RESOURCE_REQUIREMENTS = {
     "知识点思维导图": ["中心主题", "一级知识点", "关系说明", "易混点"],
     "不同类型练习题目": ["概念题", "应用题", "开放题", "参考答案", "错因提示"],
     "拓展阅读材料": ["中文优先资料", "适合学生的入口", "推荐顺序", "阅读目标"],
-    "多模态学习包": ["文字讲解", "Mermaid 流程图", "代码注释案例", "分步题解", "PPT 页纲", "实践任务"],
-    "错题诊断与学习反馈报告": ["薄弱点", "错因类型", "修复建议", "后续练习"],
     "学科实践应用任务": ["任务背景", "操作步骤", "提交物", "评价标准", "复盘问题"],
+    FEEDBACK_RESOURCE_TYPE: ["薄弱点", "错因类型", "修复建议", "后续练习"],
 }
 
 
@@ -31,8 +32,10 @@ def _validate_resource_plan(plan):
         for field in ["topic", "title", "type", "summary", "requirements"]:
             if field not in resource:
                 raise RuntimeError(f"资源规划第 {index} 项缺少 {field}")
-        if resource["type"] not in RESOURCE_TYPES:
+        if resource["type"] not in SUPPORTED_RESOURCE_TYPES:
             raise RuntimeError(f"资源规划第 {index} 项类型不受支持")
+        if resource["type"] in DEPRECATED_RESOURCE_TYPES:
+            raise RuntimeError(f"资源规划第 {index} 项类型已停用，不应由 AI 新生成")
         if not isinstance(resource["requirements"], list) or not resource["requirements"]:
             raise RuntimeError(f"资源规划第 {index} 项 requirements 必须是非空列表")
 
