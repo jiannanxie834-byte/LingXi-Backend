@@ -17,6 +17,7 @@ from app.services.data_services import (
     system_message_service,
     conversation_router,
     semantic_analysis_service,
+    resource_policy_service,
 )
 
 from app.agents.evaluation_agent import run as eval_run
@@ -316,6 +317,16 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
     allow_code = bool(item.get("allow_code_content"))
     quality_constraints = "\n".join([f"- {rule}" for rule in item.get("quality_constraints", [])])
     forbidden_terms = "、".join(item.get("forbidden_terms", [])) or "无"
+    feedback_sources = item.get("feedback_evidence_sources") or []
+    feedback_rules = ""
+    if item.get("type") == resource_policy_service.FEEDBACK_RESOURCE_TYPE:
+        feedback_rules = f"""
+错题诊断与学习反馈报告额外规则：
+- 只能依据以下真实反馈来源生成：{'；'.join(feedback_sources) or '无'}。
+- 必须在正文中写明诊断依据来自评价记录、错题描述、测验结果或本轮反馈。
+- 不得用“可能薄弱点”“推测错因”伪装真实诊断。
+- 如果没有真实反馈来源，应返回空的 sections 并在 source_notes 说明不能生成该报告。
+"""
     foreign_language_rules = ""
     if subject_category == "foreign_language":
         foreign_language_rules = """
@@ -370,6 +381,7 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 - 如果类型是多模态学习包，请按当前学科类型输出合适模态；不得默认加入代码注释案例。
 - Mermaid 和代码示例也必须作为普通 JSON 字符串逐条放入 items，不要使用 Markdown 围栏
 {foreign_language_rules}
+{feedback_rules}
 
 JSON 字段：
 {{
@@ -926,7 +938,20 @@ JSON 字段：
         ))
 
         # 6.2 资源规划
-        resource_plan = resource_run(plan_result, profile_result, semantic_result=semantic_result)
+        generation_context = resource_policy_service.build_generation_context(
+            db=db,
+            username=username,
+            topic=topic,
+            subject_category=semantic_result.get("subject_category", "unknown"),
+            intent=intent,
+            message=message,
+        )
+        resource_plan = resource_run(
+            plan_result,
+            profile_result,
+            semantic_result=semantic_result,
+            generation_context=generation_context,
+        )
         pipeline_steps.append(_pipeline_step(
             "resource-plan",
             "规划配套资源类型",

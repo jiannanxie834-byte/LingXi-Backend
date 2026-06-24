@@ -1,6 +1,8 @@
 import re
 from typing import Dict, List
 
+from app.services.data_services import resource_policy_service
+
 
 CODE_TERMS = [
     "```python",
@@ -64,6 +66,18 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
         "issues": [],
         "suggestions": [],
     }
+
+    generation_context = semantic_result.get("generation_context") or {}
+    if (
+        resource_type == resource_policy_service.FEEDBACK_RESOURCE_TYPE
+        and not resource_policy_service.has_feedback_context(generation_context)
+    ):
+        _append_issue(
+            result,
+            "缺少真实错题、测验、评价或学习反馈记录，不能生成错题诊断与学习反馈报告。",
+            "首次学习请求可生成入门自测题或基础练习，但不能伪装成错题诊断报告。",
+            fatal=True,
+        )
 
     code_hits = _contains_any(text, CODE_TERMS)
     if subject_category != "computer_science" and not allow_code and code_hits:

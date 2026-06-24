@@ -7,9 +7,10 @@ BASE_RESOURCE_TYPES = [
     "不同类型练习题目",
     "拓展阅读材料",
     "多模态学习包",
-    "错题诊断与学习反馈报告",
     "学科实践应用任务",
 ]
+
+FEEDBACK_RESOURCE_TYPE = "错题诊断与学习反馈报告"
 
 PROGRAMMING_FORBIDDEN = [
     "代码注释案例",

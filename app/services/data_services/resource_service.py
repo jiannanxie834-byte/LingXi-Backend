@@ -13,7 +13,12 @@ from app.models.schemas import (
     ResourceType,
     User,
 )
-from app.services.data_services import content_guard_service, resource_quality_gate, system_message_service
+from app.services.data_services import (
+    content_guard_service,
+    resource_policy_service,
+    resource_quality_gate,
+    system_message_service,
+)
 from app.services.data_services.knowledge_tag_service import (
     extract_knowledge_tags_from_text,
     summarize_knowledge_tags,
@@ -731,6 +736,7 @@ def save_ai_generated_resources(
     resources = []
     skipped = []
     semantic_result = resource_plan.get("semantic_result") or {}
+    generation_context = resource_plan.get("generation_context") or {}
 
     for index, plan_item in enumerate(resource_plan.get("resources", [])):
         llm_item = llm_outputs[index] if index < len(llm_outputs) else {}
@@ -747,8 +753,19 @@ def save_ai_generated_resources(
             "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
             "allow_code_content": plan_item.get("allow_code_content", False),
         }
+        if (
+            item.get("type") == resource_policy_service.FEEDBACK_RESOURCE_TYPE
+            and not resource_policy_service.has_feedback_context(generation_context)
+        ):
+            skipped.append({
+                "title": item.get("title"),
+                "type": item.get("type"),
+                "issues": ["缺少真实错题、测验、评价或学习反馈记录，不能生成错题诊断与学习反馈报告。"],
+            })
+            continue
         quality_context = {
             **semantic_result,
+            "generation_context": generation_context,
             "resource_type": item.get("type"),
             "subject_category": item.get("subject_category"),
             "level": item.get("level"),

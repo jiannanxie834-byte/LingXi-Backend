@@ -4,8 +4,8 @@ RESOURCE_TYPES = [
     "不同类型练习题目",
     "拓展阅读材料",
     "多模态学习包",
-    "错题诊断与学习反馈报告",
     "学科实践应用任务",
+    "错题诊断与学习反馈报告",
 ]
 
 
@@ -39,23 +39,31 @@ def _validate_resource_plan(plan):
     return plan
 
 
-def run(plan, profile, semantic_result=None):
-    from app.services.data_services import resource_spec_service
+def run(plan, profile, semantic_result=None, generation_context=None):
+    from app.services.data_services import resource_policy_service, resource_spec_service
 
     semantic_result = semantic_result or {}
+    generation_context = generation_context or {}
     topic = profile.get("topic") or profile.get("knowledge_topic") or "当前主题"
     intent = profile.get("intent") or profile.get("goal") or "综合学习"
     subject_category = profile.get("subject_category") or semantic_result.get("subject_category") or "unknown"
-    resource_types = resource_spec_service.get_supported_resource_types(subject_category)
+    policy_context = {
+        **generation_context,
+        "intent": intent,
+        "topic": topic,
+        "subject_category": subject_category,
+    }
+    resource_types = resource_policy_service.select_resource_types(policy_context)
 
     if subject_category == "unknown":
         return _validate_resource_plan({
             "semantic_result": semantic_result,
+            "generation_context": policy_context,
             "resources": [
                 {
                     "topic": topic,
                     "title": f"{topic} 学习主题澄清与水平诊断",
-                    "type": "错题诊断与学习反馈报告",
+                    "type": "不同类型练习题目",
                     "summary": "用于先确认学习主题、目标和当前基础，避免生成错配资源。",
                     "requirements": ["学习主题", "目标水平", "已有基础", "诊断问题", "下一步建议"],
                     "plan_title": plan.get("title", ""),
@@ -63,7 +71,7 @@ def run(plan, profile, semantic_result=None):
                     "level": profile.get("level", "未确认"),
                     "level_source": profile.get("level_source", "none"),
                     "requires_human_review": True,
-                    "quality_constraints": ["未知主题不得批量生成资源"],
+                    "quality_constraints": ["未知主题不得批量生成资源", "这是入门自测题，不是错题诊断报告"],
                     "allow_code_content": False,
                 }
             ],
@@ -71,6 +79,7 @@ def run(plan, profile, semantic_result=None):
 
     resource_plan = {
         "semantic_result": semantic_result,
+        "generation_context": policy_context,
         "resources": [
             _build_resource_item(
                 topic=topic,
@@ -80,6 +89,7 @@ def run(plan, profile, semantic_result=None):
                 profile=profile,
                 semantic_result=semantic_result,
                 subject_category=subject_category,
+                generation_context=policy_context,
             )
             for resource_type in resource_types
         ]
@@ -88,7 +98,7 @@ def run(plan, profile, semantic_result=None):
     return _validate_resource_plan(resource_plan)
 
 
-def _build_resource_item(topic, intent, resource_type, plan_title, profile, semantic_result, subject_category):
+def _build_resource_item(topic, intent, resource_type, plan_title, profile, semantic_result, subject_category, generation_context):
     from app.services.data_services import resource_spec_service
 
     spec = resource_spec_service.get_resource_spec(
@@ -111,4 +121,5 @@ def _build_resource_item(topic, intent, resource_type, plan_title, profile, sema
         "quality_constraints": spec.get("quality_constraints", []),
         "forbidden_terms": spec.get("forbidden_terms", []),
         "allow_code_content": spec.get("allow_code_content", False),
+        "feedback_evidence_sources": generation_context.get("evidence_sources", []),
     }
