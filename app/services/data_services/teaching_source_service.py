@@ -9,7 +9,7 @@ DEFAULT_LIMIT = 10
 CONCEPT_CATALOG = [
     {
         "id": "ai_intro",
-        "label": "人工智能导论",
+        "label": "人工智能",
         "aliases": ["人工智能导论", "人工智能", "AI", "智能体"],
     },
     {

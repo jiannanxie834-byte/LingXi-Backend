@@ -391,6 +391,10 @@ def build_profile(
         "基础": 60,
         "进阶": 75,
         "高级": 88,
+        "重点补救": 40,
+        "需要巩固": 52,
+        "基本掌握": 68,
+        "掌握较好": 82,
     }.get(topic_level, 50)
 
     topic_candidates = (
@@ -408,9 +412,28 @@ def build_profile(
         item for item, _ in Counter(normalized_topic_candidates).most_common(3)
     ]
     weak_points = evidence.get("weak_points") or ["需要进一步强化核心概念理解"]
-
     plan_rate = evidence.get("plan_completion_rate")
     todo_rate = evidence.get("todo_completion_rate")
+    dimension_evidence = [
+        {
+            "dimension": "知识基础",
+            "value": topic_level,
+            "source": level_source,
+            "evidence": level_evidence or "本轮首次提出该主题，尚无同主题评价记录",
+        },
+        {
+            "dimension": "知识短板",
+            "value": "；".join(weak_points[:3]),
+            "source": "evaluation_records" if evidence.get("evaluation_count") else "default_prompt",
+            "evidence": "来自最近学习评价记录" if evidence.get("evaluation_count") else "暂无评价记录，仅提示后续需通过练习或评价确认",
+        },
+        {
+            "dimension": "计划完成率",
+            "value": f"{plan_rate}%" if plan_rate is not None else "暂无计划完成记录",
+            "source": "learning_plan",
+            "evidence": f"已完成 {evidence.get('plan_completed_tasks', 0)}/{evidence.get('plan_total_tasks', 0)} 个学习任务",
+        },
+    ]
     plan_score = plan_rate if plan_rate is not None else min(80, 45 + evidence.get("plan_count", 0) * 12)
     todo_score = todo_rate if todo_rate is not None else min(75, 45 + evidence.get("todo_done", 0) * 8)
     execution_score = _clamp(plan_score * 0.6 + todo_score * 0.4)
@@ -491,6 +514,7 @@ def build_profile(
             "level_evidence": level_evidence,
             "needs_level_diagnosis": needs_level_diagnosis,
             "subject_category": subject_category,
+            "dimension_evidence": dimension_evidence,
         }
     }
 

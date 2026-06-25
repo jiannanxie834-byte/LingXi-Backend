@@ -20,6 +20,14 @@ def run(user, message, eval_result, semantic_result=None, db=None):
         "level_source": semantic_result.get("level_source", "none"),
         "level_evidence": semantic_result.get("level_evidence", ""),
         "needs_level_diagnosis": semantic_result.get("needs_level_diagnosis", True),
+        "evidence": [
+            {
+                "dimension": "知识基础",
+                "value": semantic_result.get("level", "未确认"),
+                "source": semantic_result.get("level_source", "none"),
+                "evidence": semantic_result.get("level_evidence") or "本轮未发现同主题评价记录，当前主题水平保持未确认",
+            }
+        ],
         "tags": [topic],
         "topic": topic,
         "knowledge_topic": topic,

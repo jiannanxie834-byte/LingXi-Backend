@@ -155,23 +155,24 @@ def _build_cards(path_result=None, resource_result=None, resource_status=None):
             "action_route": "/plan",
         })
 
-    if resource_state.get("status") == "queued":
+    if resource_state.get("status") in {"queued", "pending_review"}:
         resource_items = [
             {
                 "title": item.get("title") or "配套学习资料",
                 "type": item.get("type") or "学习资源",
-                "status": item.get("status") or "整理中",
+                "summary": item.get("summary") or "",
+                "status": item.get("status") or "待审核",
             }
             for item in (resource_state.get("items") or resources)[:6]
             if isinstance(item, dict)
         ]
         cards.append({
             "type": "resource_review",
-            "title": "配套资料正在整理",
-            "status": "pending",
-            "summary": resource_state.get("message") or "配套资料正在整理，完成后会进入资源库。",
+            "title": "配套资源正在教师审核",
+            "status": "pending_review",
+            "summary": resource_state.get("message") or "配套资源已生成，正在进行教师审核。审核通过后会进入资源库。",
             "items": resource_items,
-            "action_text": "查看资源库",
+            "action_text": "审核通过后查看资源库",
             "action_route": "/resource",
         })
         return _strip_internal_fields(cards)

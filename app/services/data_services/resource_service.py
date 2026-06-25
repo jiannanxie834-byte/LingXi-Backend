@@ -765,6 +765,7 @@ def save_ai_generated_resources(
             "level": plan_item.get("level") or semantic_result.get("level", "未确认"),
             "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
             "allow_code_content": plan_item.get("allow_code_content", False),
+            "ai_course_map": plan_item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
         if item.get("type") in DEPRECATED_AI_RESOURCE_TYPES:
             skipped.append({
@@ -791,6 +792,7 @@ def save_ai_generated_resources(
             "level": item.get("level"),
             "level_source": item.get("level_source"),
             "should_generate_code_content": item.get("allow_code_content", False),
+            "ai_course_map": item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
         quality = resource_quality_gate.validate_resource_semantics(item, quality_context)
         item["agent_notes"] = resource_quality_gate.attach_quality_note(item.get("agent_notes", ""), quality)
@@ -987,6 +989,53 @@ def approve_resource(
         db.rollback()
 
         return False
+
+
+def approve_pending_resources_by_applicant(
+    db: Session,
+    applicant_username: str,
+    limit: int = 10,
+):
+    username = (applicant_username or "").strip()
+    if not username:
+        return []
+
+    safe_limit = max(1, min(int(limit or 10), 20))
+
+    try:
+        pending = (
+            db.query(Resource)
+            .filter(
+                Resource.applicant_username == username,
+                Resource.status == "待审核",
+            )
+            .order_by(Resource.time.desc())
+            .limit(safe_limit)
+            .all()
+        )
+
+        approved = []
+        for item in pending:
+            item.status = "已通过"
+            item.review_comment = "教师审核通过，已进入学生资源库。"
+            item.reviewed_at = _now_text()
+            approved.append(_resource_to_dict(item))
+
+        if approved:
+            system_message_service.create_message(
+                db=db,
+                username=username,
+                title="本轮配套资源已通过教师审核",
+                content=f"你本轮学习生成的 {len(approved)} 份配套资源已通过教师审核，已进入资源库。",
+                category="资源审核",
+                commit=False,
+            )
+
+        db.commit()
+        return approved
+    except Exception:
+        db.rollback()
+        return []
 
 
 def reject_resource(

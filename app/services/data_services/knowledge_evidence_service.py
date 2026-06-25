@@ -229,7 +229,7 @@ def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: f
             candidates.append({
                 "kind": "course_knowledge",
                 "title": row.topic or "课程知识点",
-                "source": row.chapter or "人工智能导论初始知识库",
+                "source": row.chapter or "人工智能初始知识库",
                 "excerpt": _first_matching_excerpt(topic_fields + body_fields, terms),
                 "score": relevance["score"],
                 "topic_match": relevance["topic_match"],

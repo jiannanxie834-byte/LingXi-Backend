@@ -18,6 +18,8 @@ from app.services.data_services import (
     conversation_router,
     semantic_analysis_service,
     resource_policy_service,
+    course_scope_service,
+    ai_course_map_service,
 )
 
 from app.agents.evaluation_agent import run as eval_run
@@ -51,6 +53,7 @@ KNOWN_TOPIC_ALIASES = {
     "rag": "RAG",
     "信息安全": "信息安全",
     "人工智能": "人工智能",
+    "人工智能导论": "人工智能",
     "机器学习": "机器学习",
     "深度学习": "深度学习",
     "神经网络": "神经网络",
@@ -66,11 +69,11 @@ def _fallback_topic_from_message(message: str):
     compact = re.sub(r"\s+", "", text.lower())
     for alias, topic in KNOWN_TOPIC_ALIASES.items():
         if alias in compact:
-            return topic
+            return course_scope_service.normalize_course_topic(topic)
 
     match = re.search(r"(?:学习|想学|了解|解释|讲讲|讲一下)([A-Za-z0-9+#.\u4e00-\u9fff]{2,30})", text)
     if match:
-        return match.group(1).strip("，。！？,.!? ")
+        return course_scope_service.normalize_course_topic(match.group(1).strip("，。！？,.!? "))
     return ""
 
 
@@ -318,6 +321,7 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
     quality_constraints = "\n".join([f"- {rule}" for rule in item.get("quality_constraints", [])])
     forbidden_terms = "、".join(item.get("forbidden_terms", [])) or "无"
     feedback_sources = item.get("feedback_evidence_sources") or []
+    course_map_prompt = ai_course_map_service.format_course_map_for_prompt(item.get("ai_course_map") or {})
     feedback_rules = ""
     if item.get("type") == resource_policy_service.FEEDBACK_RESOURCE_TYPE:
         feedback_rules = f"""
@@ -355,6 +359,8 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 是否允许代码内容：{"true" if allow_code else "false"}
 学习目标：{intent}
 资源规格：{'、'.join(item.get('requirements') or [])}
+人工智能课程地图：
+{course_map_prompt}
 禁止词/禁用方向：{forbidden_terms}
 质量约束：
 {quality_constraints or "- 练习题必须考查主题本身，不得改写成学习规划题"}
@@ -367,6 +373,12 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 
 要求：
 - 内容必须适合高校课程学习场景
+- 如果已匹配人工智能课程地图，正文必须出现对应课程章节或至少 2 个核心知识点，避免泛泛而谈。
+- 讲解文档必须解释概念、结构、例子和常见误区。
+- 思维导图必须体现章节关系、前置知识和核心概念连接。
+- 练习题必须包含选择题、判断题、简答题或应用题，并给出答案和解析。
+- 拓展阅读必须给出具体阅读主题、关键词和阅读问题，或明确外部来源条目。
+- 实践任务必须写清任务目标、输入输出、操作步骤和验收标准。
 - 如果学生水平为“未确认”，不得写“进阶学习者”“高阶学习者”“B1/B2/C1/C2”“已经具备”等具体水平。
 - 如果学科类型不是 computer_science，且是否允许代码内容为 false，不得生成代码、伪代码、函数、编程框架、算法实现。
 - 练习题必须考查主题本身，不得考查“如何规划学习路径”。
@@ -436,7 +448,8 @@ def _preview_resource_plan(resource_plan):
             preview.append({
                 "title": title,
                 "type": r_type,
-                "status": "整理中",
+                "summary": str(item.get("summary") or "").strip(),
+                "status": "待审核",
             })
     return preview
 
@@ -634,7 +647,10 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
     eval_result = eval_run(message)
     intent = eval_result.get("intent", "") or "概念讲解"
     semantic_result = semantic_analysis_service.analyze_learning_request(db, username, message, eval_result)
-    topic = semantic_result.get("topic") or eval_result.get("topic", "") or route.topic or _fallback_topic_from_message(message)
+    topic = course_scope_service.normalize_course_topic(
+        semantic_result.get("topic") or eval_result.get("topic", "") or route.topic or _fallback_topic_from_message(message)
+    )
+    semantic_result["topic"] = topic
 
     evidence_query = " ".join([message, topic or "", intent or ""]).strip()
     evidence = knowledge_evidence_service.search_course_evidence(db, evidence_query, limit=4)
@@ -778,7 +794,42 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     eval_result = eval_run(message)
     intent = eval_result.get("intent", "")
     semantic_result = semantic_analysis_service.analyze_learning_request(db, username, message, eval_result)
-    topic = semantic_result.get("topic") or eval_result.get("topic", "") or _fallback_topic_from_message(message)
+    topic = course_scope_service.normalize_course_topic(
+        semantic_result.get("topic") or eval_result.get("topic", "") or _fallback_topic_from_message(message)
+    )
+    semantic_result["topic"] = topic
+
+    if not semantic_result.get("is_supported_scope", True):
+        session_state = _save_session_state(
+            db,
+            username,
+            session_id,
+            last_topic="",
+            last_intent=intent,
+            last_route_type="out_of_scope",
+            last_assistant_action="out_of_scope_reply",
+            pending_action="awaiting_supported_course",
+        )
+        return {
+            "reply": "",
+            "tutor_result": {"content": course_scope_service.build_out_of_scope_reply(topic)},
+            "profile": {},
+            "path": None,
+            "resources": [],
+            "resource_status": {},
+            "intent": intent,
+            "topic": topic,
+            "route_type": "out_of_scope",
+            "session_state": session_state,
+            "auto_generated": False,
+            "pipeline_steps": [],
+            "safety_summary": _summarize_safety([]),
+            "evidence": [],
+            "teaching_sources": {"items": [], "meta": {"strategy": "未启用"}},
+            "external_evidence": {"items": [], "meta": {"strategy": "未启用"}},
+            "content_type": "conversation_reply",
+            "response_message": "已回复",
+        }
     pipeline_steps = [
         _pipeline_step(
             "intent",
@@ -850,6 +901,9 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
 - 学科类型：{semantic_result.get("subject_category", "unknown")}
 - 知识水平：{semantic_result.get("level", "未确认")}
 - 水平证据：{semantic_result.get("level_source", "none")}
+
+人工智能课程地图：
+{ai_course_map_service.format_course_map_for_prompt(semantic_result.get("ai_course_map") or {})}
 
 要求：
 - 优先依据课程资料回答，并把无法确定的内容放入 caveats
@@ -971,9 +1025,9 @@ JSON 字段：
         # 6.4 资源内容生成进入后台任务，不阻塞聊天接口
         resources = _preview_resource_plan(resource_plan)
         resource_status = {
-            "status": "queued",
+            "status": "pending_review",
             "count": len(resources),
-            "message": "配套资料正在整理，完成后会进入资源库。",
+            "message": "配套资源已生成，正在进行教师审核。审核通过后会进入资源库。",
             "items": resources,
         }
         if background_tasks is not None:
@@ -1030,7 +1084,7 @@ JSON 字段：
     is_unknown_semantic = semantic_result.get("subject_category") == "unknown"
     public_route_type = "clarification_needed" if is_unknown_semantic else turn_route.route_type
     last_assistant_action = "asked_clarification" if is_unknown_semantic else ("generated_learning_path" if should_plan else "answered_learning_question")
-    pending_action = "awaiting_topic" if is_unknown_semantic else ("resource_review_pending" if resource_status.get("status") == "queued" else "continue_learning_help")
+    pending_action = "awaiting_topic" if is_unknown_semantic else ("resource_review_pending" if resource_status.get("status") in {"queued", "pending_review"} else "continue_learning_help")
     session_state = _save_session_state(
         db,
         username,

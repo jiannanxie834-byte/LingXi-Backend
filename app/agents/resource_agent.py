@@ -43,24 +43,28 @@ def _validate_resource_plan(plan):
 
 
 def run(plan, profile, semantic_result=None, generation_context=None):
-    from app.services.data_services import resource_policy_service, resource_spec_service
+    from app.services.data_services import ai_course_map_service, course_scope_service, resource_policy_service, resource_spec_service
 
     semantic_result = semantic_result or {}
     generation_context = generation_context or {}
-    topic = profile.get("topic") or profile.get("knowledge_topic") or "当前主题"
+    topic = course_scope_service.normalize_course_topic(
+        profile.get("topic") or profile.get("knowledge_topic") or semantic_result.get("topic") or "当前主题"
+    )
     intent = profile.get("intent") or profile.get("goal") or "综合学习"
     subject_category = profile.get("subject_category") or semantic_result.get("subject_category") or "unknown"
+    course_match = semantic_result.get("ai_course_map") or ai_course_map_service.match_ai_course_topic(topic)
     policy_context = {
         **generation_context,
         "intent": intent,
         "topic": topic,
         "subject_category": subject_category,
+        "ai_course_map": course_match,
     }
     resource_types = resource_policy_service.select_resource_types(policy_context)
 
     if subject_category == "unknown":
         return _validate_resource_plan({
-            "semantic_result": semantic_result,
+            "semantic_result": {**semantic_result, "ai_course_map": course_match},
             "generation_context": policy_context,
             "resources": [
                 {
@@ -81,8 +85,9 @@ def run(plan, profile, semantic_result=None, generation_context=None):
         })
 
     resource_plan = {
-        "semantic_result": semantic_result,
+        "semantic_result": {**semantic_result, "ai_course_map": course_match},
         "generation_context": policy_context,
+        "ai_course_map": course_match,
         "resources": [
             _build_resource_item(
                 topic=topic,
@@ -93,6 +98,7 @@ def run(plan, profile, semantic_result=None, generation_context=None):
                 semantic_result=semantic_result,
                 subject_category=subject_category,
                 generation_context=policy_context,
+                course_match=course_match,
             )
             for resource_type in resource_types
         ]
@@ -101,7 +107,7 @@ def run(plan, profile, semantic_result=None, generation_context=None):
     return _validate_resource_plan(resource_plan)
 
 
-def _build_resource_item(topic, intent, resource_type, plan_title, profile, semantic_result, subject_category, generation_context):
+def _build_resource_item(topic, intent, resource_type, plan_title, profile, semantic_result, subject_category, generation_context, course_match=None):
     from app.services.data_services import resource_spec_service
 
     spec = resource_spec_service.get_resource_spec(
@@ -125,4 +131,5 @@ def _build_resource_item(topic, intent, resource_type, plan_title, profile, sema
         "forbidden_terms": spec.get("forbidden_terms", []),
         "allow_code_content": spec.get("allow_code_content", False),
         "feedback_evidence_sources": generation_context.get("evidence_sources", []),
+        "ai_course_map": course_match or {},
     }

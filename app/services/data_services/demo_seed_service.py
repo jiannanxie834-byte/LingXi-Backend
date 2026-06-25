@@ -190,9 +190,9 @@ def _seed_users(db: Session):
         "password": "123456",
         "role": "student",
         "avatar": "",
-        "bio": "人工智能导论课程学习者，当前重点补强监督学习、模型评估和主题资源包表达。",
+        "bio": "人工智能课程学习者，当前重点补强监督学习、模型评估和主题资源包表达。",
         "hours": 42,
-        "tags": "人工智能导论,监督学习与模型评估,混淆矩阵,大语言模型,RAG,主题学习包,实践驱动",
+        "tags": "人工智能,监督学习与模型评估,混淆矩阵,大语言模型,RAG,主题学习包,实践驱动",
     })
     _upsert_user(db, {
         "username": "demo_basic",
@@ -200,7 +200,7 @@ def _seed_users(db: Session):
         "password": "123456",
         "role": "student",
         "avatar": "",
-        "bio": "刚开始学习人工智能导论，适合演示新手画像和基础路径推荐。",
+        "bio": "刚开始学习人工智能，适合演示新手画像和基础路径推荐。",
         "hours": 6,
         "tags": "人工智能概述,基础薄弱,概念入门",
     })
@@ -215,7 +215,7 @@ def _seed_resources(db: Session):
             "status": "已通过",
             "uploader": "资源生成 Agent",
             "summary": "面向监督学习薄弱学生，解释分类、回归、混淆矩阵和指标取舍。",
-            "source": "人工智能导论初始知识库 / 第 4 章 监督学习与模型评估",
+            "source": "人工智能初始知识库 / 第 4 章 监督学习与模型评估",
             "content": """# 监督学习与模型评估重点讲解
 
 ## 学习目标
@@ -231,17 +231,17 @@ def _seed_resources(db: Session):
         },
         {
             "id": "DEMO_RES_APPROVED_MINDMAP",
-            "title": "人工智能导论知识结构图",
+            "title": "人工智能知识结构图",
             "type": "知识点思维导图",
             "status": "已通过",
             "uploader": "课程知识库种子",
-            "summary": "用 Mermaid 图展示人工智能导论 8 个章节之间的关系。",
-            "source": "人工智能导论初始知识库 / 课程大纲",
-            "content": """# 人工智能导论知识结构图
+            "summary": "用 Mermaid 图展示人工智能 8 个章节之间的关系。",
+            "source": "人工智能初始知识库 / 课程大纲",
+            "content": """# 人工智能知识结构图
 
 ```mermaid
 flowchart TD
-    A[人工智能导论] --> B[搜索与问题求解]
+    A[人工智能] --> B[搜索与问题求解]
     A --> C[机器学习基础]
     C --> D[监督学习与评估]
     C --> E[神经网络与深度学习]
@@ -260,7 +260,7 @@ flowchart TD
             "status": "已通过",
             "uploader": "资源生成 Agent",
             "summary": "包含概念判断、指标计算和场景解释题。",
-            "source": "人工智能导论初始知识库 / 第 4 章 监督学习与模型评估",
+            "source": "人工智能初始知识库 / 第 4 章 监督学习与模型评估",
             "content": """# 混淆矩阵分层练习与题解
 
 ## 概念题
@@ -283,7 +283,7 @@ TP=36，FP=12，FN=9，TN=143。
             "status": "待审核",
             "uploader": "资源生成 Agent",
             "summary": "包含文字讲解、流程图、代码注释和分步题解，用于演示计算机课程资源审核。",
-            "source": "人工智能导论初始知识库 / 第 4 章 监督学习与模型评估",
+            "source": "人工智能初始知识库 / 第 4 章 监督学习与模型评估",
             "content": """# 监督学习展示讲解文档
 
 ## 文字讲解
@@ -327,7 +327,7 @@ recall = tp / (tp + fn)     # 真实正类中有多少被找出来
             "status": "待审核",
             "uploader": "资源生成 Agent",
             "summary": "要求学生设计一个监督学习任务，用指标解释模型是否适合学习预警。",
-            "source": "人工智能导论初始知识库 / 实践项目任务书",
+            "source": "人工智能初始知识库 / 实践项目任务书",
             "content": """# 学习风险预警模型实践任务
 
 ## 任务目标
@@ -349,7 +349,7 @@ recall = tp / (tp + fn)     # 真实正类中有多少被找出来
             "status": "待审核",
             "uploader": "学习评价 Agent",
             "summary": "识别学生在混淆矩阵、精确率、召回率上的薄弱点，并生成补救建议。",
-            "source": "人工智能导论初始知识库 / 学习评价 Agent",
+            "source": "人工智能初始知识库 / 学习评价 Agent",
             "content": """# 监督学习与模型评估错题诊断报告
 
 ## 诊断结论
@@ -496,7 +496,7 @@ def _basic_plans() -> List[Dict]:
     return [
         {
             "id": "route_demo_basic_intro",
-            "title": "人工智能导论 · 入门学习路线",
+            "title": "人工智能 · 入门学习路线",
             "isCollapsed": False,
             "isAiGenerated": True,
             "tasks": [
@@ -514,7 +514,7 @@ def _basic_plans() -> List[Dict]:
                     "desc": "先看课程整体结构，再选择下一章学习。",
                     "status": "pending",
                     "isCustom": False,
-                    "resources": ["人工智能导论知识结构图"],
+                    "resources": ["人工智能知识结构图"],
                 },
             ],
         }

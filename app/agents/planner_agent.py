@@ -27,11 +27,48 @@ def _step(title, objective, resource_focus, status="pending"):
 
 
 def run(profile, semantic_result=None):
+    from app.services.data_services import ai_course_map_service, course_scope_service
+
     semantic_result = semantic_result or {}
-    topic = profile.get("topic") or profile.get("knowledge_topic") or "当前主题"
+    topic = course_scope_service.normalize_course_topic(
+        profile.get("topic") or profile.get("knowledge_topic") or semantic_result.get("topic") or "当前主题"
+    )
     intent = profile.get("intent") or profile.get("goal") or "综合学习"
     subject_category = profile.get("subject_category") or semantic_result.get("subject_category") or "unknown"
     level = profile.get("level") or semantic_result.get("level") or "未确认"
+    course_match = semantic_result.get("ai_course_map") or ai_course_map_service.match_ai_course_topic(topic)
+
+    if course_match.get("matched"):
+        chapter = course_match.get("chapter") or "人工智能"
+        core_topics = course_match.get("core_topics") or [topic]
+        prerequisites = course_match.get("prerequisites") or []
+        practice_tasks = course_match.get("practice_tasks") or []
+        prerequisite_text = "、".join(prerequisites) if prerequisites else "人工智能基础概念"
+        core_text = "、".join(core_topics)
+        practice_text = practice_tasks[0] if practice_tasks else f"完成一个围绕 {topic} 的小型实践任务"
+
+        if topic == "LSTM":
+            return _validate_plan({
+                "title": "LSTM · 序列模型学习路线",
+                "steps": [
+                    _step("第 1 步：补齐神经网络和 RNN 基础", "确认前向传播、反向传播、序列数据和 RNN 隐状态的作用，理解为什么序列任务需要上下文记忆。", ["神经网络基础讲解", "RNN 与序列数据导图"], "active"),
+                    _step("第 2 步：理解 LSTM 门控结构", "学习遗忘门、输入门、输出门和候选记忆，比较 LSTM 与普通 RNN 在长期依赖问题上的差异。", ["LSTM 结构讲解文档", "门控机制思维导图"]),
+                    _step("第 3 步：完成门控机制练习", "通过判断题、公式理解题和结构标注题检查是否真正理解门控更新过程。", ["不同类型练习题目"]),
+                    _step("第 4 步：阅读结构图和对比材料", "阅读 LSTM 单元结构图，对照 RNN、LSTM、Transformer 的序列建模方式。", ["拓展阅读材料", "知识点思维导图"]),
+                    _step("第 5 步：完成序列预测实践", "用一个小型序列数据完成 RNN 或 LSTM 预测任务，记录输入、输出、训练现象和误差变化。", ["学科实践应用任务"]),
+                ],
+            })
+
+        return _validate_plan({
+            "title": f"{topic} · {chapter}学习路线",
+            "steps": [
+                _step("第 1 步：确认前置知识", f"先检查「{prerequisite_text}」是否掌握，再进入「{chapter}」。", ["前置知识自查", "专业课程讲解文档"], "active"),
+                _step("第 2 步：建立章节框架", f"围绕 {core_text} 建立概念关系，明确每个知识点解决的问题。", ["知识点思维导图"]),
+                _step("第 3 步：攻克核心机制", f"重点理解「{topic}」在 {chapter} 中的作用、适用场景和常见误区。", ["专业课程讲解文档", "不同类型练习题目"]),
+                _step("第 4 步：完成分层练习", "完成选择题、判断题、简答题和应用题，要求写出答案和解析依据。", ["不同类型练习题目"]),
+                _step("第 5 步：完成实践任务", practice_text, ["学科实践应用任务", "拓展阅读材料"]),
+            ],
+        })
 
     if subject_category == "unknown":
         return _validate_plan({

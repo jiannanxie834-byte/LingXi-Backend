@@ -13,7 +13,7 @@ app/
     data_services/         业务服务层
     llm_provider.py        DeepSeek / 讯飞星火 / 本地兜底调用封装
 data/
-  knowledge_base/          《人工智能导论》初始课程知识库
+  knowledge_base/          人工智能初始课程知识库
 scripts/
   seed_demo_data.py        演示基准数据重置脚本
 ```

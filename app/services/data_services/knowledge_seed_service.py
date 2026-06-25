@@ -72,7 +72,7 @@ def _build_resource_notes(resource: Dict, content: str, manifest: Dict) -> str:
         reviewer="课程知识库预审 Agent",
     )
     base_note = (
-        "系统内置初始课程知识库资源，来源于参赛团队自构建的《人工智能导论》课程文档集；"
+        "系统内置初始课程知识库资源，来源于参赛团队自构建的人工智能课程文档集；"
         "已通过预审，可直接作为学生端初始资源和智能体生成依据。"
     )
     return content_guard_service.attach_review_note(base_note, review)
@@ -132,7 +132,7 @@ def seed_initial_course_knowledge_base(db: Session) -> Dict:
         db.commit()
         return {
             "success": True,
-            "course": manifest.get("course_name", "人工智能导论"),
+            "course": manifest.get("course_name", "人工智能"),
             "knowledge_points": knowledge_count,
             "resources": resource_count,
         }

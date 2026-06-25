@@ -2,6 +2,7 @@ import re
 from typing import Dict, Tuple
 
 from app.services.llm_provider import chat_json, is_enabled
+from app.services.data_services import ai_course_map_service, course_scope_service
 
 
 SUBJECT_CATEGORIES = {
@@ -26,6 +27,7 @@ FOREIGN_LANGUAGE_TERMS = {
 
 COMPUTER_TERMS = {
     "人工智能",
+    "人工智能导论",
     "机器学习",
     "深度学习",
     "神经网络",
@@ -332,16 +334,33 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         or bool(rule_result.get("is_programming_related"))
     )
 
+    normalized_topic = course_scope_service.normalize_course_topic(
+        rule_result.get("topic") or eval_topic or "未确认主题"
+    )
+    ai_course_match = ai_course_map_service.match_ai_course_topic(normalized_topic, message)
+    if ai_course_match.get("matched"):
+        normalized_topic = course_scope_service.normalize_course_topic(ai_course_match.get("topic") or normalized_topic)
+        rule_result["topic"] = normalized_topic
+        if rule_result.get("subject_category") == "unknown":
+            rule_result["subject_category"] = "computer_science"
+
     level_info = profile_service.infer_topic_level_from_evidence(
         db=db,
         username=username,
-        topic=rule_result.get("topic") or eval_topic,
+        topic=normalized_topic,
         subject_category=rule_result.get("subject_category") or "unknown",
         message=message,
     )
 
     subject_category = rule_result.get("subject_category") or "unknown"
-    should_generate_resources = subject_category != "unknown" and requested_action in {
+    scoped_result = {
+        **rule_result,
+        "topic": normalized_topic,
+        "subject_category": subject_category,
+        "message": message,
+    }
+    is_supported_scope = course_scope_service.is_supported_learning_scope(scoped_result)
+    should_generate_resources = is_supported_scope and requested_action in {
         "path_plan",
         "resource_generation",
         "exercise",
@@ -349,12 +368,14 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     }
 
     return {
-        "topic": rule_result.get("topic") or eval_topic or "未确认主题",
+        "topic": normalized_topic,
         "raw_topic": eval_topic or rule_result.get("topic") or "",
         "subject_category": subject_category,
         "language": rule_result.get("language") or "",
         "requested_action": requested_action,
         "is_learning_request": requested_action not in {"chat", "unknown"},
+        "is_supported_scope": is_supported_scope,
+        "ai_course_map": ai_course_match,
         "is_programming_related": is_programming_related,
         "level": level_info.get("level", "未确认"),
         "level_source": level_info.get("level_source", "none"),

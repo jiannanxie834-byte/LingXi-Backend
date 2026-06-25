@@ -161,6 +161,12 @@ class ResourceActionRequest(BaseModel):
     id: str
     comment: str = ""
 
+
+class LatestResourceApproveRequest(BaseModel):
+    username: str
+    limit: int = 10
+
+
 @router.post("/resources/approve")
 async def approve_resource(
     data: ResourceActionRequest,
@@ -172,6 +178,31 @@ async def approve_resource(
         return {"code": 200, "message": "资源已通过审核"}
 
     raise HTTPException(status_code=400, detail="未找到资源")
+
+
+@router.post("/resources/approve-latest")
+async def approve_latest_resources(
+    data: LatestResourceApproveRequest,
+    db: Session = Depends(get_db)
+):
+    username = (data.username or "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="缺少 username")
+
+    approved = resource_service.approve_pending_resources_by_applicant(
+        db,
+        applicant_username=username,
+        limit=data.limit,
+    )
+
+    return {
+        "code": 200,
+        "message": f"已通过该学生最近生成的 {len(approved)} 份资源",
+        "data": {
+            "count": len(approved),
+            "resources": approved,
+        },
+    }
 
 @router.post("/resources/reject")
 async def reject_resource(

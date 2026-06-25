@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy.orm import Session
 from app.models.schemas import EvaluationRecord
 from app.services.data_services import (
+    ai_course_map_service,
     knowledge_service,
     learning_plan_service,
     profile_service,
@@ -31,9 +32,9 @@ COURSE_KNOWLEDGE = [
         "practice": "清洗一份学生学习行为数据并输出每周学习时长趋势",
     },
     {
-        "topic": "人工智能导论",
+        "topic": "人工智能",
         "keywords": ["人工智能", "机器学习", "深度学习", "模型", "神经网络", "分类", "训练"],
-        "chapter": "人工智能导论 / 机器学习基础",
+        "chapter": "人工智能 / 机器学习基础",
         "core": "监督学习、特征工程、训练验证划分、模型评估",
         "pitfalls": ["只看准确率不看混淆矩阵", "训练集和测试集泄漏", "没有记录实验参数"],
         "practice": "用公开数据集训练一个分类器并解释评估指标",
@@ -107,6 +108,22 @@ def _infer_knowledge(text: str, knowledge_base: list = None):
     for item in items:
         if any(keyword in lowered for keyword in item["keywords"]):
             return item
+    course_match = ai_course_map_service.match_ai_course_topic("", text)
+    if course_match.get("matched"):
+        core = "、".join(course_match.get("core_topics") or [])
+        practice = (course_match.get("practice_tasks") or ["完成一次同主题练习并记录错因"])[0]
+        pitfalls = {
+            "模型评估": ["混淆准确率、精确率和召回率的适用场景", "只看单一指标而忽略业务代价"],
+            "序列模型": ["混淆 RNN 与 LSTM 的记忆机制", "不理解遗忘门、输入门和输出门的作用"],
+        }.get(course_match.get("chapter"), ["核心概念理解不稳定", "缺少同主题练习和错因复盘"])
+        return {
+            "topic": course_match.get("topic") or course_match.get("chapter"),
+            "keywords": course_match.get("core_topics") or [course_match.get("topic")],
+            "chapter": f"人工智能 / {course_match.get('chapter')}",
+            "core": core or course_match.get("topic") or "人工智能课程核心知识点",
+            "pitfalls": pitfalls,
+            "practice": practice,
+        }
     return items[2] if len(items) > 2 else COURSE_KNOWLEDGE[2]
 
 
@@ -147,7 +164,12 @@ def _build_diagnosis_content(knowledge: dict, notes: str, score: int, level: str
 {score} 分，掌握等级：{level}
 
 ## 学习内容摘要
-{notes or "学生暂未填写详细错题描述，系统根据平台数据给出基础诊断。"}
+{notes or "学生暂未填写详细错题描述，系统仅根据本次评价入口生成基础诊断。"}
+
+## 诊断依据
+- 本报告依据学生在评价页提交的错题说明、作答摘要和自评置信度生成。
+- 当前反馈文本：{notes or "暂无详细错题说明"}
+- 未使用平台总学习时长推断本主题掌握水平。
 
 ## 主要薄弱点
 {weak_lines}
@@ -166,7 +188,7 @@ def _build_diagnosis_resource(knowledge: dict, title: str, notes: str, score: in
         "title": title,
         "summary": f"{level}：识别出 {len(weak_points)} 个薄弱点，并生成补救路线。",
         "source": f"{knowledge['chapter']} / 学习评价 Agent",
-        "agent_notes": "由学习评价 Agent 根据学生作答、错题描述或平台学习数据生成，建议管理员核对诊断建议是否贴合课程要求。",
+        "agent_notes": "由学习评价 Agent 根据学生作答、错题描述或本次评价反馈生成；未使用总学习时长推断本主题水平，建议管理员核对诊断建议是否贴合课程要求。",
         "content": _build_diagnosis_content(knowledge, notes, score, level, weak_points, suggestions),
     }
 
@@ -331,6 +353,14 @@ def handle_learning_evaluation(
         knowledge_topic=knowledge["topic"],
         score=score,
         db=db,
+        semantic_result={
+            "topic": knowledge["topic"],
+            "subject_category": "computer_science",
+            "level": level,
+            "level_source": "current_evaluation",
+            "level_evidence": f"本次学习评价得分 {score}，反馈主题：{knowledge['topic']}",
+            "needs_level_diagnosis": False,
+        },
     )
     if updated_user:
         profile["tags"] = profile_service.merge_tags(updated_user["tags"], profile.get("tags", []))
