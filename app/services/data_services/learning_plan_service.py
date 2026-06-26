@@ -68,38 +68,87 @@ def save_generated_plan(
 ):
     plans = get_plans_by_username(db, username)
 
-    resource_titles = [
-        item.get("title")
-        for item in resources
-        if item.get("title")
+    resource_items = [
+        item for item in (resources or [])
+        if isinstance(item, dict) and item.get("title")
     ]
+
+    def _resource_type_matches(focus_type: str, resource_type: str) -> bool:
+        focus = str(focus_type or "").strip()
+        current = str(resource_type or "").strip()
+        if not focus or not current:
+            return False
+        return focus == current or focus in current or current in focus
+
+    def _resource_for_step(step: dict, idx: int):
+        step_unit_id = str(step.get("unit_id") or "").strip()
+        focus_types = step.get("resource_focus") if isinstance(step.get("resource_focus"), list) else []
+        matched = []
+        for item in resource_items:
+            item_unit_id = str(item.get("unit_id") or "").strip()
+            item_type = str(item.get("type") or "").strip()
+            unit_ok = not step_unit_id or not item_unit_id or item_unit_id == step_unit_id
+            focus_ok = not focus_types or any(_resource_type_matches(focus, item_type) for focus in focus_types)
+            if unit_ok and focus_ok:
+                matched.append(item)
+
+        if not matched:
+            matched = [
+                item for item in resource_items
+                if not step_unit_id or str(item.get("unit_id") or "").strip() in {"", step_unit_id}
+            ]
+        if not matched:
+            matched = resource_items
+
+        result = []
+        for r_index, item in enumerate(matched[:3]):
+            resource_type = item.get("type") or "学习资源"
+            unit_id = item.get("unit_id") or step_unit_id
+            result.append({
+                "id": item.get("artifact_id") or item.get("id") or f"res_{idx + 1}_{r_index + 1}",
+                "title": item.get("title") or f"{step.get('title') or '学习步骤'}配套资源",
+                "type": resource_type,
+                "unit_id": unit_id,
+                "route": "/resource",
+                "query": {
+                    "artifact_id": item.get("artifact_id") or item.get("id") or "",
+                    "unit_id": unit_id,
+                    "type": resource_type,
+                },
+            })
+        return result
 
     def _task_from_step(step, idx):
         if isinstance(step, dict):
+            unit_id = step.get("unit_id") or ""
             return {
-                "id": idx + 1,
+                "id": step.get("id") or f"node_{idx + 1:03d}",
                 "title": step.get("title") or f"任务 {idx + 1}",
                 "desc": step.get("objective") or "",
                 "status": step.get("status") or ("active" if idx == 0 else "pending"),
                 "isCustom": False,
-                "resources": resource_titles[:3],
+                "unit_id": unit_id,
+                "resources": _resource_for_step(step, idx),
                 "resource_focus": step.get("resource_focus") or [],
             }
 
         text = str(step or "")
+        step_dict = {"title": text, "unit_id": "", "resource_focus": []}
         return {
-            "id": idx + 1,
+            "id": f"node_{idx + 1:03d}",
             "title": text.split("：", 1)[0] if "：" in text else f"任务 {idx + 1}",
             "desc": text.split("：", 1)[1] if "：" in text else text,
             "status": "active" if idx == 0 else "pending",
             "isCustom": False,
-            "resources": resource_titles[:3],
+            "unit_id": "",
+            "resources": _resource_for_step(step_dict, idx),
             "resource_focus": [],
         }
 
     new_plan = {
         "id": f"route_{uuid.uuid4().hex[:8]}",
         "title": title,
+        "desc": f"围绕「{title}」生成的《深度学习》个性化学习路线。",
         "isCollapsed": False,
         "isAiGenerated": True,
         "tasks": [
