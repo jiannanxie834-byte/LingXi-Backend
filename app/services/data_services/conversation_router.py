@@ -131,16 +131,29 @@ CONCEPT_QUESTION_PATTERNS = (
 )
 
 KNOWN_TOPIC_ALIASES = {
-    "rnn": "RNN",
-    "lstm": "LSTM",
-    "transformer": "Transformer",
-    "rag": "RAG",
-    "cnn": "CNN",
-    "信息安全": "信息安全",
-    "人工智能": "人工智能",
-    "机器学习": "机器学习",
     "深度学习": "深度学习",
-    "神经网络": "神经网络",
+    "神经网络": "神经网络基础",
+    "cnn": "卷积神经网络",
+    "卷积神经网络": "卷积神经网络",
+    "卷积": "卷积神经网络",
+    "反向传播": "反向传播",
+    "bp": "反向传播",
+    "backprop": "反向传播",
+    "sgd": "优化算法",
+    "adam": "优化算法",
+    "dropout": "正则化",
+    "batchnorm": "正则化",
+    "rnn": "RNN/LSTM/GRU",
+    "lstm": "RNN/LSTM/GRU",
+    "gru": "RNN/LSTM/GRU",
+    "transformer": "Transformer",
+    "attention": "自注意力机制",
+    "自注意力": "自注意力机制",
+    "qkv": "自注意力机制",
+    "gan": "生成模型",
+    "扩散模型": "生成模型",
+    "pytorch": "PyTorch 深度学习工程实践",
+    "图像分类项目": "深度学习课程综合项目",
 }
 
 

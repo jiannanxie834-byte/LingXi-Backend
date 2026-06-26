@@ -15,6 +15,8 @@ from app.models.schemas import (
 )
 from app.services.data_services import (
     content_guard_service,
+    resource_artifact_type_service as artifact_types,
+    resource_artifact_service,
     resource_policy_service,
     resource_quality_gate,
     system_message_service,
@@ -27,26 +29,14 @@ from app.services.data_services.knowledge_tag_service import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_RESOURCE_TYPES = [
-    "专业课程讲解文档",
-    "知识点思维导图",
-    "不同类型练习题目",
-    "拓展阅读材料",
-    "错题诊断与学习反馈报告",
-    "学科实践应用任务",
+    *artifact_types.ACTIVE_ARTIFACT_TYPES,
+    *artifact_types.EXPORTABLE_ARTIFACT_TYPES,
+    *artifact_types.EVENT_TRIGGERED_ARTIFACT_TYPES,
 ]
 
-DEPRECATED_AI_RESOURCE_TYPES = {
-    "多模态学习包",
-}
+DEPRECATED_AI_RESOURCE_TYPES = set(artifact_types.DEPRECATED_ARTIFACT_TYPES)
 
-DEPRECATED_RESOURCE_TYPES = {
-    "多模态教学视频/动画",
-    "多模态视频",
-    "教学视频",
-    "视频",
-    "动画",
-    "代码类实操案例",
-}
+DEPRECATED_RESOURCE_TYPES = set(artifact_types.DEPRECATED_ARTIFACT_TYPES)
 
 SYSTEM_UPLOADERS = {
     "system",
@@ -63,9 +53,7 @@ SYSTEM_UPLOADERS = {
 
 def _is_deprecated_resource_type(type_name: str):
     normalized_type = (type_name or "").strip()
-    if normalized_type.isdigit():
-        return True
-    return any(item == normalized_type or item in normalized_type for item in DEPRECATED_RESOURCE_TYPES)
+    return artifact_types.is_deprecated(normalized_type)
 
 
 def _new_resource_id():
@@ -232,20 +220,20 @@ def _preferred_resource_types(context):
     weak_text = _compact_text(" ".join(context.get("weak_points") or []))
 
     if avg_score is not None and avg_score < 75:
-        preferred["不同类型练习题目"] += 3
-        preferred["错题诊断与学习反馈报告"] += 3
-        preferred["知识点思维导图"] += 1
+        preferred[artifact_types.EXERCISE_SET] += 3
+        preferred[artifact_types.DIAGNOSTIC_REPORT] += 3
+        preferred[artifact_types.MIND_MAP] += 1
 
     if any(word in active_text or word in weak_text for word in ["实践", "项目", "实验", "应用", "代码", "动手"]):
-        preferred["学科实践应用任务"] += 3
-        preferred["学科实践应用任务"] += 1
+        preferred[artifact_types.CODE_LAB] += 3
+        preferred[artifact_types.PROJECT_BRIEF] += 2
 
     if any(word in active_text or word in weak_text for word in ["概念", "原理", "框架", "理解", "关系"]):
-        preferred["专业课程讲解文档"] += 2
-        preferred["知识点思维导图"] += 2
+        preferred[artifact_types.COURSE_NOTE] += 2
+        preferred[artifact_types.MIND_MAP] += 2
 
     if any(word in active_text or word in weak_text for word in ["拓展", "阅读", "论文", "资料"]):
-        preferred["拓展阅读材料"] += 3
+        preferred[artifact_types.READING_PACK] += 3
 
     return preferred
 
@@ -448,7 +436,7 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
         scored = []
         for resource in resources:
             resource_text = _resource_text(resource)
-            resource_type = resource.type or ""
+            resource_type = artifact_types.normalize_artifact_type(resource.type or "")
             if resource_type in DEPRECATED_AI_RESOURCE_TYPES:
                 continue
             weak_matches = _count_matches(resource_text, weak_terms)
@@ -474,7 +462,7 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
                 if any(key in resource_type for key in ["练习", "题", "诊断", "反馈", "导图"]):
                     evaluation_score += 7
             elif recent_avg_score is not None and recent_avg_score >= 85:
-                if any(key in resource_type for key in ["拓展", "实践", "多模态"]):
+                if any(key in resource_type for key in ["拓展", "实践", "代码", "项目", "视频", "动画", "PPT"]):
                     evaluation_score += 6
             evaluation_score = min(10, evaluation_score)
 
@@ -647,13 +635,13 @@ def approve_resource_type(
         item.status = "已通过"
         item.reviewed_at = _now_text()
 
-        item.review_comment = "分类申请已通过，可在学生端资源库中使用。"
+        item.review_comment = "分类申请已通过，可在学生端资源工厂中使用。"
 
         _notify_type_review(
             db,
             item,
             "通过",
-            f"你申请的新资源分类「{item.name}」已通过审核，现在可以在资源库中使用。",
+            f"你申请的新资源分类「{item.name}」已通过审核，现在可以在资源工厂中使用。",
         )
 
         db.commit()
@@ -756,7 +744,7 @@ def save_ai_generated_resources(
         title = plan_item.get("title") or plan_item.get("topic") or "未命名资源"
         item = {
             "title": title,
-            "type": plan_item.get("type", "专业课程讲解文档"),
+            "type": artifact_types.normalize_artifact_type(plan_item.get("type", artifact_types.COURSE_NOTE)),
             "summary": llm_item.get("summary") or plan_item.get("summary", ""),
             "content": llm_item.get("content") or plan_item.get("content", ""),
             "source": llm_item.get("source") or plan_item.get("source", ""),
@@ -765,13 +753,17 @@ def save_ai_generated_resources(
             "level": plan_item.get("level") or semantic_result.get("level", "未确认"),
             "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
             "allow_code_content": plan_item.get("allow_code_content", False),
+            "unit_id": plan_item.get("unit_id") or semantic_result.get("unit_id", ""),
+            "chapter_id": plan_item.get("chapter_id") or semantic_result.get("chapter_id", ""),
+            "course_id": plan_item.get("course_id") or semantic_result.get("course_id", ""),
+            "deep_learning_course_map": plan_item.get("deep_learning_course_map") or semantic_result.get("deep_learning_course_map") or {},
             "ai_course_map": plan_item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
         if item.get("type") in DEPRECATED_AI_RESOURCE_TYPES:
             skipped.append({
                 "title": item.get("title"),
                 "type": item.get("type"),
-                "issues": ["多模态学习包已改为主题资源包聚合视图，不再作为独立 AI 资源正文生成。"],
+                "issues": ["该资源类型已停用，新系统只生成《深度学习》Artifact 类型。"],
             })
             continue
         if (
@@ -781,7 +773,7 @@ def save_ai_generated_resources(
             skipped.append({
                 "title": item.get("title"),
                 "type": item.get("type"),
-                "issues": ["缺少真实错题、测验、评价或学习反馈记录，不能生成错题诊断与学习反馈报告。"],
+                "issues": ["缺少真实错题、测验、评价或学习反馈记录，不能生成诊断与补弱报告。"],
             })
             continue
         quality_context = {
@@ -792,6 +784,10 @@ def save_ai_generated_resources(
             "level": item.get("level"),
             "level_source": item.get("level_source"),
             "should_generate_code_content": item.get("allow_code_content", False),
+            "unit_id": item.get("unit_id", ""),
+            "chapter_id": item.get("chapter_id", ""),
+            "course_id": item.get("course_id", ""),
+            "deep_learning_course_map": item.get("deep_learning_course_map") or semantic_result.get("deep_learning_course_map") or {},
             "ai_course_map": item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
         quality = resource_quality_gate.validate_resource_semantics(item, quality_context)
@@ -855,7 +851,15 @@ def insert_generated_resources(
                 existing.review_comment = ""
                 existing.reviewed_at = ""
                 existing.time = _now_text()
-                inserted.append(_resource_to_dict(existing))
+                artifact = resource_artifact_service.upsert_from_resource(
+                    db,
+                    resource=existing,
+                    plan_item=item,
+                    semantic_result=item.get("deep_learning_course_map") or {},
+                )
+                resource_dict = _resource_to_dict(existing)
+                resource_dict["artifact"] = artifact
+                inserted.append(resource_dict)
                 continue
 
             resource = Resource(
@@ -874,7 +878,15 @@ def insert_generated_resources(
 
             db.add(resource)
             db.flush()
-            inserted.append(_resource_to_dict(resource))
+            artifact = resource_artifact_service.upsert_from_resource(
+                db,
+                resource=resource,
+                plan_item=item,
+                semantic_result=item.get("deep_learning_course_map") or {},
+            )
+            resource_dict = _resource_to_dict(resource)
+            resource_dict["artifact"] = artifact
+            inserted.append(resource_dict)
 
         db.commit()
         return inserted
@@ -938,6 +950,16 @@ def insert_new_resource(
         )
 
         db.add(resource)
+        db.flush()
+        resource_artifact_service.upsert_from_resource(
+            db,
+            resource=resource,
+            plan_item={
+                "content_format": artifact_types.get_format(artifact_types.normalize_artifact_type(r_type)),
+                "personalization_reason": "学生主动上传或补充的深度学习课程资源。",
+            },
+            semantic_result={},
+        )
 
         db.commit()
 
@@ -970,14 +992,15 @@ def approve_resource(
             return False
 
         r.status = "已通过"
-        r.review_comment = (comment or "资源内容已通过管理员审核，可在学生端资源库正常查看。").strip()
+        r.review_comment = (comment or "资源内容已通过管理员审核，可在学生端资源工厂正常查看。").strip()
         r.reviewed_at = _now_text()
+        resource_artifact_service.sync_resource_status(db, r.id, r.status)
 
         _notify_resource_review(
             db,
             r,
             "通过",
-            f"你提交或生成的资源「{r.title}」已通过审核，现已在学生端资源库开放。\n\n审核意见：{r.review_comment}",
+            f"你提交或生成的资源「{r.title}」已通过审核，现已在学生端资源工厂开放。\n\n审核意见：{r.review_comment}",
         )
 
         db.commit()
@@ -1017,8 +1040,9 @@ def approve_pending_resources_by_applicant(
         approved = []
         for item in pending:
             item.status = "已通过"
-            item.review_comment = "教师审核通过，已进入学生资源库。"
+            item.review_comment = "教师审核通过，已进入学生资源工厂。"
             item.reviewed_at = _now_text()
+            resource_artifact_service.sync_resource_status(db, item.id, item.status)
             approved.append(_resource_to_dict(item))
 
         if approved:
@@ -1026,7 +1050,7 @@ def approve_pending_resources_by_applicant(
                 db=db,
                 username=username,
                 title="本轮配套资源已通过教师审核",
-                content=f"你本轮学习生成的 {len(approved)} 份配套资源已通过教师审核，已进入资源库。",
+                content=f"你本轮学习生成的 {len(approved)} 份配套 Artifact 已通过教师审核，已进入资源工厂。",
                 category="资源审核",
                 commit=False,
             )
@@ -1058,6 +1082,7 @@ def reject_resource(
         r.status = "未通过"
         r.review_comment = (comment or "资源暂未通过审核，请根据管理员意见修改后重新提交。").strip()
         r.reviewed_at = _now_text()
+        resource_artifact_service.sync_resource_status(db, r.id, r.status)
 
         _notify_resource_review(
             db,
@@ -1095,6 +1120,7 @@ def update_resource_review_comment(
         r.status = "未通过"
         r.review_comment = (comment or "请根据管理员意见修改后重新提交。").strip()
         r.reviewed_at = _now_text()
+        resource_artifact_service.sync_resource_status(db, r.id, r.status)
 
         _notify_resource_review(
             db,

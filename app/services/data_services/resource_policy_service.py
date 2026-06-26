@@ -5,21 +5,28 @@ from typing import Dict, List
 from sqlalchemy.orm import Session
 
 from app.models.schemas import EvaluationRecord
+from app.services.data_services import resource_artifact_type_service as artifact_types
 
 
-FEEDBACK_RESOURCE_TYPE = "错题诊断与学习反馈报告"
+FEEDBACK_RESOURCE_TYPE = artifact_types.DIAGNOSTIC_REPORT
 
 BASE_LEARNING_RESOURCE_TYPES = [
-    "专业课程讲解文档",
-    "知识点思维导图",
-    "不同类型练习题目",
-    "拓展阅读材料",
-    "学科实践应用任务",
+    artifact_types.COURSE_NOTE,
+    artifact_types.MIND_MAP,
+    artifact_types.EXERCISE_SET,
+    artifact_types.READING_PACK,
+    artifact_types.CODE_LAB,
+    artifact_types.PPT_OUTLINE,
+    artifact_types.VIDEO_RECOMMENDATION,
+    artifact_types.PERSONALIZED_VIDEO_GUIDE,
+    artifact_types.INTERACTIVE_ANIMATION,
+    artifact_types.ANIMATION_STORYBOARD,
+    artifact_types.PROJECT_BRIEF,
 ]
 
-DEPRECATED_RESOURCE_TYPES = ["多模态学习包"]
+DEPRECATED_RESOURCE_TYPES = artifact_types.DEPRECATED_ARTIFACT_TYPES
 
-FEEDBACK_INTENTS = {"学习评价", "错题诊断", "反馈分析", "补弱路线"}
+FEEDBACK_INTENTS = {"学习评价", "错题诊断", "反馈分析", "补弱路线", "evaluation"}
 
 WRONG_QUESTION_MARKERS = {
     "错题",
@@ -83,11 +90,20 @@ def _record_matches(record: EvaluationRecord, topic: str, subject_category: str)
         return True
 
     subject_aliases = {
-        "foreign_language": ["法语", "英语", "日语", "德语", "西班牙语", "韩语", "俄语", "意大利语"],
-        "computer_science": ["人工智能", "机器学习", "深度学习", "信息安全", "编程", "算法", "数据库"],
-        "mathematics": ["数学", "高等数学", "线性代数", "概率论", "微积分"],
-        "physics": ["物理", "大学物理", "力学", "电磁学", "光学"],
-        "general_course": ["心理学", "管理学", "经济学", "历史", "文学", "哲学"],
+        "computer_science": [
+            "深度学习",
+            "神经网络",
+            "反向传播",
+            "梯度下降",
+            "卷积神经网络",
+            "CNN",
+            "RNN",
+            "LSTM",
+            "Transformer",
+            "自注意力",
+            "PyTorch",
+            "图像分类",
+        ],
     }.get(subject_category, [])
     text_compact = _compact(text)
     return any(_compact(alias) in text_compact for alias in subject_aliases)
@@ -112,11 +128,46 @@ def has_feedback_context(context: dict) -> bool:
     ])
 
 
+def should_generate_feedback_report(context: dict) -> bool:
+    return any([
+        context.get("explicit_wrong_context") is True,
+        context.get("explicit_quiz_context") is True,
+        context.get("user_submitted_feedback") is True,
+        context.get("intent") in FEEDBACK_INTENTS,
+    ])
+
+
 def select_resource_types(context: dict) -> List[str]:
-    resource_types = list(BASE_LEARNING_RESOURCE_TYPES)
-    if has_feedback_context(context):
+    semantic_map = context.get("deep_learning_course_map") or context.get("ai_course_map") or {}
+    learning_need_type = context.get("learning_need_type") or semantic_map.get("learning_need_type")
+    requires_code = bool(context.get("requires_code") or semantic_map.get("requires_code"))
+    requires_multimodal = bool(context.get("requires_multimodal") or semantic_map.get("requires_multimodal"))
+
+    resource_types = [
+        artifact_types.COURSE_NOTE,
+        artifact_types.MIND_MAP,
+        artifact_types.EXERCISE_SET,
+        artifact_types.READING_PACK,
+        artifact_types.PPT_OUTLINE,
+        artifact_types.VIDEO_RECOMMENDATION,
+        artifact_types.PERSONALIZED_VIDEO_GUIDE,
+    ]
+
+    if requires_code or learning_need_type in {"code_lab", "project", "practice"}:
+        resource_types.append(artifact_types.CODE_LAB)
+
+    if requires_multimodal or learning_need_type in {"resource_generation", "project", "path_planning"}:
+        resource_types.extend([
+            artifact_types.INTERACTIVE_ANIMATION,
+            artifact_types.ANIMATION_STORYBOARD,
+        ])
+
+    if learning_need_type in {"project", "code_lab"} or "项目" in _compact(context.get("topic", "")):
+        resource_types.append(artifact_types.PROJECT_BRIEF)
+
+    if should_generate_feedback_report(context):
         resource_types.append(FEEDBACK_RESOURCE_TYPE)
-    return resource_types
+    return list(dict.fromkeys(resource_types))
 
 
 def build_generation_context(
@@ -138,6 +189,8 @@ def build_generation_context(
         "has_evaluation_record": False,
         "has_wrong_question": explicit_wrong_context,
         "has_quiz_result": explicit_quiz_context,
+        "explicit_wrong_context": explicit_wrong_context,
+        "explicit_quiz_context": explicit_quiz_context,
         "user_submitted_feedback": explicit_wrong_context or explicit_quiz_context or intent in FEEDBACK_INTENTS,
         "evidence_sources": [],
     }

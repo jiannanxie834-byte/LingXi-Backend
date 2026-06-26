@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.data_services import resource_service
+from app.services.data_services import resource_artifact_service
 from app.services.data_services import pptx_export_service
 from app.services.data_services import knowledge_evidence_service
 
@@ -113,6 +114,53 @@ async def export_resource_pptx(res_id: str, db: Session = Depends(get_db)):
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
         }
+    )
+
+
+@router.get("/artifacts")
+async def list_resource_artifacts(
+    username: str = "",
+    status: str = "",
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    return {
+        "code": 200,
+        "message": "ok",
+        "data": resource_artifact_service.list_artifacts(db, username=username, status=status, limit=limit),
+    }
+
+
+@router.get("/artifacts/{artifact_id}")
+async def get_resource_artifact(artifact_id: str, db: Session = Depends(get_db)):
+    data = resource_artifact_service.get_artifact(db, artifact_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Artifact 不存在")
+    return {"code": 200, "message": "ok", "data": data}
+
+
+@router.get("/artifacts/{artifact_id}/export/pptx")
+@router.post("/artifacts/{artifact_id}/export/pptx")
+async def export_artifact_pptx(artifact_id: str, db: Session = Depends(get_db)):
+    artifact = resource_artifact_service.get_artifact(db, artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact 不存在")
+    resource_id = artifact.get("resource_id")
+    resource = resource_service.get_resource_by_id(db, resource_id) if resource_id else None
+    if not resource:
+        resource = {
+            "id": artifact_id,
+            "title": artifact.get("title"),
+            "type": artifact.get("type"),
+            "summary": artifact.get("summary"),
+            "content": artifact.get("content"),
+            "source": artifact.get("source"),
+        }
+    output, filename = pptx_export_service.build_resource_pptx(resource)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
 
 

@@ -92,7 +92,7 @@ async def demo_readiness(db: Session = Depends(get_db)):
             "label": "已开放学习资源",
             "ok": len(passed_resources) >= 10,
             "value": f"{len(passed_resources)} 份",
-            "target": "演示资源库可查阅、可导出",
+            "target": "演示资源工厂可查阅、可导出",
         },
         {
             "key": "review_queue",
@@ -106,7 +106,7 @@ async def demo_readiness(db: Session = Depends(get_db)):
             "label": "学习效果评价",
             "ok": db.query(EvaluationRecord).count() > 0,
             "value": f"{db.query(EvaluationRecord).count()} 条记录",
-            "target": "可演示错题诊断、报告与路线调整",
+            "target": "可演示诊断与补弱报告、路线调整",
         },
         {
             "key": "chat_history",

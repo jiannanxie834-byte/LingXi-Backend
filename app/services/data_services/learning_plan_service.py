@@ -192,8 +192,8 @@ def get_todos_by_username(db: Session, username: str):
         return stored
 
     default_todos = [
-        {"id": 1, "content": "完成计网第三章课后习题", "done": True},
-        {"id": 2, "content": "复习 JavaScript 异步编程", "done": False},
+        {"id": 1, "content": "完成 CNN 卷积与池化基础练习", "done": True},
+        {"id": 2, "content": "复习反向传播链式法则推导", "done": False},
     ]
 
     _save_user_todos_to_db(db, username, default_todos)

@@ -2,16 +2,11 @@ import re
 from collections import defaultdict
 from typing import Dict, List, Optional
 
+from app.services.data_services import resource_artifact_type_service as artifact_types
 
-BUNDLE_RESOURCE_TYPES = [
-    "专业课程讲解文档",
-    "知识点思维导图",
-    "不同类型练习题目",
-    "拓展阅读材料",
-    "学科实践应用任务",
-]
 
-DEPRECATED_STANDALONE_TYPES = {"多模态学习包"}
+BUNDLE_RESOURCE_TYPES = set(artifact_types.ACTIVE_ARTIFACT_TYPES)
+DEPRECATED_STANDALONE_TYPES = set(artifact_types.DEPRECATED_ARTIFACT_TYPES)
 
 
 def _clean_topic(value: str) -> str:
@@ -20,10 +15,12 @@ def _clean_topic(value: str) -> str:
     for resource_type in BUNDLE_RESOURCE_TYPES:
         topic = topic.replace(resource_type, "")
     topic = topic.strip(" -_·|｜:：/\\")
-    return topic or "主题学习"
+    return topic or "深度学习主题"
 
 
 def infer_topic_from_resource(item: dict) -> str:
+    if item.get("unit_title"):
+        return _clean_topic(item.get("unit_title"))
     if item.get("topic"):
         return _clean_topic(item.get("topic"))
 
@@ -45,23 +42,24 @@ def build_topic_bundle(topic: str, resources: List[dict], semantic_result: Optio
     items = []
 
     for item in resources:
-        if item.get("type") in DEPRECATED_STANDALONE_TYPES:
+        normalized_type = artifact_types.normalize_artifact_type(item.get("type"))
+        if normalized_type in DEPRECATED_STANDALONE_TYPES:
             continue
         items.append({
             "id": item.get("id"),
             "title": item.get("title"),
-            "type": item.get("type"),
+            "type": normalized_type,
             "summary": item.get("summary"),
             "status": item.get("status"),
         })
 
     return {
         "id": f"bundle::{_clean_topic(topic)}",
-        "title": f"{_clean_topic(topic)}学习包",
+        "title": f"{_clean_topic(topic)}主题学习包",
         "topic": _clean_topic(topic),
-        "subject_category": semantic_result.get("subject_category", "unknown"),
+        "subject_category": semantic_result.get("subject_category", "computer_science"),
         "bundle_type": "topic_resource_bundle",
-        "summary": "由讲解、导图、练习、阅读和实践任务组成的主题学习资源包。",
+        "summary": "由讲解、导图、题集、阅读、代码实验、PPT、视频推荐、观看指南、交互动画和项目任务组成的主题学习资源包。",
         "items": items,
         "resource_count": len(items),
         "type": "主题学习包",
@@ -72,9 +70,10 @@ def build_topic_bundle(topic: str, resources: List[dict], semantic_result: Optio
 def build_topic_bundles(resources: List[dict], semantic_result: Optional[Dict] = None) -> List[dict]:
     grouped = defaultdict(list)
     for item in resources or []:
-        if item.get("type") not in BUNDLE_RESOURCE_TYPES:
+        normalized_type = artifact_types.normalize_artifact_type(item.get("type"))
+        if normalized_type not in BUNDLE_RESOURCE_TYPES:
             continue
-        grouped[infer_topic_from_resource(item)].append(item)
+        grouped[infer_topic_from_resource(item)].append({**item, "type": normalized_type})
 
     bundles = []
     for topic, items in grouped.items():

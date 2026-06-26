@@ -67,11 +67,20 @@ def _topic_matches_text(topic: str, subject_category: str, text: str) -> bool:
         return True
 
     subject_aliases = {
-        "foreign_language": ["法语", "英语", "日语", "德语", "西班牙语", "韩语", "俄语", "意大利语", "语法", "词汇", "口语", "阅读"],
-        "computer_science": ["人工智能", "机器学习", "深度学习", "信息安全", "编程", "代码", "算法", "数据库", "计算机网络"],
-        "mathematics": ["数学", "高等数学", "线性代数", "概率论", "统计学", "微积分"],
-        "physics": ["物理", "力学", "电磁学", "热学", "光学"],
-        "general_course": ["管理学", "经济学", "心理学", "历史", "文学", "哲学", "通识"],
+        "computer_science": [
+            "深度学习",
+            "神经网络",
+            "反向传播",
+            "梯度下降",
+            "卷积神经网络",
+            "CNN",
+            "RNN",
+            "LSTM",
+            "Transformer",
+            "自注意力",
+            "PyTorch",
+            "图像分类",
+        ],
     }.get(subject_category, [])
     return any(_compact_text(alias) in compact for alias in subject_aliases)
 
@@ -459,6 +468,35 @@ def build_profile(
         + (10 if knowledge_topic in old_tags else 0)
     )
     focus_score = _clamp(engagement * 5 + min(25, hours // 2))
+    tags = summarize_knowledge_tags(topic_candidates)
+    goal_clarity_score = _clamp(55 + intent_boost * 3 + min(12, len(message) // 30))
+    stage_score = _clamp({
+        "零基础": 35,
+        "入门": 45,
+        "基础": 60,
+        "进阶": 75,
+        "高级": 88,
+    }.get(topic_level, 50))
+    weak_awareness_score = _clamp(
+        50
+        + min(20, len(weak_points) * 6)
+        + (15 if evidence.get("evaluation_count") else 0)
+    )
+    media_preference_score = _clamp(
+        58
+        + (18 if semantic_result.get("requires_multimodal") else 0)
+        + (10 if any(word in message for word in ["图解", "视频", "动画", "导图", "可视化"]) else 0)
+    )
+    interest_focus_score = _clamp(
+        55
+        + min(24, len(high_frequency_topics) * 8)
+        + (10 if tags else 0)
+    )
+    error_pattern_score = _clamp(
+        weak_fix_score
+        if evidence.get("evaluation_count")
+        else (60 if any(word in message for word in ["错", "不会", "不懂", "卡住"]) else 48)
+    )
 
     style = "问题修复型" if evidence.get("evaluation_count") else "探索理解型"
     if intent == "路径规划":
@@ -468,37 +506,33 @@ def build_profile(
     elif intent == "练习巩固":
         style = "练习复盘型"
 
-    tags = summarize_knowledge_tags(topic_candidates)
-
     return {
         "tags": tags,
         "knowledge_tags": tags,
         "updated_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "dimensions": {
             "知识基础": knowledge_base_score,
-            "自驱探索力": self_drive_score,
-            "学习强度": intensity,
             "学习目标": intent,
-            "认知水平": topic_level,
+            "学习阶段": topic_level,
             "认知风格": style,
-            "高频主题": "、".join(high_frequency_topics) if high_frequency_topics else (tags[0] if tags else knowledge_topic),
             "知识短板": "；".join(weak_points[:3]),
+            "媒介偏好": "图解/视频/动画优先" if semantic_result.get("requires_multimodal") else "文字讲解 + 练习巩固",
             "实践能力": practice_score,
-            "学习专注度": focus_score,
-            "计划完成率": f"{plan_rate}%" if plan_rate is not None else "暂无计划完成记录",
-            "待办完成率": f"{todo_rate}%" if todo_rate is not None else "暂无待办完成记录",
-            "历史评价均分": recent_avg_score if recent_avg_score is not None else "暂无评价记录",
-            "画像依据": "同主题证据、本轮交互、平台活跃度；全局学习时长不作为当前学科水平依据",
-            "水平证据": level_evidence or "暂无同主题水平证据",
-            "学科分类": subject_category,
+            "学习节奏": f"计划 {plan_rate}%" if plan_rate is not None else f"学习强度：{intensity}",
+            "易错模式": "；".join(weak_points[:2]) if evidence.get("evaluation_count") else "待练习数据确认",
+            "兴趣方向": "、".join(high_frequency_topics) if high_frequency_topics else (tags[0] if tags else knowledge_topic),
         },
         "radar": {
             "知识基础": _clamp(knowledge_base_score),
-            "自驱探索力": self_drive_score,
-            "实践动手能力": practice_score,
-            "学习专注度": focus_score,
-            "易错点修复": weak_fix_score,
-            "认知匹配度": cognitive_match_score,
+            "学习目标": goal_clarity_score,
+            "学习阶段": stage_score,
+            "知识短板": weak_awareness_score,
+            "认知风格": cognitive_match_score,
+            "媒介偏好": media_preference_score,
+            "实践能力": practice_score,
+            "学习节奏": execution_score,
+            "易错模式": error_pattern_score,
+            "兴趣方向": interest_focus_score,
         },
         "evidence": {
             "evaluation_count": evidence.get("evaluation_count", 0),
@@ -515,6 +549,14 @@ def build_profile(
             "needs_level_diagnosis": needs_level_diagnosis,
             "subject_category": subject_category,
             "dimension_evidence": dimension_evidence,
+            "internal_metrics": {
+                "self_drive_score": self_drive_score,
+                "focus_score": focus_score,
+                "plan_completion_rate": plan_rate,
+                "todo_completion_rate": todo_rate,
+                "recent_avg_score": recent_avg_score,
+                "profile_basis": "同主题证据、本轮交互、平台活跃度；全局学习时长不作为当前学科水平依据",
+            },
         }
     }
 

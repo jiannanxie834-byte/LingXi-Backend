@@ -162,17 +162,21 @@ def _build_cards(path_result=None, resource_result=None, resource_status=None):
                 "type": item.get("type") or "学习资源",
                 "summary": item.get("summary") or "",
                 "status": item.get("status") or "待审核",
+                "unit_id": item.get("unit_id") or "",
             }
             for item in (resource_state.get("items") or resources)[:6]
             if isinstance(item, dict)
         ]
+        unit_id = next((item.get("unit_id") for item in resource_items if item.get("unit_id")), "")
         cards.append({
             "type": "resource_review",
             "title": "配套资源正在教师审核",
             "status": "pending_review",
-            "summary": resource_state.get("message") or "配套资源已生成，正在进行教师审核。审核通过后会进入资源库。",
+            "summary": resource_state.get("message") or "配套 Artifact 已生成，正在进行教师审核。审核通过后会进入资源工厂。",
             "items": resource_items,
-            "action_text": "审核通过后查看资源库",
+            "unit_id": unit_id,
+            "job_id": resource_state.get("job_id") or "",
+            "action_text": "审核通过后查看资源工厂",
             "action_route": "/resource",
         })
         return _strip_internal_fields(cards)
@@ -191,13 +195,36 @@ def _build_cards(path_result=None, resource_result=None, resource_status=None):
             "type": "resource_review",
             "title": "配套学习资源已准备",
             "status": "pending_review",
-            "summary": f"{len(resources)} 份配套资源已进入审核队列，通过后会出现在资源库。",
+            "summary": f"{len(resources)} 份配套 Artifact 已进入审核队列，通过后会出现在资源工厂。",
             "items": resource_items,
-            "action_text": "查看资源库",
+            "action_text": "查看资源工厂",
             "action_route": "/resource",
         })
 
     return _strip_internal_fields(cards)
+
+
+def _build_resource_status(resource_status=None, resource_result=None):
+    if not isinstance(resource_status, dict) or not resource_status:
+        return {}
+
+    resources = resource_result if isinstance(resource_result, list) else []
+    items = resource_status.get("items") if isinstance(resource_status.get("items"), list) else resources
+    first_unit_id = next(
+        (
+            item.get("unit_id")
+            for item in items
+            if isinstance(item, dict) and item.get("unit_id")
+        ),
+        "",
+    )
+    return {
+        "status": resource_status.get("status") or "",
+        "message": _clean_text(resource_status.get("message") or ""),
+        "job_id": resource_status.get("job_id") or "",
+        "item_count": len(items or []),
+        "unit_id": first_unit_id,
+    }
 
 
 def compose_student_answer(
@@ -226,5 +253,6 @@ def compose_student_answer(
         },
         "progress": _build_progress(pipeline_steps or []),
         "cards": _build_cards(plan_result, resource_result, resource_status),
+        "resource_status": _build_resource_status(resource_status, resource_result),
         "trace_id": trace_id,
     }

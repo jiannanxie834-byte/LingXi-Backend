@@ -1,3 +1,10 @@
+from app.services.data_services import (
+    course_scope_service,
+    deep_learning_course_map_service,
+    resource_artifact_type_service as artifact_types,
+)
+
+
 def _validate_plan(plan):
     if not plan.get("title"):
         raise RuntimeError("路径规划结果缺少 title")
@@ -17,159 +24,150 @@ def _validate_plan(plan):
     return plan
 
 
-def _step(title, objective, resource_focus, status="pending"):
+def _step(title, objective, resource_focus, status="pending", unit_id=""):
     return {
         "title": title,
         "objective": objective,
         "resource_focus": resource_focus,
         "status": status,
+        "unit_id": unit_id,
     }
+
+
+def _unit_text(items, fallback="暂无"):
+    return "、".join([str(item) for item in items if item]) or fallback
+
+
+def _project_steps(course_match, topic):
+    unit_id = course_match.get("unit_id") or ""
+    return [
+        _step(
+            "第 1 步：锁定项目目标与验收标准",
+            f"围绕「{topic}」明确数据集、模型、评估指标、提交物和两周节奏。",
+            [artifact_types.PROJECT_BRIEF, artifact_types.PPT_OUTLINE],
+            "active",
+            unit_id,
+        ),
+        _step(
+            "第 2 步：补齐关键前置知识",
+            f"先检查前置知识：{_unit_text(course_match.get('prerequisites'))}。",
+            [artifact_types.COURSE_NOTE, artifact_types.MIND_MAP, artifact_types.EXERCISE_SET],
+            "pending",
+            unit_id,
+        ),
+        _step(
+            "第 3 步：完成 PyTorch 最小实验",
+            "用可运行代码跑通 Dataset、DataLoader、模型、损失函数、优化器和训练循环。",
+            [artifact_types.CODE_LAB, artifact_types.VIDEO_RECOMMENDATION, artifact_types.PERSONALIZED_VIDEO_GUIDE],
+            "pending",
+            "dl_pytorch_practice",
+        ),
+        _step(
+            "第 4 步：解释模型结构与训练现象",
+            "结合曲线、输出 shape、错误样本和可视化结果复盘模型表现。",
+            [artifact_types.INTERACTIVE_ANIMATION, artifact_types.ANIMATION_STORYBOARD, artifact_types.EXERCISE_SET],
+            "pending",
+            unit_id,
+        ),
+        _step(
+            "第 5 步：整理项目报告与演示",
+            "输出实验报告、PPT 大纲、复现实验说明和下一步改进方向。",
+            [artifact_types.PPT_OUTLINE, artifact_types.PROJECT_BRIEF],
+            "pending",
+            unit_id,
+        ),
+    ]
 
 
 def run(profile, semantic_result=None):
-    from app.services.data_services import ai_course_map_service, course_scope_service
-
     semantic_result = semantic_result or {}
     topic = course_scope_service.normalize_course_topic(
-        profile.get("topic") or profile.get("knowledge_topic") or semantic_result.get("topic") or "当前主题"
+        profile.get("topic")
+        or profile.get("knowledge_topic")
+        or semantic_result.get("normalized_topic")
+        or semantic_result.get("topic")
+        or "当前主题"
     )
-    intent = profile.get("intent") or profile.get("goal") or "综合学习"
-    subject_category = profile.get("subject_category") or semantic_result.get("subject_category") or "unknown"
-    level = profile.get("level") or semantic_result.get("level") or "未确认"
-    course_match = semantic_result.get("ai_course_map") or ai_course_map_service.match_ai_course_topic(topic)
+    course_match = (
+        semantic_result.get("deep_learning_course_map")
+        or semantic_result.get("ai_course_map")
+        or deep_learning_course_map_service.match_deep_learning_topic(topic)
+    )
 
-    if course_match.get("matched"):
-        chapter = course_match.get("chapter") or "人工智能"
-        core_topics = course_match.get("core_topics") or [topic]
-        prerequisites = course_match.get("prerequisites") or []
-        practice_tasks = course_match.get("practice_tasks") or []
-        prerequisite_text = "、".join(prerequisites) if prerequisites else "人工智能基础概念"
-        core_text = "、".join(core_topics)
-        practice_text = practice_tasks[0] if practice_tasks else f"完成一个围绕 {topic} 的小型实践任务"
-
-        if topic == "LSTM":
-            return _validate_plan({
-                "title": "LSTM · 序列模型学习路线",
-                "steps": [
-                    _step("第 1 步：补齐神经网络和 RNN 基础", "确认前向传播、反向传播、序列数据和 RNN 隐状态的作用，理解为什么序列任务需要上下文记忆。", ["神经网络基础讲解", "RNN 与序列数据导图"], "active"),
-                    _step("第 2 步：理解 LSTM 门控结构", "学习遗忘门、输入门、输出门和候选记忆，比较 LSTM 与普通 RNN 在长期依赖问题上的差异。", ["LSTM 结构讲解文档", "门控机制思维导图"]),
-                    _step("第 3 步：完成门控机制练习", "通过判断题、公式理解题和结构标注题检查是否真正理解门控更新过程。", ["不同类型练习题目"]),
-                    _step("第 4 步：阅读结构图和对比材料", "阅读 LSTM 单元结构图，对照 RNN、LSTM、Transformer 的序列建模方式。", ["拓展阅读材料", "知识点思维导图"]),
-                    _step("第 5 步：完成序列预测实践", "用一个小型序列数据完成 RNN 或 LSTM 预测任务，记录输入、输出、训练现象和误差变化。", ["学科实践应用任务"]),
-                ],
-            })
-
-        return _validate_plan({
-            "title": f"{topic} · {chapter}学习路线",
-            "steps": [
-                _step("第 1 步：确认前置知识", f"先检查「{prerequisite_text}」是否掌握，再进入「{chapter}」。", ["前置知识自查", "专业课程讲解文档"], "active"),
-                _step("第 2 步：建立章节框架", f"围绕 {core_text} 建立概念关系，明确每个知识点解决的问题。", ["知识点思维导图"]),
-                _step("第 3 步：攻克核心机制", f"重点理解「{topic}」在 {chapter} 中的作用、适用场景和常见误区。", ["专业课程讲解文档", "不同类型练习题目"]),
-                _step("第 4 步：完成分层练习", "完成选择题、判断题、简答题和应用题，要求写出答案和解析依据。", ["不同类型练习题目"]),
-                _step("第 5 步：完成实践任务", practice_text, ["学科实践应用任务", "拓展阅读材料"]),
-            ],
-        })
-
-    if subject_category == "unknown":
+    if not course_match.get("matched"):
         return _validate_plan({
             "title": f"{topic} · 主题澄清路线",
             "steps": [
-                _step("第 1 步：明确学习主题", "先确认具体课程、知识点或考试目标，避免生成错配资源。", ["学习主题澄清与水平诊断"], "active"),
-                _step("第 2 步：完成基础水平诊断", "补充已学内容、目标水平和可投入时间。", ["不同类型练习题目"]),
+                _step("第 1 步：确认是否属于《深度学习》课程", "请补充 CNN、反向传播、Transformer、PyTorch 实验或课程项目等具体知识点。", [artifact_types.EXERCISE_SET], "active", "dl_intro_diagnosis"),
+                _step("第 2 步：完成基础水平诊断", "补充已学内容、目标水平和可投入时间，再生成正式路线。", [artifact_types.EXERCISE_SET], "pending", "dl_intro_diagnosis"),
             ],
         })
 
-    if subject_category == "foreign_language":
-        title_prefix = f"{topic}基础学习路线" if level == "未确认" else f"{topic}{level}学习路线"
+    unit = course_match.get("unit") or {}
+    unit_id = course_match.get("unit_id") or unit.get("unit_id") or ""
+    chapter = course_match.get("chapter") or "《深度学习》课程"
+    normalized_topic = course_match.get("normalized_topic") or topic
+    core_topics = course_match.get("core_topics") or unit.get("core_concepts") or [normalized_topic]
+    prerequisites = course_match.get("prerequisites") or unit.get("prerequisites") or []
+    misconceptions = course_match.get("common_misconceptions") or unit.get("common_misconceptions") or []
+    practice_tasks = course_match.get("practice_tasks") or []
+    need_type = semantic_result.get("learning_need_type") or course_match.get("learning_need_type")
+
+    if need_type == "project" or "项目" in normalized_topic:
         return _validate_plan({
-            "title": title_prefix,
-            "steps": [
-                _step("第 1 步：完成水平诊断", "确认发音、词汇、语法、阅读和听说基础。", ["不同类型练习题目"], "active"),
-                _step("第 2 步：建立发音和高频词汇基础", "学习基础发音、常用问候语和生活场景词汇。", ["专业课程讲解文档", "知识点思维导图"]),
-                _step("第 3 步：掌握基础语法结构", "学习名词阴阳性、冠词、基础动词变位和常用句型。", ["专业课程讲解文档", "知识点思维导图"]),
-                _step("第 4 步：完成语言练习", "完成短文阅读、填空、翻译和口语情境题，记录错因。", ["不同类型练习题目"]),
-                _step("第 5 步：完成输出任务", "用一段自我介绍、点餐对话或校园问路完成听说读写输出训练。", ["学科实践应用任务", "拓展阅读材料"]),
-            ],
+            "title": f"{normalized_topic} · 个性化项目学习路线",
+            "steps": _project_steps(course_match, normalized_topic),
         })
 
-    if subject_category == "mathematics":
-        return _validate_plan({
-            "title": f"{topic}学习路线",
-            "steps": [
-                _step("第 1 步：确认前置知识", f"梳理学习 {topic} 所需的定义、公式和基础运算。", ["专业课程讲解文档"], "active"),
-                _step("第 2 步：理解定义与公式", "把核心定义、公式含义和适用条件整理成结构图。", ["知识点思维导图"]),
-                _step("第 3 步：完成例题拆解", "按步骤完成基础例题、推导题和应用题。", ["不同类型练习题目"]),
-                _step("第 4 步：复盘错因", "记录公式误用、计算错误和审题偏差。", ["不同类型练习题目"]),
-            ],
-        })
+    steps = [
+        _step(
+            "第 1 步：确认前置知识",
+            f"先检查「{_unit_text(prerequisites, 'Python、矩阵运算和神经网络基础')}」是否掌握，再进入「{chapter}」。",
+            [artifact_types.COURSE_NOTE, artifact_types.EXERCISE_SET],
+            "active",
+            unit_id,
+        ),
+        _step(
+            "第 2 步：建立知识结构",
+            f"围绕 {normalized_topic} 梳理核心概念：{_unit_text(core_topics)}。",
+            [artifact_types.MIND_MAP, artifact_types.INTERACTIVE_ANIMATION],
+            "pending",
+            unit_id,
+        ),
+        _step(
+            "第 3 步：攻克核心机制",
+            f"重点理解「{normalized_topic}」的公式/流程、适用场景和常见误区：{_unit_text(misconceptions)}。",
+            [artifact_types.COURSE_NOTE, artifact_types.VIDEO_RECOMMENDATION, artifact_types.PERSONALIZED_VIDEO_GUIDE],
+            "pending",
+            unit_id,
+        ),
+        _step(
+            "第 4 步：完成分层练习",
+            "完成选择题、判断题、计算题、代码补全题和实验分析题，并记录答案依据与错因。",
+            [artifact_types.EXERCISE_SET],
+            "pending",
+            unit_id,
+        ),
+    ]
 
-    if subject_category == "physics":
-        return _validate_plan({
-            "title": f"{topic}学习路线",
-            "steps": [
-                _step("第 1 步：建立物理图景", f"理解 {topic} 的现象、模型和基本变量。", ["专业课程讲解文档"], "active"),
-                _step("第 2 步：掌握公式与实验", "梳理公式含义、适用条件和典型实验。", ["知识点思维导图", "拓展阅读材料"]),
-                _step("第 3 步：完成计算和实验分析题", "通过分层练习定位概念混淆和公式误用。", ["不同类型练习题目"]),
-                _step("第 4 步：完成应用任务", "结合真实现象或实验数据完成一次解释和复盘。", ["学科实践应用任务"]),
-            ],
-        })
+    if course_match.get("requires_code") or semantic_result.get("requires_code"):
+        steps.append(_step(
+            "第 5 步：完成 PyTorch 实验",
+            practice_tasks[0] if practice_tasks else f"完成一个围绕 {normalized_topic} 的 PyTorch 小实验，并记录输入输出 shape、loss 曲线和验证结果。",
+            [artifact_types.CODE_LAB, artifact_types.PROJECT_BRIEF],
+            "pending",
+            unit_id,
+        ))
+    else:
+        steps.append(_step(
+            "第 5 步：形成复盘材料",
+            "把概念解释、易错点、练习错因和下一步问题整理成课堂展示或复习材料。",
+            [artifact_types.PPT_OUTLINE, artifact_types.READING_PACK],
+            "pending",
+            unit_id,
+        ))
 
-    if subject_category == "computer_science":
-        return _validate_plan({
-            "title": f"{topic}学习路线",
-            "steps": [
-                _step("第 1 步：建立概念框架", f"明确 {topic} 的核心概念、适用场景和常见误区。", ["专业课程讲解文档", "知识点思维导图"], "active"),
-                _step("第 2 步：拆解关键机制", "结合流程图、伪代码或代码注释理解关键过程。", ["专业课程讲解文档", "学科实践应用任务"]),
-                _step("第 3 步：完成分层练习", "通过概念题、应用题和代码阅读题定位薄弱点。", ["不同类型练习题目"]),
-                _step("第 4 步：完成实践任务", "完成一个小实验、配置任务或代码案例，并记录复盘。", ["学科实践应用任务", "拓展阅读材料"]),
-            ],
-        })
-
-    if subject_category == "general_course":
-        return _validate_plan({
-            "title": f"{topic}学习路线",
-            "steps": [
-                _step("第 1 步：明确核心概念", f"梳理 {topic} 的基本概念、背景和学习目标。", ["专业课程讲解文档"], "active"),
-                _step("第 2 步：阅读案例材料", "通过案例、短文和关键词理解概念使用场景。", ["拓展阅读材料", "知识点思维导图"]),
-                _step("第 3 步：完成讨论练习", "用概念题、案例分析题或开放题检查理解深度。", ["不同类型练习题目"]),
-                _step("第 4 步：完成应用表达", "完成一份观点说明、案例分析或课堂展示提纲。", ["学科实践应用任务", "拓展阅读材料"]),
-            ],
-        })
-
-    plan = {
-        "title": f"{topic} · {intent}路线",
-        "steps": [
-            {
-                "title": "第 1 步",
-                "objective": f"定位 {topic} 的核心概念和当前卡点",
-                "resource_focus": ["专业课程讲解文档", "拓展阅读材料"],
-                "status": "active",
-            },
-            {
-                "title": "第 2 步",
-                "objective": f"阅读 {topic} 的课程讲解并整理基础术语",
-                "resource_focus": ["专业课程讲解文档", "知识点思维导图"],
-                "status": "pending",
-            },
-            {
-                "title": "第 3 步",
-                "objective": "用知识点思维导图整理概念关系和易混点",
-                "resource_focus": ["知识点思维导图"],
-                "status": "pending",
-            },
-            {
-                "title": "第 4 步",
-                "objective": "完成分层练习题并记录错因",
-                "resource_focus": ["不同类型练习题目"],
-                "status": "pending",
-            },
-            {
-                "title": "第 5 步",
-                "objective": "完成学科实践应用任务并提交复盘",
-                "resource_focus": ["学科实践应用任务", "拓展阅读材料"],
-                "status": "pending",
-            },
-        ],
-    }
-
-    return _validate_plan(plan)
+    return _validate_plan({
+        "title": f"{normalized_topic} · {chapter}学习路线",
+        "steps": steps,
+    })

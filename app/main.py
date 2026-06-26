@@ -11,6 +11,10 @@ from app.routers import (
     evaluation,
     todo,
     notification,
+    course,
+    profile,
+    generation,
+    video,
 )
 
 app = FastAPI(title="LingXi AI Learning Platform")
@@ -40,6 +44,10 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(evaluation.router, prefix="/api")
 app.include_router(todo.router, prefix="/api")
 app.include_router(notification.router, prefix="/api")
+app.include_router(course.router, prefix="/api")
+app.include_router(profile.router, prefix="/api")
+app.include_router(generation.router, prefix="/api")
+app.include_router(video.router, prefix="/api")
 
 
 @app.get("/")

@@ -5,10 +5,11 @@ import uuid
 from sqlalchemy.orm import Session
 from app.models.schemas import EvaluationRecord
 from app.services.data_services import (
-    ai_course_map_service,
+    deep_learning_course_map_service,
     knowledge_service,
     learning_plan_service,
     profile_service,
+    resource_artifact_type_service as artifact_types,
     resource_service,
     user_service,
 )
@@ -16,52 +17,36 @@ from app.services.data_services import (
 
 COURSE_KNOWLEDGE = [
     {
-        "topic": "计算机网络",
-        "keywords": ["计网", "网络", "tcp", "udp", "三次握手", "四次挥手", "http", "https"],
-        "chapter": "计算机网络 / TCP-IP 与应用层协议",
-        "core": "分层模型、可靠传输、HTTP 请求响应与安全通信",
-        "pitfalls": ["混淆 TCP 与 UDP 的适用场景", "只背三次握手流程而不理解状态变化", "忽略抓包验证"],
-        "practice": "使用 Wireshark 抓取一次 HTTP 请求并标注每一层协议字段",
+        "topic": "卷积神经网络中的卷积操作",
+        "keywords": ["cnn", "卷积神经网络", "卷积", "卷积层", "卷积核", "池化", "特征图", "图像分类"],
+        "chapter": "第 7 章 卷积神经网络 CNN",
+        "core": "卷积核、步幅、填充、通道数、感受野和池化共同决定特征图尺寸与图像特征提取能力。",
+        "pitfalls": ["混淆 padding 与 stride 对输出尺寸的影响", "不理解输入通道和输出通道", "把卷积核当成固定滤镜"],
+        "practice": "完成 5 道卷积输出尺寸计算题，并用 PyTorch 打印 Conv2d 输出 shape。",
     },
     {
-        "topic": "Python 数据分析",
-        "keywords": ["python", "pandas", "数据分析", "numpy", "可视化", "matplotlib"],
-        "chapter": "Python 数据分析 / 数据清洗与统计分析",
-        "core": "数据读取、缺失值处理、分组统计、可视化表达",
-        "pitfalls": ["没有检查缺失值就直接建模", "分组统计口径不一致", "图表只好看但没有表达结论"],
-        "practice": "清洗一份学生学习行为数据并输出每周学习时长趋势",
+        "topic": "反向传播与损失函数",
+        "keywords": ["反向传播", "bp", "backprop", "链式法则", "梯度", "损失函数"],
+        "chapter": "第 4 章 前向传播、损失函数与反向传播",
+        "core": "反向传播基于链式法则把损失对参数的梯度逐层传回，是深度网络参数更新的核心机制。",
+        "pitfalls": ["把反向传播理解为模型反向运行", "只记公式不理解局部梯度相乘", "混淆 loss、gradient 和 update"],
+        "practice": "沿一个两层计算图标出局部梯度和最终梯度。",
     },
     {
-        "topic": "人工智能",
-        "keywords": ["人工智能", "机器学习", "深度学习", "模型", "神经网络", "分类", "训练"],
-        "chapter": "人工智能 / 机器学习基础",
-        "core": "监督学习、特征工程、训练验证划分、模型评估",
-        "pitfalls": ["只看准确率不看混淆矩阵", "训练集和测试集泄漏", "没有记录实验参数"],
-        "practice": "用公开数据集训练一个分类器并解释评估指标",
+        "topic": "自注意力机制与 Transformer",
+        "keywords": ["transformer", "attention", "自注意力", "多头注意力", "qkv", "位置编码"],
+        "chapter": "第 9 章 Attention 与 Transformer",
+        "core": "自注意力通过 Query、Key、Value 计算 token 间相关性，多头注意力并行学习不同关系，位置编码补充顺序信息。",
+        "pitfalls": ["把注意力权重当成绝对解释", "忽略缩放因子", "不理解位置编码为何必要"],
+        "practice": "手算一个三 token 的注意力权重，并解释 softmax 后的加权求和。",
     },
     {
-        "topic": "高等数学",
-        "keywords": ["数学", "高数", "微积分", "导数", "积分", "极限", "函数", "建模"],
-        "chapter": "高等数学 / 函数、极限、导数与积分",
-        "core": "函数关系、极限思想、导数应用、积分累积与数学建模",
-        "pitfalls": ["只套公式不解释变量含义", "忽略定义域和边界条件", "把计算结果和实际问题脱节"],
-        "practice": "选择一个生活中的最优化问题，用函数建模并说明导数如何帮助决策",
-    },
-    {
-        "topic": "大学物理",
-        "keywords": ["物理", "力学", "电磁", "实验", "速度", "加速度", "牛顿", "能量"],
-        "chapter": "大学物理 / 力学实验与能量分析",
-        "core": "物理量测量、受力分析、能量守恒、实验误差与数据解释",
-        "pitfalls": ["只背公式不画受力图", "忽略单位和量纲", "实验结论没有误差分析"],
-        "practice": "设计一个小车斜面运动实验，记录数据并分析速度变化规律",
-    },
-    {
-        "topic": "大学英语",
-        "keywords": ["英语", "阅读", "写作", "作文", "口语", "听力", "翻译", "词汇"],
-        "chapter": "大学英语 / 阅读理解与写作表达",
-        "core": "主题句识别、段落结构、关键词推断、观点表达与语言修改",
-        "pitfalls": ["逐词翻译导致句意割裂", "作文观点缺少论据", "忽略段落之间的逻辑衔接"],
-        "practice": "围绕一个校园学习主题完成阅读批注，并改写一段 120 词短文",
+        "topic": "PyTorch 深度学习工程实践",
+        "keywords": ["pytorch", "torch", "dataset", "dataloader", "训练循环", "代码实验", "模型训练"],
+        "chapter": "第 11 章 PyTorch 深度学习工程实践",
+        "core": "PyTorch 实战需要组织 Dataset/DataLoader、模型、损失函数、优化器、训练循环、验证流程和实验记录。",
+        "pitfalls": ["复制代码不检查 tensor shape", "训练集和验证集混用", "没有记录超参数和随机种子"],
+        "practice": "完成一个 CNN 图像分类训练脚本，记录 loss 曲线和验证准确率。",
     },
 ]
 
@@ -108,23 +93,23 @@ def _infer_knowledge(text: str, knowledge_base: list = None):
     for item in items:
         if any(keyword in lowered for keyword in item["keywords"]):
             return item
-    course_match = ai_course_map_service.match_ai_course_topic("", text)
+    course_match = deep_learning_course_map_service.match_deep_learning_topic("", text)
     if course_match.get("matched"):
         core = "、".join(course_match.get("core_topics") or [])
         practice = (course_match.get("practice_tasks") or ["完成一次同主题练习并记录错因"])[0]
         pitfalls = {
-            "模型评估": ["混淆准确率、精确率和召回率的适用场景", "只看单一指标而忽略业务代价"],
-            "序列模型": ["混淆 RNN 与 LSTM 的记忆机制", "不理解遗忘门、输入门和输出门的作用"],
+            "Attention 与 Transformer": ["混淆 Q/K/V 的作用", "不理解位置编码为何必要"],
+            "卷积神经网络 CNN": ["混淆 padding 与 stride", "不理解通道数变化"],
         }.get(course_match.get("chapter"), ["核心概念理解不稳定", "缺少同主题练习和错因复盘"])
         return {
             "topic": course_match.get("topic") or course_match.get("chapter"),
             "keywords": course_match.get("core_topics") or [course_match.get("topic")],
-            "chapter": f"人工智能 / {course_match.get('chapter')}",
-            "core": core or course_match.get("topic") or "人工智能课程核心知识点",
+            "chapter": f"深度学习 / {course_match.get('chapter')}",
+            "core": core or course_match.get("topic") or "深度学习课程核心知识点",
             "pitfalls": pitfalls,
             "practice": practice,
         }
-    return items[2] if len(items) > 2 else COURSE_KNOWLEDGE[2]
+    return items[0] if items else COURSE_KNOWLEDGE[0]
 
 
 def _level_from_score(score: int):
@@ -158,7 +143,7 @@ def _build_diagnosis_content(knowledge: dict, notes: str, score: int, level: str
     weak_lines = "\n".join([f"- {item}" for item in weak_points])
     suggestion_lines = "\n".join([f"{index}. {item}" for index, item in enumerate(suggestions, 1)])
 
-    return f"""# {knowledge['topic']} 错题诊断与学习反馈报告
+    return f"""# {knowledge['topic']} 诊断与补弱报告
 
 ## 诊断得分
 {score} 分，掌握等级：{level}
@@ -184,7 +169,7 @@ def _build_diagnosis_content(knowledge: dict, notes: str, score: int, level: str
 
 def _build_diagnosis_resource(knowledge: dict, title: str, notes: str, score: int, level: str, weak_points: list, suggestions: list):
     return {
-        "type": "错题诊断与学习反馈报告",
+        "type": artifact_types.DIAGNOSTIC_REPORT,
         "title": title,
         "summary": f"{level}：识别出 {len(weak_points)} 个薄弱点，并生成补救路线。",
         "source": f"{knowledge['chapter']} / 学习评价 Agent",
@@ -198,7 +183,7 @@ def _build_fix_steps(knowledge: dict, level: str, first_weak_point: str):
         f"第 1 步：复盘诊断报告，重点标记「{first_weak_point}」。",
         f"第 2 步：重读「{knowledge['chapter']}」中的核心内容：{knowledge['core']}。",
         "第 3 步：完成诊断报告中的补救建议，并记录仍不确定的问题。",
-        f"第 4 步：完成学科实践应用任务：{knowledge['practice']}。",
+        f"第 4 步：完成 PyTorch 实操案例或课程实践项目任务：{knowledge['practice']}。",
         f"第 5 步：重新提交一次学习评价，比较当前等级「{level}」是否提升。",
     ]
 

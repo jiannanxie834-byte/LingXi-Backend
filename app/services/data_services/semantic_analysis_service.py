@@ -1,87 +1,17 @@
 import re
-from typing import Dict, Tuple
+from typing import Dict
 
 from app.services.llm_provider import chat_json, is_enabled
-from app.services.data_services import ai_course_map_service, course_scope_service
+from app.services.data_services import (
+    course_scope_service,
+    deep_learning_course_map_service,
+)
 
 
 SUBJECT_CATEGORIES = {
-    "foreign_language",
     "computer_science",
-    "mathematics",
-    "physics",
-    "general_course",
+    "out_of_course",
     "unknown",
-}
-
-FOREIGN_LANGUAGE_TERMS = {
-    "法语": {"language": "French", "aliases": ["法语", "french", "delf", "dalf", "cefr", "法语语法", "法语口语"]},
-    "英语": {"language": "English", "aliases": ["英语", "english", "cet", "ielts", "toefl", "英语语法"]},
-    "日语": {"language": "Japanese", "aliases": ["日语", "japanese", "jlpt", "n1", "n2", "日语语法"]},
-    "德语": {"language": "German", "aliases": ["德语", "german", "德语语法"]},
-    "西班牙语": {"language": "Spanish", "aliases": ["西班牙语", "spanish"]},
-    "韩语": {"language": "Korean", "aliases": ["韩语", "korean"]},
-    "俄语": {"language": "Russian", "aliases": ["俄语", "russian"]},
-    "意大利语": {"language": "Italian", "aliases": ["意大利语", "italian"]},
-}
-
-COMPUTER_TERMS = {
-    "人工智能",
-    "人工智能导论",
-    "机器学习",
-    "深度学习",
-    "神经网络",
-    "rnn",
-    "lstm",
-    "transformer",
-    "rag",
-    "信息安全",
-    "网络安全",
-    "数据库",
-    "操作系统",
-    "计算机网络",
-    "算法",
-    "数据结构",
-    "python",
-    "java",
-    "c++",
-    "编程",
-    "代码",
-}
-
-MATHEMATICS_TERMS = {
-    "数学",
-    "高等数学",
-    "线性代数",
-    "概率论",
-    "统计学",
-    "微积分",
-    "离散数学",
-    "矩阵",
-    "函数",
-    "导数",
-    "积分",
-}
-
-PHYSICS_TERMS = {
-    "物理",
-    "大学物理",
-    "力学",
-    "电磁学",
-    "热学",
-    "光学",
-    "量子",
-}
-
-GENERAL_TERMS = {
-    "管理学",
-    "经济学",
-    "心理学",
-    "历史",
-    "文学",
-    "哲学",
-    "通识",
-    "写作",
 }
 
 PROGRAMMING_MARKERS = {
@@ -116,67 +46,36 @@ def _contains_any(text: str, words) -> bool:
     return any(_compact(word) in compact for word in words if word)
 
 
-def _detect_foreign_language(text: str) -> Tuple[str, str]:
-    lowered = str(text or "").lower()
-    for topic, config in FOREIGN_LANGUAGE_TERMS.items():
-        aliases = [str(alias or "").lower() for alias in config["aliases"]]
-        if any(alias and alias in lowered for alias in aliases):
-            return topic, config["language"]
-    return "", ""
-
-
 def _detect_subject_by_rule(text: str, topic: str) -> Dict:
     user_text = text or ""
-    source_text = " ".join([user_text, topic or ""])
 
-    language_topic, language_name = _detect_foreign_language(user_text)
-    if language_topic:
+    course_match = deep_learning_course_map_service.match_deep_learning_topic(topic, user_text)
+    if course_match.get("matched"):
         return {
-            "topic": language_topic,
-            "subject_category": "foreign_language",
-            "language": language_name,
-            "confidence": 96,
-            "topic_source": "rule",
-        }
-
-    if _contains_any(user_text, COMPUTER_TERMS):
-        normalized_topic = _first_matching_term(user_text, COMPUTER_TERMS) or topic or "计算机相关主题"
-        return {
-            "topic": normalized_topic,
+            "topic": course_match.get("normalized_topic") or course_match.get("topic"),
             "subject_category": "computer_science",
             "language": "",
-            "confidence": 88,
-            "topic_source": "rule",
+            "confidence": int(course_match.get("confidence", 0.8) * 100),
+            "topic_source": "deep_learning_course_map",
+            "course_match": course_match,
+            "requested_action": {
+                "concept_explanation": "concept_explain",
+                "resource_generation": "resource_generation",
+                "practice": "exercise",
+                "code_lab": "practice",
+                "path_planning": "path_plan",
+                "evaluation": "exercise",
+                "project": "practice",
+            }.get(course_match.get("learning_need_type"), "concept_explain"),
         }
 
-    if _contains_any(user_text, MATHEMATICS_TERMS):
-        normalized_topic = _first_matching_term(user_text, MATHEMATICS_TERMS) or topic or "数学"
+    if topic and topic not in {"未确认主题", "当前主题"} and _topic_grounded_in_message(topic, user_text):
         return {
-            "topic": normalized_topic,
-            "subject_category": "mathematics",
+            "topic": topic,
+            "subject_category": "out_of_course",
             "language": "",
-            "confidence": 86,
-            "topic_source": "rule",
-        }
-
-    if _contains_any(user_text, PHYSICS_TERMS):
-        normalized_topic = _first_matching_term(user_text, PHYSICS_TERMS) or topic or "物理"
-        return {
-            "topic": normalized_topic,
-            "subject_category": "physics",
-            "language": "",
-            "confidence": 86,
-            "topic_source": "rule",
-        }
-
-    if _contains_any(user_text, GENERAL_TERMS):
-        normalized_topic = _first_matching_term(user_text, GENERAL_TERMS) or topic or "通识课程"
-        return {
-            "topic": normalized_topic,
-            "subject_category": "general_course",
-            "language": "",
-            "confidence": 80,
-            "topic_source": "rule",
+            "confidence": 70,
+            "topic_source": "eval_grounded",
         }
 
     if _compact(topic) in {"语法", "grammar", "语言"}:
@@ -188,15 +87,6 @@ def _detect_subject_by_rule(text: str, topic: str) -> Dict:
             "topic_source": "unknown",
         }
 
-    if topic and topic not in {"未确认主题", "当前主题"} and _topic_grounded_in_message(topic, user_text):
-        return {
-            "topic": topic,
-            "subject_category": "unknown",
-            "language": "",
-            "confidence": 55,
-            "topic_source": "llm",
-        }
-
     return {
         "topic": "未确认主题",
         "subject_category": "unknown",
@@ -204,15 +94,6 @@ def _detect_subject_by_rule(text: str, topic: str) -> Dict:
         "confidence": 30,
         "topic_source": "unknown",
     }
-
-
-def _first_matching_term(text: str, terms) -> str:
-    compact = _compact(text)
-    ordered_terms = sorted([term for term in terms if term], key=lambda item: len(_compact(item)), reverse=True)
-    for term in ordered_terms:
-        if _compact(term) in compact:
-            return term
-    return ""
 
 
 def _topic_grounded_in_message(topic: str, message: str) -> bool:
@@ -240,17 +121,13 @@ def _llm_result_is_grounded(message: str, data: Dict) -> bool:
     topic = data.get("topic") or ""
     if subject_category == "unknown":
         return True
-    if subject_category == "foreign_language":
-        return bool(_detect_foreign_language(message)[0])
+    if subject_category == "computer_science":
+        return deep_learning_course_map_service.match_deep_learning_topic(topic, message).get("matched")
+    if subject_category == "out_of_course":
+        return bool(topic and topic not in {"未确认主题", "当前主题"}) and _topic_grounded_in_message(topic, message)
     if _topic_grounded_in_message(topic, message):
         return True
-    term_map = {
-        "computer_science": COMPUTER_TERMS,
-        "mathematics": MATHEMATICS_TERMS,
-        "physics": PHYSICS_TERMS,
-        "general_course": GENERAL_TERMS,
-    }
-    return _contains_any(message, term_map.get(subject_category, set()))
+    return False
 
 
 def _infer_by_llm(message: str, eval_topic: str) -> Dict:
@@ -258,9 +135,10 @@ def _infer_by_llm(message: str, eval_topic: str) -> Dict:
         return {}
 
     prompt = f"""
-你是学习平台的语义接地模块。请判断学生要学的真实学科、主题、请求类型和是否需要代码内容。
+你是《深度学习》课程学习平台的语义接地模块。请判断学生输入是否属于本课程范围、真实主题、请求类型和是否需要代码内容。
 不要生成学习建议。
 不要猜测用户水平。如果用户没有明确说明水平，level 必须返回“未确认”。
+只有命中《深度学习》课程图谱的主题才能返回 computer_science；其他学科或泛化计算机主题返回 out_of_course；主题不明确返回 unknown。
 
 学生输入：{message}
 初步主题：{eval_topic}
@@ -268,7 +146,7 @@ def _infer_by_llm(message: str, eval_topic: str) -> Dict:
 只返回 JSON：
 {{
   "topic": "",
-  "subject_category": "foreign_language | computer_science | mathematics | physics | general_course | unknown",
+  "subject_category": "computer_science | out_of_course | unknown",
   "requested_action": "concept_explain | path_plan | resource_generation | exercise | practice | chat | unknown",
   "is_programming_related": false,
   "level": "未确认",
@@ -337,9 +215,16 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     normalized_topic = course_scope_service.normalize_course_topic(
         rule_result.get("topic") or eval_topic or "未确认主题"
     )
-    ai_course_match = ai_course_map_service.match_ai_course_topic(normalized_topic, message)
+    ai_course_match = (
+        rule_result.get("course_match")
+        or deep_learning_course_map_service.match_deep_learning_topic(normalized_topic, message)
+    )
     if ai_course_match.get("matched"):
-        normalized_topic = course_scope_service.normalize_course_topic(ai_course_match.get("topic") or normalized_topic)
+        normalized_topic = course_scope_service.normalize_course_topic(
+            ai_course_match.get("normalized_topic")
+            or ai_course_match.get("topic")
+            or normalized_topic
+        )
         rule_result["topic"] = normalized_topic
         if rule_result.get("subject_category") == "unknown":
             rule_result["subject_category"] = "computer_science"
@@ -360,29 +245,60 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         "message": message,
     }
     is_supported_scope = course_scope_service.is_supported_learning_scope(scoped_result)
-    should_generate_resources = is_supported_scope and requested_action in {
+    should_generate_resources = (
+        is_supported_scope
+        and ai_course_match.get("scope_type", "in_course") == "in_course"
+        and requested_action in {
         "path_plan",
         "resource_generation",
         "exercise",
         "practice",
-    }
+        }
+    )
+    learning_need_type = (
+        ai_course_match.get("learning_need_type")
+        or {
+            "concept_explain": "concept_explanation",
+            "path_plan": "path_planning",
+            "resource_generation": "resource_generation",
+            "exercise": "practice",
+            "practice": "code_lab" if is_programming_related else "practice",
+        }.get(requested_action, "concept_explanation")
+    )
+    confidence = int(rule_result.get("confidence") or 50)
+    if ai_course_match.get("matched"):
+        confidence = max(confidence, int(float(ai_course_match.get("confidence", 0.6)) * 100))
 
     return {
+        "course_id": ai_course_match.get("course_id", ""),
+        "course_name": ai_course_match.get("course_name", ""),
+        "course_display_name": ai_course_match.get("course_display_name", ""),
         "topic": normalized_topic,
         "raw_topic": eval_topic or rule_result.get("topic") or "",
+        "normalized_topic": normalized_topic,
+        "chapter_id": ai_course_match.get("chapter_id", ""),
+        "chapter": ai_course_match.get("chapter", ""),
+        "unit_id": ai_course_match.get("unit_id", ""),
+        "learning_need_type": learning_need_type,
+        "scope_type": ai_course_match.get("scope_type", "in_course" if is_supported_scope else "out_of_course"),
+        "difficulty": ai_course_match.get("difficulty", "beginner"),
+        "requires_code": bool(ai_course_match.get("requires_code") or is_programming_related),
+        "requires_multimodal": bool(ai_course_match.get("requires_multimodal")),
+        "matched_aliases": ai_course_match.get("matched_aliases", []),
         "subject_category": subject_category,
         "language": rule_result.get("language") or "",
         "requested_action": requested_action,
         "is_learning_request": requested_action not in {"chat", "unknown"},
         "is_supported_scope": is_supported_scope,
         "ai_course_map": ai_course_match,
+        "deep_learning_course_map": ai_course_match,
         "is_programming_related": is_programming_related,
         "level": level_info.get("level", "未确认"),
         "level_source": level_info.get("level_source", "none"),
         "level_evidence": level_info.get("level_evidence", ""),
         "needs_level_diagnosis": level_info.get("needs_level_diagnosis", True),
         "should_generate_resources": should_generate_resources,
-        "should_generate_code_content": bool(is_programming_related),
-        "confidence": int(rule_result.get("confidence") or 50),
+        "should_generate_code_content": bool(is_programming_related or ai_course_match.get("requires_code")),
+        "confidence": confidence,
         "topic_source": rule_result.get("topic_source") or "unknown",
     }

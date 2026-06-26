@@ -1,56 +1,23 @@
 import re
 
-from app.services.data_services import ai_course_map_service
+from app.services.data_services import deep_learning_course_map_service
 
 
-PRIMARY_COURSE_DISPLAY_NAME = "人工智能"
-
-LEGACY_PRIMARY_COURSE_NAMES = {
-    "人工智能导论",
-    "ai导论",
-    "AI导论",
-}
-
-SUPPORTED_TOPIC_ALIASES = {
-    "人工智能",
-    "ai",
-    "机器学习",
-    "深度学习",
-    "神经网络",
-    "rnn",
-    "lstm",
-    "transformer",
-    "attention",
-    "注意力",
-    "nlp",
-    "自然语言处理",
-    "大语言模型",
-    "llm",
-    "rag",
-    "检索增强",
-    "多模态",
-    "智能体",
-    "搜索",
-    "状态空间",
-    "a*",
-    "astar",
-    "监督学习",
-    "模型评估",
-    "混淆矩阵",
-    "信息安全",
-    "网络安全",
-    "密码学",
-    "访问控制",
-}
+PRIMARY_COURSE_DISPLAY_NAME = "深度学习"
+PRIMARY_COURSE_TITLE = deep_learning_course_map_service.COURSE_DISPLAY_NAME
 
 CANONICAL_TOPIC_NAMES = {
+    "cnn": "卷积神经网络",
     "rnn": "RNN",
     "lstm": "LSTM",
+    "gru": "GRU",
     "transformer": "Transformer",
-    "rag": "RAG",
-    "nlp": "NLP",
-    "llm": "大语言模型",
-    "ai": PRIMARY_COURSE_DISPLAY_NAME,
+    "attention": "自注意力机制",
+    "qkv": "自注意力机制",
+    "pytorch": "PyTorch 深度学习工程实践",
+    "torch": "PyTorch 深度学习工程实践",
+    "dl": PRIMARY_COURSE_DISPLAY_NAME,
+    "deep learning": PRIMARY_COURSE_DISPLAY_NAME,
 }
 
 
@@ -62,8 +29,6 @@ def normalize_course_topic(topic: str) -> str:
     value = str(topic or "").strip()
     if not value:
         return ""
-    if _compact(value) in {_compact(item) for item in LEGACY_PRIMARY_COURSE_NAMES}:
-        return PRIMARY_COURSE_DISPLAY_NAME
     canonical = CANONICAL_TOPIC_NAMES.get(_compact(value))
     if canonical:
         return canonical
@@ -74,19 +39,15 @@ def is_supported_learning_scope(semantic_result: dict) -> bool:
     semantic_result = semantic_result or {}
     topic = normalize_course_topic(semantic_result.get("topic") or "")
     message = semantic_result.get("message") or semantic_result.get("raw_message") or ""
-    if ai_course_map_service.match_ai_course_topic(topic, message).get("matched"):
-        return True
-
-    topic_compact = _compact(topic)
-    return any(alias and alias in topic_compact for alias in SUPPORTED_TOPIC_ALIASES)
+    return bool(deep_learning_course_map_service.match_deep_learning_topic(topic, message).get("matched"))
 
 
 def build_out_of_scope_reply(topic: str = "") -> str:
     topic = normalize_course_topic(topic)
     topic_text = f"「{topic}」" if topic and topic != "未确认主题" else "这个主题"
     return (
-        f"当前演示课程库主要围绕「{PRIMARY_COURSE_DISPLAY_NAME}」和 AI/计算机相关主题建设，"
-        f"{topic_text}暂未配置完整课程知识库。"
-        "我可以先帮你明确学习方向，但不会为它生成学习路径、题库、阅读材料或审核资源。"
-        "如果后续要正式支持这门课，需要先由管理员新增课程知识库、资源模板和审核标准。"
+        f"当前演示主线聚焦{PRIMARY_COURSE_TITLE}课程，"
+        f"{topic_text}暂未纳入本轮课程图谱。"
+        "我可以先帮你澄清学习目标；如果要生成学习路径、题库、代码实验或视频观看指南，"
+        "请围绕 CNN、反向传播、Transformer、PyTorch 实战等深度学习知识点提出需求。"
     )

@@ -183,9 +183,9 @@ def init_seeding_data():
                 password="123456",
                 role="student",
                 avatar="",
-                bio="正在跟随黑马程序员攻克 IHRM 人力资源管理系统的前端架构师",
+                bio="正在学习《深度学习》课程，重点关注 CNN、Transformer 与 PyTorch 实践",
                 hours=15,
-                tags="Vue3,Element Plus,后端,Python"
+                tags="深度学习,CNN,Transformer,PyTorch"
             )
             
             db.add(admin_user)

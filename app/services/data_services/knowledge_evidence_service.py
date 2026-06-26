@@ -45,17 +45,18 @@ GENERIC_QUERY_TERMS = {
 }
 
 TOPIC_ALIAS_GROUPS = {
-    "ai_intro": ["人工智能", "人工智能导论", "ai", "智能体"],
-    "search": ["搜索", "启发式", "a*", "astar", "状态空间", "问题求解"],
-    "machine_learning": ["机器学习", "ml", "特征工程", "过拟合", "泛化"],
-    "supervised_learning": ["监督学习", "分类", "回归", "混淆矩阵", "f1", "召回率", "准确率"],
-    "deep_learning": ["深度学习", "神经网络", "反向传播", "梯度下降", "cnn"],
-    "lstm": ["lstm", "rnn", "循环神经网络", "长短期记忆", "长短期记忆网络", "序列模型", "门控"],
-    "transformer": ["transformer", "attention", "注意力", "注意力机制", "自注意力", "多头注意力", "bert", "gpt"],
-    "nlp": ["自然语言处理", "nlp", "大语言模型", "llm", "提示词", "rag", "语义理解"],
-    "multimodal": ["多模态", "流程图", "mermaid", "ppt", "图文", "题解", "代码注释"],
-    "ai_safety": ["ai安全", "人工智能安全", "防幻觉", "内容安全", "伦理", "偏见", "可解释性"],
-    "information_security": ["信息安全", "网络安全", "密码学", "加密", "认证", "访问控制", "系统安全", "安全协议"],
+    "dl_intro": ["深度学习", "deep learning", "神经网络", "表示学习", "端到端学习"],
+    "prerequisites": ["矩阵", "梯度", "链式法则", "概率", "训练集", "验证集", "测试集", "损失函数"],
+    "mlp": ["感知机", "神经元", "mlp", "多层感知机", "激活函数", "全连接网络"],
+    "backprop": ["反向传播", "bp", "backprop", "backpropagation", "前向传播", "链式法则", "梯度传播"],
+    "optimization": ["sgd", "momentum", "adam", "优化器", "学习率", "学习率调度", "训练曲线"],
+    "regularization": ["正则化", "dropout", "batchnorm", "batch normalization", "数据增强", "早停", "过拟合", "泛化"],
+    "cnn": ["cnn", "卷积神经网络", "卷积", "卷积层", "卷积核", "步幅", "填充", "池化", "特征图", "图像分类"],
+    "rnn_lstm": ["rnn", "循环神经网络", "lstm", "gru", "长短期记忆", "门控机制", "序列模型", "时间序列"],
+    "transformer": ["transformer", "attention", "注意力机制", "自注意力", "多头注意力", "qkv", "位置编码", "encoder", "decoder"],
+    "generative": ["自编码器", "autoencoder", "vae", "gan", "生成对抗网络", "扩散模型", "diffusion", "生成模型"],
+    "pytorch": ["pytorch", "torch", "dataset", "dataloader", "训练循环", "模型训练", "代码实验", "图像分类实验"],
+    "project": ["课程项目", "综合项目", "项目任务", "图像分类项目", "文本分类项目", "时间序列预测项目", "rubric"],
 }
 
 
@@ -136,8 +137,6 @@ def _concept_groups_for_text(text):
             if alias_text and alias_text in compact:
                 matched.add(group)
                 break
-    if len(matched) > 1 and "ai_intro" in matched:
-        matched.remove("ai_intro")
     return matched
 
 
@@ -229,7 +228,7 @@ def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: f
             candidates.append({
                 "kind": "course_knowledge",
                 "title": row.topic or "课程知识点",
-                "source": row.chapter or "人工智能初始知识库",
+                "source": row.chapter or "深度学习初始知识库",
                 "excerpt": _first_matching_excerpt(topic_fields + body_fields, terms),
                 "score": relevance["score"],
                 "topic_match": relevance["topic_match"],
@@ -270,7 +269,7 @@ def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: f
                 "resource_id": row.id,
                 "title": row.title or "学习资源",
                 "resource_type": row.type or "",
-                "source": row.source or row.uploader or "已审核资源库",
+                "source": row.source or row.uploader or "已审核资源工厂",
                 "excerpt": _first_matching_excerpt(topic_fields + body_fields, terms),
                 "score": relevance["score"],
                 "topic_match": relevance["topic_match"],

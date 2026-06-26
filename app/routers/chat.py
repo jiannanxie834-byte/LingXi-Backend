@@ -1,12 +1,20 @@
 from typing import List, Optional
+import json
+import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.data_services import chat_history_service, orchestrator_service
+from app.services.data_services import (
+    agent_trace_service,
+    chat_history_service,
+    orchestrator_service,
+    profile_event_service,
+)
 
 router = APIRouter(
     prefix="/chat",
@@ -118,6 +126,7 @@ def send_message(
         # =========================
         # 调用总控编排器
         # =========================
+        trace_id = f"trace_{uuid.uuid4().hex[:12]}"
         result = orchestrator_service.handle_learning_chat(
             username=username,
             message=message,
@@ -126,7 +135,23 @@ def send_message(
             session_id=session.id
         )
 
-        trace_id = f"trace_{uuid.uuid4().hex[:12]}"
+        agent_trace_service.save_pipeline_trace(
+            db,
+            trace_id=trace_id,
+            username=username,
+            session_id=session.id,
+            pipeline_steps=result.get("pipeline_steps", []),
+        )
+        if result.get("profile"):
+            profile_event_service.record_profile_event(
+                db,
+                username=username,
+                source_type="chat",
+                source_id=session.id,
+                profile=result.get("profile", {}),
+                reason=f"本轮对话围绕「{result.get('topic') or '深度学习主题'}」更新画像。",
+            )
+
         student_response = orchestrator_service.build_student_response(result, trace_id)
         reply = student_response.get("message", {}).get("content", "")
         chat_history_service.save_message(
@@ -175,3 +200,40 @@ def send_message(
             "code": 500,
             "message": f"AI生成失败: {str(e)}"
         }
+
+
+@router.get("/traces/{trace_id}")
+def get_chat_trace(trace_id: str, db: Session = Depends(get_db)):
+    return {
+        "code": 200,
+        "message": "ok",
+        "data": agent_trace_service.list_trace(db, trace_id),
+    }
+
+
+def _sse(data: dict, event: str = "message"):
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.post("/stream")
+def stream_message(
+    data: ChatRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    def generate():
+        progress_events = [
+            ("已识别学习需求", 10, "IntentSemanticAgent"),
+            ("已归一到《深度学习》课程知识单元", 25, "CourseMapAgent"),
+            ("已更新学生画像", 40, "ProfileAgent"),
+            ("已检索课程知识库", 55, "EvidenceRetrievalAgent"),
+            ("正在生成学习路径与资源计划", 70, "LearningPathAgent"),
+        ]
+        for message, progress, agent in progress_events:
+            yield _sse({"message": message, "progress": progress, "agent": agent}, event="progress")
+            time.sleep(0.05)
+        result = send_message(data, background_tasks, db)
+        yield _sse({"message": "已完成学生端回答组装", "progress": 100, "agent": "FinalResponseComposer"}, event="progress")
+        yield _sse(result, event="result")
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
