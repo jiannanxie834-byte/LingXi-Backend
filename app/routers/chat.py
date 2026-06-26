@@ -84,6 +84,32 @@ def list_chat_messages(
     }
 
 
+@router.delete("/sessions/{session_id}")
+def delete_chat_session(
+    session_id: str,
+    username: str = "student",
+    db: Session = Depends(get_db)
+):
+    ok = chat_history_service.delete_session(db, username or "student", session_id)
+    return {
+        "code": 200 if ok else 404,
+        "message": "对话已删除" if ok else "对话不存在"
+    }
+
+
+@router.delete("/messages/{message_id}")
+def delete_chat_message(
+    message_id: str,
+    username: str = "student",
+    db: Session = Depends(get_db)
+):
+    ok = chat_history_service.delete_message(db, username or "student", message_id)
+    return {
+        "code": 200 if ok else 404,
+        "message": "消息已删除" if ok else "消息不存在"
+    }
+
+
 # =========================
 # AI多智能体统一入口
 # =========================
@@ -115,7 +141,7 @@ def send_message(
             first_message=message
         )
 
-        chat_history_service.save_message(
+        user_message = chat_history_service.save_message(
             db=db,
             username=username,
             session_id=session.id,
@@ -154,7 +180,7 @@ def send_message(
 
         student_response = orchestrator_service.build_student_response(result, trace_id)
         reply = student_response.get("message", {}).get("content", "")
-        chat_history_service.save_message(
+        assistant_message = chat_history_service.save_message(
             db=db,
             username=username,
             session_id=session.id,
@@ -174,6 +200,9 @@ def send_message(
                 "session_state": result.get("session_state", {}),
             }
         )
+        student_response["user_message_id"] = user_message.get("id", "")
+        student_response["assistant_message_id"] = assistant_message.get("id", "")
+        student_response["message_id"] = assistant_message.get("id", "")
 
         if result.get("topic") and result.get("route_type") == "learning_request":
             session_data = chat_history_service.update_session_context(

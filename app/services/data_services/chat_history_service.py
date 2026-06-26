@@ -201,3 +201,39 @@ def update_session_context(db: Session, username: str, session_id: str, last_top
     db.commit()
     db.refresh(session)
     return _session_to_dict(session)
+
+
+def delete_session(db: Session, username: str, session_id: str):
+    session = get_session(db, username, session_id)
+    if not session:
+        return False
+
+    try:
+        (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id, ChatMessage.username == username)
+            .delete(synchronize_session=False)
+        )
+        db.delete(session)
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        return False
+
+
+def delete_message(db: Session, username: str, message_id: str):
+    try:
+        message = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.id == message_id, ChatMessage.username == username)
+            .first()
+        )
+        if not message:
+            return False
+        db.delete(message)
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        return False
