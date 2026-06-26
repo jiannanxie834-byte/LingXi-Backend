@@ -20,6 +20,16 @@ CANONICAL_TOPIC_NAMES = {
     "deep learning": PRIMARY_COURSE_DISPLAY_NAME,
 }
 
+OUT_OF_COURSE_ALIASES = {
+    "英语": ["英语", "英文", "english"],
+    "高数": ["高数", "高等数学", "微积分"],
+    "JavaScript": ["javascript", "js", "前端"],
+    "Java": ["java"],
+    "信息安全": ["信息安全", "网络安全"],
+    "物理": ["物理"],
+    "法语": ["法语", "french"],
+}
+
 
 def _compact(value: str) -> str:
     return re.sub(r"\s+", "", str(value or "").lower())
@@ -35,6 +45,31 @@ def normalize_course_topic(topic: str) -> str:
     return value
 
 
+def extract_requested_topic(message: str, fallback: str = "") -> str:
+    text = str(message or "").strip()
+    compact = _compact(text)
+    for canonical, aliases in OUT_OF_COURSE_ALIASES.items():
+        if any(_compact(alias) in compact for alias in aliases):
+            return canonical
+
+    patterns = [
+        r"(?:我)?(?:想|要|准备|打算|希望)(?:开始)?(?:学习|学|复习|了解)\s*(?P<topic>[A-Za-z0-9+#.\u4e00-\u9fff -]{1,30})",
+        r"(?:帮我|给我)?(?:规划|制定|安排)\s*(?P<topic>[A-Za-z0-9+#.\u4e00-\u9fff -]{1,30})(?:路线|计划|学习路线|学习计划)?",
+        r"(?:帮我|给我|请你)?(?:讲讲|讲一下|解释|介绍)\s*(?P<topic>[A-Za-z0-9+#.\u4e00-\u9fff -]{1,30})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            topic = " ".join(match.group("topic").split()).strip("，。！？,.!?：:；;、")
+            if topic:
+                return normalize_course_topic(topic[:30])
+
+    fallback_text = str(fallback or "").strip()
+    if fallback_text and fallback_text not in {"未确认主题", "当前主题"}:
+        return normalize_course_topic(fallback_text[:30])
+    return text[:30] or "这个主题"
+
+
 def is_supported_learning_scope(semantic_result: dict) -> bool:
     semantic_result = semantic_result or {}
     topic = normalize_course_topic(semantic_result.get("topic") or "")
@@ -42,12 +77,7 @@ def is_supported_learning_scope(semantic_result: dict) -> bool:
     return bool(deep_learning_course_map_service.match_deep_learning_topic(topic, message).get("matched"))
 
 
-def build_out_of_scope_reply(topic: str = "") -> str:
-    topic = normalize_course_topic(topic)
-    topic_text = f"「{topic}」" if topic and topic != "未确认主题" else "这个主题"
-    return (
-        f"当前演示主线聚焦{PRIMARY_COURSE_TITLE}课程，"
-        f"{topic_text}暂未纳入本轮课程图谱。"
-        "我可以先帮你澄清学习目标；如果要生成学习路径、题库、代码实验或视频观看指南，"
-        "请围绕 CNN、反向传播、Transformer、PyTorch 实战等深度学习知识点提出需求。"
-    )
+def build_out_of_scope_reply(topic: str = "", raw_message: str = "") -> str:
+    requested_topic = extract_requested_topic(raw_message, topic)
+    topic_text = requested_topic if requested_topic and requested_topic != "未确认主题" else "这个主题"
+    return f"本系统聚焦{PRIMARY_COURSE_TITLE}课程，「{topic_text}」暂未纳入课程图谱，请期待后续资源完善哦。"

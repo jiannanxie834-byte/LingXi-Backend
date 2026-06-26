@@ -775,7 +775,9 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
         db.close()
 
 
-def _route_result(route, content=None, tutor_result=None):
+def _route_result(route, content=None, tutor_result=None, raw_message: str = ""):
+    if route.route_type == "out_of_scope":
+        content = course_scope_service.build_out_of_scope_reply(route.topic, raw_message)
     return {
         "reply": "",
         "tutor_result": tutor_result or {"content": content or route.student_reply},
@@ -914,7 +916,7 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
         )
         return {
             "reply": "",
-            "tutor_result": {"content": course_scope_service.build_out_of_scope_reply(topic)},
+            "tutor_result": {"content": course_scope_service.build_out_of_scope_reply(topic, message)},
             "profile": {},
             "path": None,
             "resources": [],
@@ -1085,7 +1087,7 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
         if turn_route.route_type in {"continue_previous", "followup"}:
             result = _run_continue_topic(turn_route, message)
         else:
-            result = _route_result(turn_route)
+            result = _route_result(turn_route, raw_message=message)
         state_updates = _state_for_route(turn_route)
         if state_updates:
             result["session_state"] = _save_session_state(db, username, session_id, **state_updates)
@@ -1120,7 +1122,7 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
         )
         return {
             "reply": "",
-            "tutor_result": {"content": course_scope_service.build_out_of_scope_reply(topic)},
+            "tutor_result": {"content": course_scope_service.build_out_of_scope_reply(topic, message)},
             "profile": {},
             "path": None,
             "resources": [],

@@ -38,4 +38,4 @@ def reply_continue_without_topic() -> str:
 
 
 def reply_out_of_scope() -> str:
-    return "这个问题暂不属于本系统的《深度学习》课程主线。你可以换成 CNN、反向传播、Transformer、PyTorch 实验或课程项目相关问题。"
+    return "本系统聚焦《深度学习》课程，「这个主题」暂未纳入课程图谱，请期待后续资源完善哦。"
