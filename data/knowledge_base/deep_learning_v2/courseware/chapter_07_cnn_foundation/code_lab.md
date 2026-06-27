@@ -1,7 +1,19 @@
 # 第 7 章 CNN 基础：卷积、池化与图像张量 代码实验
 
 ## 实验目标
-围绕本章主题完成 `cnn_output_shape_debug.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `cnn_output_shape_debug.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 卷积层里的填充和步幅：CNN convolution example
+- 卷积层里的多输入多输出通道：course code example
+- 卷积层里的多输入多输出通道：course code example
+- 卷积层里的多输入多输出通道：course code example
+- 卷积层里的多输入多输出通道：CNN convolution example
+- 卷积原理：CNN convolution example
+- 卷积原理：CNN convolution example
+- 卷积原理：CNN convolution example
+- 卷积层：Dataset/DataLoader example
+- 卷积层：Dataset/DataLoader example
 
 ## 环境依赖
 ```bash

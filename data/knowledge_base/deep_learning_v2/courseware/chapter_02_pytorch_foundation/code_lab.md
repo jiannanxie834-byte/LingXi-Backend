@@ -1,7 +1,19 @@
 # 第 2 章 Python、NumPy 与 PyTorch 基础 代码实验
 
 ## 实验目标
-围绕本章主题完成 `mlp_pytorch_mnist.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `mlp_pytorch_mnist.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- Pytorch安装：course code example
+- Pytorch加载数据：course code example
+- Pytorch加载数据：course code example
+- Pytorch加载数据：PyTorch model definition
+- PyTorch神经网络基础：course code example
+- PyTorch神经网络基础：PyTorch model definition
+- PyTorch神经网络基础：PyTorch model definition
+- PyTorch神经网络基础：PyTorch model definition
+- Tensorboard使用：course code example
+- Tensorboard使用：course code example
 
 ## 环境依赖
 ```bash

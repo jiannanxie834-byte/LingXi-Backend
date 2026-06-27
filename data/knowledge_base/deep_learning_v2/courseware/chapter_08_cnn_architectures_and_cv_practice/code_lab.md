@@ -1,7 +1,19 @@
 # 第 8 章 经典 CNN 架构与图像分类实践 代码实验
 
 ## 实验目标
-围绕本章主题完成 `cnn_cifar10.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `cnn_cifar10.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 合并行连接的网络GoogLeNet：PyTorch model definition
+- 合并行连接的网络GoogLeNet：CNN convolution example
+- 合并行连接的网络GoogLeNet：course code example
+- 合并行连接的网络GoogLeNet：course code example
+- 经典神经网络LeNet：PyTorch model definition
+- 经典神经网络LeNet：course code example
+- 经典神经网络LeNet：course code example
+- 经典神经网络LeNet：PyTorch model definition
+- 深度卷积神经网络AlexNet：CNN convolution example
+- 深度卷积神经网络AlexNet：course code example
 
 ## 环境依赖
 ```bash

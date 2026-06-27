@@ -1,7 +1,19 @@
 # 第 10 章 序列模型：RNN、GRU 与 LSTM 代码实验
 
 ## 实验目标
-围绕本章主题完成 `lstm_sequence_classification.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `lstm_sequence_classification.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 循环神经网络RNN的实现：course code example
+- 循环神经网络RNN的实现：course code example
+- 循环神经网络RNN的实现：course code example
+- 循环神经网络RNN的实现：course code example
+- 课程5 第1周 作业题a 搭建RNN网络和LSTM网络：course code example
+- 课程5 第1周 作业题a 搭建RNN网络和LSTM网络：course code example
+- 课程5 第1周 作业题a 搭建RNN网络和LSTM网络：course code example
+- 课程5 第1周 作业题a 搭建RNN网络和LSTM网络：course code example
+- 序列模型：course code example
+- 序列模型：course code example
 
 ## 环境依赖
 ```bash

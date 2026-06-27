@@ -1,7 +1,19 @@
 # 第 6 章 优化算法与超参数调试 代码实验
 
 ## 实验目标
-围绕本章主题完成 `optimizer_comparison.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `optimizer_comparison.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 优化器：Dataset/DataLoader example
+- 优化器：Dataset/DataLoader example
+- 优化器：Dataset/DataLoader example
+- 线性回归、优化算法：course code example
+- 线性回归、优化算法：course code example
+- 线性回归、优化算法：course code example
+- 线性回归、优化算法：course code example
+- 课程2 第2周 优化算法：course code example
+- 课程2 第2周 优化算法：course code example
+- 课程2 第2周 优化算法：course code example
 
 ## 环境依赖
 ```bash

@@ -1,7 +1,19 @@
 # 第 9 章 计算机视觉进阶任务 代码实验
 
 ## 实验目标
-围绕本章主题完成 `object_detection_iou_anchor_demo.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `object_detection_iou_anchor_demo.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 物体检测和数据集：course code example
+- 物体检测和数据集：course code example
+- 物体检测和数据集：course code example
+- 物体检测和数据集：course code example
+- 锚框：course code example
+- 锚框：course code example
+- 锚框：course code example
+- 锚框：course code example
+- SSD实现：course code example
+- SSD实现：course code example
 
 ## 环境依赖
 ```bash

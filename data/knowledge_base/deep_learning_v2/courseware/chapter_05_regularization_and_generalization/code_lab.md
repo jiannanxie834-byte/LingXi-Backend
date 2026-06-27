@@ -1,7 +1,19 @@
 # 第 5 章 正则化、初始化与泛化 代码实验
 
 ## 实验目标
-围绕本章主题完成 `dropout_batchnorm_demo.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `dropout_batchnorm_demo.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 课程2 第3周 超参数调试、Batch正则化和编程框架：course code example
+- 课程2 第3周 超参数调试、Batch正则化和编程框架：training loop and optimizer
+- 课程2 第3周 超参数调试、Batch正则化和编程框架：course code example
+- 课程2 第3周 超参数调试、Batch正则化和编程框架：course code example
+- 课程2 第1周 作业题 深度神经网络的初始化 正则化 梯度检验：course code example
+- 课程2 第1周 作业题 深度神经网络的初始化 正则化 梯度检验：course code example
+- 课程2 第1周 作业题 深度神经网络的初始化 正则化 梯度检验：course code example
+- 课程2 第1周 作业题 深度神经网络的初始化 正则化 梯度检验：course code example
+- 权重衰退：course code example
+- 权重衰退：course code example
 
 ## 环境依赖
 ```bash

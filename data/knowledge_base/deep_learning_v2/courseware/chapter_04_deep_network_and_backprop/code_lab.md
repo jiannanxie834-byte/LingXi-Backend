@@ -1,7 +1,17 @@
 # 第 4 章 深层神经网络与反向传播 代码实验
 
 ## 实验目标
-围绕本章主题完成 `mlp_pytorch_mnist.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `mlp_pytorch_mnist.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 损失函数与反向传播：course code example
+- 损失函数与反向传播：course code example
+- 损失函数与反向传播：course code example
+- 损失函数与反向传播：course code example
+- 自动求导：course code example
+- 自动求导：course code example
+- 自动求导：course code example
+- 自动求导：course code example
 
 ## 环境依赖
 ```bash

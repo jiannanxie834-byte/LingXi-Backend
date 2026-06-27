@@ -1,7 +1,19 @@
 # 第 11 章 Attention、Transformer 与 NLP 基础 代码实验
 
 ## 实验目标
-围绕本章主题完成 `attention_demo.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `attention_demo.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 使用注意力机制的seq2seq：course code example
+- 使用注意力机制的seq2seq：PyTorch model definition
+- 使用注意力机制的seq2seq：PyTorch model definition
+- 使用注意力机制的seq2seq：attention or transformer example
+- 序列到序列学习seq2seq：course code example
+- 序列到序列学习seq2seq：PyTorch model definition
+- 序列到序列学习seq2seq：course code example
+- 序列到序列学习seq2seq：course code example
+- 注意力机制：course code example
+- 注意力机制：course code example
 
 ## 环境依赖
 ```bash

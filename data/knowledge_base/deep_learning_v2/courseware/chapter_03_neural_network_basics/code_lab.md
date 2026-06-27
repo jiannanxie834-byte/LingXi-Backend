@@ -1,7 +1,18 @@
 # 第 3 章 神经网络基础与向量化计算 代码实验
 
 ## 实验目标
-围绕本章主题完成 `mlp_numpy_from_scratch.py`，把概念落到可运行代码、日志和实验报告中。
+围绕本章主题完成 `mlp_numpy_from_scratch.py`，把两份来源中的 notebook 实验线索整理为可运行任务、日志记录和实验报告。
+
+## 来源 notebook 线索
+- 损失函数与反向传播：course code example
+- 损失函数与反向传播：course code example
+- 损失函数与反向传播：course code example
+- 损失函数与反向传播：course code example
+- Softmax回归、损失函数、分类：course code example
+- Softmax回归、损失函数、分类：course code example
+- Softmax回归、损失函数、分类：course code example
+- Softmax回归、损失函数、分类：Dataset/DataLoader example
+- 课程1 第2周a 神经网络基础之逻辑回归：course code example
 
 ## 环境依赖
 ```bash
