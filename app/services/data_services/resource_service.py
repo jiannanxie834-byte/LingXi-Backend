@@ -251,6 +251,9 @@ def _recommendation_source_text(context):
 def _resource_to_dict(resource: Resource):
     raw_notes = resource.agent_notes or ""
     safety_review = content_guard_service.extract_review(raw_notes)
+    teaching_quality_review = resource_quality_gate.extract_teaching_quality_review(raw_notes)
+    public_notes = content_guard_service.strip_review_block(raw_notes)
+    public_notes = resource_quality_gate.strip_teaching_quality_note(public_notes)
 
     return {
         "id": resource.id,
@@ -263,8 +266,9 @@ def _resource_to_dict(resource: Resource):
         "summary": resource.summary or "",
         "content": resource.content or "",
         "source": resource.source or "",
-        "agent_notes": content_guard_service.strip_review_block(raw_notes),
+        "agent_notes": public_notes,
         "safety_review": safety_review,
+        "teaching_quality_review": teaching_quality_review,
         "review_comment": resource.review_comment or "",
         "reviewed_at": resource.reviewed_at or "",
     }
@@ -787,6 +791,7 @@ def save_ai_generated_resources(
             "unit_id": item.get("unit_id", ""),
             "chapter_id": item.get("chapter_id", ""),
             "course_id": item.get("course_id", ""),
+            "evidence_chunks": plan_item.get("evidence_chunks", []),
             "deep_learning_course_map": item.get("deep_learning_course_map") or semantic_result.get("deep_learning_course_map") or {},
             "ai_course_map": item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
@@ -797,6 +802,26 @@ def save_ai_generated_resources(
                 "title": item.get("title"),
                 "type": item.get("type"),
                 "issues": quality.get("issues", []),
+            })
+            continue
+        teaching_quality = resource_quality_gate.validate_teaching_quality(
+            {
+                **item,
+                "topic": plan_item.get("topic") or semantic_result.get("topic", ""),
+                "unit_title": plan_item.get("unit_title") or semantic_result.get("normalized_topic", ""),
+                "evidence_chunks": plan_item.get("evidence_chunks", []),
+            },
+            quality_context,
+        )
+        item["agent_notes"] = resource_quality_gate.attach_teaching_quality_note(
+            item.get("agent_notes", ""),
+            teaching_quality,
+        )
+        if teaching_quality.get("fatal") or teaching_quality.get("teaching_quality_score", 0) < 60:
+            skipped.append({
+                "title": item.get("title"),
+                "type": item.get("type"),
+                "issues": teaching_quality.get("issues", []),
             })
             continue
         item["_semantic_context"] = quality_context
