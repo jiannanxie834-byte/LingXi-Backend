@@ -1,6 +1,9 @@
 from typing import Dict, List
 
-from app.services.data_services import resource_artifact_type_service as artifact_types
+from app.services.data_services import (
+    deep_learning_resource_blueprint,
+    resource_artifact_type_service as artifact_types,
+)
 
 
 BASE_RESOURCE_TYPES = artifact_types.ACTIVE_ARTIFACT_TYPES
@@ -52,11 +55,22 @@ def get_resource_spec(subject_category: str, resource_type: str, topic: str, sem
         requirements = ["学习目标", "核心内容", "例子", "练习", "复盘建议"]
 
     subject_category = subject_category or semantic_result.get("subject_category") or "unknown"
+    semantic_result = semantic_result or {}
+    deep_spec = {}
+    if deep_learning_resource_blueprint.is_deep_learning_context(subject_category, semantic_result):
+        deep_spec = deep_learning_resource_blueprint.get_deep_learning_spec(normalized_type)
+        if deep_spec.get("requirements"):
+            requirements = deep_spec["requirements"]
+
     allow_code = normalized_type == artifact_types.CODE_LAB or bool(
         semantic_result.get("should_generate_code_content")
         or semantic_result.get("requires_code")
     )
     forbidden_terms = [] if allow_code else PROGRAMMING_FORBIDDEN
+    quality_constraints = [
+        *_deep_learning_constraints(normalized_type, semantic_result),
+        *(deep_spec.get("quality_constraints") or []),
+    ]
 
     return {
         "topic": topic,
@@ -64,10 +78,10 @@ def get_resource_spec(subject_category: str, resource_type: str, topic: str, sem
         "resource_type": normalized_type,
         "content_format": artifact_types.get_format(normalized_type),
         "requirements": requirements,
-        "quality_constraints": _deep_learning_constraints(normalized_type, semantic_result or {}),
+        "quality_constraints": list(dict.fromkeys(quality_constraints)),
         "forbidden_terms": forbidden_terms,
         "allow_code_content": allow_code,
-        "level": (semantic_result or {}).get("level") or "未确认",
-        "level_source": (semantic_result or {}).get("level_source") or "none",
+        "level": semantic_result.get("level") or "未确认",
+        "level_source": semantic_result.get("level_source") or "none",
         "requires_human_review": True,
     }
