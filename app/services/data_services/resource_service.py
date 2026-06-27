@@ -414,7 +414,7 @@ def get_passed_resource_bundles(db: Session):
     return resource_bundle_service.build_topic_bundles(get_passed_resources(db))
 
 
-def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
+def get_recommended_resources(db: Session, username: str = "", limit: int = 80):
     """画像、错题、学习路线和内容质量共同参与的可解释混合推荐。"""
 
     try:
@@ -513,7 +513,7 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
             item["_recommend_rank"] = int(score)
             scored.append(item)
 
-        limit_value = max(1, min(int(limit or 12), 30))
+        limit_value = max(1, min(int(limit or 80), 100))
 
         from app.services.data_services import teaching_source_service
         teaching_context = _recommendation_source_text(context)

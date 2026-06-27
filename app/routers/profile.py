@@ -12,11 +12,17 @@ router = APIRouter(prefix="/profile", tags=["动态学习画像"])
 async def get_my_profile(username: str = "student", db: Session = Depends(get_db)):
     user = user_service.get_user_by_username(db, username or "student")
     events = profile_event_service.list_profile_events(db, username or "student", limit=10)
+    profile = profile_event_service.get_current_profile_snapshot(
+        db,
+        username or "student",
+        user=user,
+    )
     return {
         "code": 200,
         "message": "ok",
         "data": {
             "user": user,
+            "profile": profile,
             "events": events,
             "latest_event": events[0] if events else None,
         },
