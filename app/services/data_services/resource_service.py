@@ -254,6 +254,11 @@ def _resource_to_dict(resource: Resource):
     teaching_quality_review = resource_quality_gate.extract_teaching_quality_review(raw_notes)
     public_notes = content_guard_service.strip_review_block(raw_notes)
     public_notes = resource_quality_gate.strip_teaching_quality_note(public_notes)
+    evidence_refs = list(dict.fromkeys(re.findall(
+        r"evidence_id\s*[:：=]\s*([\w:\-]+)",
+        "\n".join([resource.content or "", resource.source or "", raw_notes]),
+        re.I,
+    )))
 
     return {
         "id": resource.id,
@@ -269,6 +274,11 @@ def _resource_to_dict(resource: Resource):
         "agent_notes": public_notes,
         "safety_review": safety_review,
         "teaching_quality_review": teaching_quality_review,
+        "evidence_review": {
+            "evidence_ok": bool(evidence_refs),
+            "evidence_refs": evidence_refs,
+            "evidence_count": len(evidence_refs),
+        },
         "review_comment": resource.review_comment or "",
         "reviewed_at": resource.reviewed_at or "",
     }
@@ -448,6 +458,7 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
             plan_matches = _count_matches(resource_text, plan_terms)
             topic_matches = _count_matches(resource_text, topic_terms)
             safety_review = content_guard_service.extract_review(resource.agent_notes or "")
+            teaching_quality_review = resource_quality_gate.extract_teaching_quality_review(resource.agent_notes or "")
 
             preferred_type_weight = 0
             for type_name, weight in preferred_types.items():
@@ -470,7 +481,17 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 12):
                     evaluation_score += 6
             evaluation_score = min(10, evaluation_score)
 
-            quality_score = min(5, max(0, round(safety_review.get("score", 0) / 20))) if safety_review else 0
+            teaching_score = (
+                teaching_quality_review.get("teaching_quality_score", teaching_quality_review.get("score"))
+                if teaching_quality_review
+                else None
+            )
+            if teaching_score is not None:
+                quality_score = min(8, max(0, round(float(teaching_score) / 12.5)))
+            elif safety_review:
+                quality_score = min(3, max(0, round(safety_review.get("score", 0) / 34)))
+            else:
+                quality_score = 0
             freshness_score = 3 if resource.uploader in SYSTEM_UPLOADERS else 2
             if len((resource.content or "").strip()) >= 500:
                 freshness_score += 2

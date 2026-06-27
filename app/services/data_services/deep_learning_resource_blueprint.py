@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List
 
 from app.services.data_services import (
@@ -38,8 +39,14 @@ COURSE_NOTE_QUALITY_RULES = {
 
 TOPIC_SPECIFIC_REQUIREMENTS = {
     "dl_cnn": ["卷积核", "步幅", "填充", "特征图", "局部连接", "参数共享", "输出尺寸计算"],
+    "dl_cnn_output_size": ["输入尺寸", "卷积核", "步幅", "填充", "输出特征图", "floor", "H_out"],
     "dl_backprop": ["损失函数", "梯度", "链式法则", "前向传播", "反向传播", "参数更新"],
+    "dl_lstm": ["LSTM", "长期依赖", "梯度消失", "细胞状态", "隐藏状态", "遗忘门", "输入门", "输出门"],
+    "dl_lstm_gate": ["LSTM", "门控", "sigmoid", "细胞状态", "隐藏状态", "遗忘门", "输入门", "输出门"],
+    "dl_rnn": ["RNN", "隐状态", "时间步", "BPTT", "梯度消失", "序列建模"],
+    "dl_gru": ["GRU", "更新门", "重置门", "隐藏状态", "参数更少", "长期依赖"],
     "dl_transformer": ["Query", "Key", "Value", "注意力分数", "Softmax", "多头注意力", "位置编码"],
+    "dl_multihead_attention": ["多头注意力", "Query", "Key", "Value", "Softmax", "concat", "输出投影"],
     "dl_optimization": ["SGD", "Momentum", "Adam", "学习率", "梯度下降", "收敛", "局部最优"],
     "dl_regularization": ["过拟合", "L1", "L2", "Dropout", "BatchNorm", "数据增强", "早停"],
     "dl_pytorch": ["Tensor", "Dataset", "DataLoader", "nn.Module", "训练循环", "loss.backward", "optimizer.step"],
@@ -48,12 +55,49 @@ TOPIC_SPECIFIC_REQUIREMENTS = {
 
 
 UNIT_REQUIREMENT_KEYS = {
+    "dl_cnn_intro": "dl_cnn",
     "dl_cnn_conv_basic": "dl_cnn",
+    "dl_cnn_output_size": "dl_cnn_output_size",
+    "dl_cnn_padding_stride": "dl_cnn_output_size",
+    "dl_cnn_channel_featuremap": "dl_cnn",
     "dl_backprop_basic": "dl_backprop",
-    "dl_transformer_attention": "dl_transformer",
+    "dl_rnn_basic": "dl_rnn",
+    "dl_bptt": "dl_rnn",
+    "dl_gradient_vanishing": "dl_rnn",
+    "dl_lstm_cell": "dl_lstm",
+    "dl_lstm_forget_gate": "dl_lstm_gate",
+    "dl_lstm_input_gate": "dl_lstm_gate",
+    "dl_lstm_output_gate": "dl_lstm_gate",
+    "dl_lstm_cell_hidden_state": "dl_lstm",
+    "dl_gru_basic": "dl_gru",
+    "dl_attention_intro": "dl_transformer",
+    "dl_attention_qkv": "dl_transformer",
+    "dl_scaled_dot_product_attention": "dl_transformer",
+    "dl_multihead_attention": "dl_multihead_attention",
+    "dl_positional_encoding": "dl_transformer",
+    "dl_transformer_encoder": "dl_transformer",
+    "dl_transformer_decoder": "dl_transformer",
     "dl_optimization_adam": "dl_optimization",
+    "dl_gradient_descent": "dl_optimization",
+    "dl_sgd": "dl_optimization",
+    "dl_momentum": "dl_optimization",
+    "dl_adam_optimizer": "dl_optimization",
+    "dl_learning_rate_schedule": "dl_optimization",
+    "dl_training_curve_diagnosis": "dl_optimization",
     "dl_regularization_dropout_bn": "dl_regularization",
+    "dl_overfitting": "dl_regularization",
+    "dl_l2_regularization": "dl_regularization",
+    "dl_dropout": "dl_regularization",
+    "dl_batchnorm": "dl_regularization",
+    "dl_data_augmentation": "dl_regularization",
+    "dl_early_stopping": "dl_regularization",
     "dl_pytorch_practice": "dl_pytorch",
+    "dl_pytorch_tensor": "dl_pytorch",
+    "dl_pytorch_dataset_dataloader": "dl_pytorch",
+    "dl_pytorch_nn_module": "dl_pytorch",
+    "dl_pytorch_training_loop": "dl_pytorch",
+    "dl_pytorch_debug_shape": "dl_pytorch",
+    "dl_pytorch_model_evaluation": "dl_pytorch",
     "dl_prereq_math_ml": "dl_prereq",
 }
 
@@ -140,6 +184,43 @@ def get_deep_learning_spec(resource_type: str) -> Dict:
     return DEEP_LEARNING_SPECS.get(normalized) or DEEP_LEARNING_SPECS.get(resource_type, {})
 
 
+def _dedupe_terms(terms: List[str]) -> List[str]:
+    result = []
+    seen = set()
+    for term in terms:
+        value = str(term or "").strip()
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(value)
+    return result
+
+
+def _unit_concept_terms(unit_id: str = "", topic: str = "") -> List[str]:
+    unit = deep_learning_course_map_service.get_unit(unit_id or "")
+    if not unit and topic:
+        match = deep_learning_course_map_service.match_deep_learning_topic(topic, topic)
+        if match.get("matched"):
+            unit = match.get("unit") or deep_learning_course_map_service.get_unit(match.get("unit_id", ""))
+
+    if not unit:
+        return []
+
+    terms = [
+        unit.get("title", ""),
+        *(unit.get("core_concepts") or []),
+        *(unit.get("formulas") or []),
+        *(unit.get("aliases") or [])[:4],
+    ]
+    for outcome in unit.get("learning_outcomes") or []:
+        terms.extend(re.findall(r"[A-Za-z][A-Za-z0-9_+.-]{1,}|[\u4e00-\u9fff]{2,8}", str(outcome)))
+
+    return _dedupe_terms(terms)[:12]
+
+
 def get_topic_specific_terms(unit_id: str = "", topic: str = "") -> List[str]:
     key = UNIT_REQUIREMENT_KEYS.get(unit_id or "")
     if not key:
@@ -158,7 +239,10 @@ def get_topic_specific_terms(unit_id: str = "", topic: str = "") -> List[str]:
             key = "dl_pytorch"
         elif any(word in compact_topic for word in ["前置", "矩阵", "梯度", "链式法则"]):
             key = "dl_prereq"
-    return list(TOPIC_SPECIFIC_REQUIREMENTS.get(key or "", []))
+
+    blueprint_terms = list(TOPIC_SPECIFIC_REQUIREMENTS.get(key or "", []))
+    graph_terms = _unit_concept_terms(unit_id=unit_id, topic=topic)
+    return _dedupe_terms([*blueprint_terms, *graph_terms])
 
 
 def format_evidence_chunks(evidence_chunks: List[Dict]) -> str:

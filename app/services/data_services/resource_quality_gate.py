@@ -57,6 +57,23 @@ def _count_markers(text: str, markers: List[str]) -> int:
     return sum(1 for marker in markers if marker and marker in (text or ""))
 
 
+def _coverage_categories(content: str) -> Dict[str, bool]:
+    text = content or ""
+    categories = {
+        "定义": ["定义", "是什么", "概念", "含义"],
+        "原理": ["原理", "机制", "为什么", "作用", "流程", "推导"],
+        "例子": ["例子", "示例", "例题", "案例", "情境"],
+        "练习": ["自测题", "练习", "参考答案", "答案", "解析"],
+        "公式或代码": ["公式", "符号", "计算过程", "代码", "伪代码", "PyTorch", "torch", "算法流程"],
+        "误区": ["误区", "易错", "常见错误", "混淆"],
+        "学习建议": ["下一步", "建议", "检查清单", "复习"],
+    }
+    return {
+        name: any(marker in text for marker in markers)
+        for name, markers in categories.items()
+    }
+
+
 def _normalize_topic_for_check(topic: str) -> str:
     return re.sub(r"\s+", "", str(topic or "")).lower()
 
@@ -226,6 +243,8 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     exercises = _count_markers(content, ["自测题", "练习", "参考答案", "答案", "解析"])
     formula_or_code = _count_markers(content, ["公式", "算法流程", "计算过程", "代码", "伪代码", "PyTorch", "torch", "梯度", "softmax", "Conv2d"])
     personalization = _count_markers(full_text, ["基础", "目标", "偏好", "短板", "实践", "适用对象", "学习定位"])
+    coverage = _coverage_categories(content)
+    covered_category_names = [name for name, ok in coverage.items() if ok]
 
     issues = []
     repair_suggestions = []
@@ -251,10 +270,13 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         issues.append("课程讲解文档二级标题少于 6 个")
         repair_suggestions.append("按 12 个讲义章节重写，至少包含 8 个二级标题")
 
-    if resource_type == artifact_types.COURSE_NOTE and not any(x in content for x in ["定义", "原理", "公式", "例子", "误区", "练习"]):
+    if resource_type == artifact_types.COURSE_NOTE and len(covered_category_names) < 3:
         fatal = True
-        issues.append("缺少知识点定义、原理、公式、例子、误区或练习")
-        repair_suggestions.append("补充定义、原理推导、公式解释、常见误区和课堂练习")
+        issues.append("课程讲义教学要素严重不足：定义、原理、例子、练习、公式/代码、误区、学习建议覆盖少于 3 类")
+        repair_suggestions.append("按完整课程讲义重写，至少补齐定义、原理、例子、练习、公式/代码、误区和下一步建议")
+    elif resource_type == artifact_types.COURSE_NOTE and len(covered_category_names) < 5:
+        issues.append("课程讲义教学要素不够完整")
+        repair_suggestions.append("继续补充定义、原理、例子、练习、公式/代码、误区和学习建议中的缺失部分")
 
     if "核心内容" in content and content_len < 1500:
         issues.append("内容停留在摘要层面，没有展开讲解")
@@ -294,6 +316,8 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     score += min(10, formula_or_code * 3)
     score += min(5, personalization)
     score += 5 if evidence_chunks or evidence_refs else 0
+    if resource_type == artifact_types.COURSE_NOTE:
+        score = min(100, score + min(5, len(covered_category_names)))
     score = max(0, min(100, int(score)))
 
     passed = not fatal and score >= 80
@@ -319,6 +343,7 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
             "exercise_markers": exercises,
             "formula_or_code_markers": formula_or_code,
             "evidence_count": len(evidence_chunks) + len(evidence_refs),
+            "teaching_element_coverage": covered_category_names,
         },
     }
 
