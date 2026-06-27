@@ -756,7 +756,7 @@ def _notify_resource_generation(db, username, title, content):
     )
 
 
-def run_resource_generation_job(username, resource_plan, profile_result, intent, evidence_query, evidence_prompt, job_id: str = ""):
+def run_resource_generation_job(username, resource_plan, profile_result, intent, evidence_query, evidence_prompt, job_id: str = "", plan_title: str = ""):
     db = SessionLocal()
     try:
         if job_id:
@@ -834,6 +834,12 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
         ]
         count = len(resources)
         if count:
+            learning_plan_service.attach_artifacts_to_plan(
+                db=db,
+                username=username,
+                plan_title=plan_title,
+                resources=resources,
+            )
             if job_id:
                 generation_job_service.update_job(
                     db,
@@ -1487,6 +1493,7 @@ JSON 字段：
                 evidence_query,
                 evidence_prompt,
                 job_data.get("job_id", ""),
+                plan_result.get("title", "学习路径"),
             )
             pipeline_steps.append(_pipeline_step(
                 "safety",

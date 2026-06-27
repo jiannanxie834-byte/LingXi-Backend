@@ -6,6 +6,83 @@ from sqlalchemy.orm import Session
 from app.models.schemas import LearningPlan, TodoList
 
 
+def _first_list_item(value, default=""):
+    return value[0] if isinstance(value, list) and value else default
+
+
+def _resource_type_matches(focus_type: str, resource_type: str) -> bool:
+    focus = str(focus_type or "").strip()
+    current = str(resource_type or "").strip()
+    if not focus or not current:
+        return False
+    return focus == current or focus in current or current in focus
+
+
+def normalize_plan_resource(item: dict, step: dict, step_index: int = 0, resource_index: int = 0):
+    item = item or {}
+    artifact = item.get("artifact") if isinstance(item.get("artifact"), dict) else {}
+    artifact_id = item.get("artifact_id") or artifact.get("artifact_id") or ""
+    resource_id = item.get("resource_id") or artifact.get("resource_id") or item.get("id") or ""
+    unit_ids = item.get("unit_ids") or artifact.get("unit_ids") or []
+    unit_id = item.get("unit_id") or _first_list_item(unit_ids) or step.get("unit_id") or ""
+    resource_type = item.get("type") or artifact.get("type") or "学习资源"
+
+    query = {
+        "artifact_id": artifact_id,
+        "resource_id": resource_id,
+        "unit_id": unit_id,
+        "type": resource_type,
+    }
+    return {
+        "id": artifact_id or resource_id or f"res_{step_index + 1}_{resource_index + 1}",
+        "artifact_id": artifact_id,
+        "resource_id": resource_id,
+        "title": item.get("title") or artifact.get("title") or f"{step.get('title') or '学习步骤'}配套资源",
+        "type": resource_type,
+        "unit_id": unit_id,
+        "route": "/resource" if artifact_id else "",
+        "query": query,
+    }
+
+
+def bind_resources_to_step(step: dict, resources: list, step_index: int = 0):
+    def _has_resource_title(item):
+        artifact = item.get("artifact") if isinstance(item.get("artifact"), dict) else {}
+        return bool(item.get("title") or artifact.get("title"))
+
+    resource_items = [
+        item for item in (resources or [])
+        if isinstance(item, dict) and _has_resource_title(item)
+    ]
+    step_unit_id = str(step.get("unit_id") or "").strip()
+    focus_types = step.get("resource_focus") if isinstance(step.get("resource_focus"), list) else []
+    matched = []
+
+    for item in resource_items:
+        artifact = item.get("artifact") if isinstance(item.get("artifact"), dict) else {}
+        item_unit_ids = item.get("unit_ids") or artifact.get("unit_ids") or []
+        item_unit_id = str(item.get("unit_id") or _first_list_item(item_unit_ids) or "").strip()
+        item_type = str(item.get("type") or artifact.get("type") or "").strip()
+        unit_ok = not step_unit_id or not item_unit_id or item_unit_id == step_unit_id
+        focus_ok = not focus_types or any(_resource_type_matches(focus, item_type) for focus in focus_types)
+        if unit_ok and focus_ok:
+            matched.append(item)
+
+    if not matched:
+        matched = [
+            item for item in resource_items
+            if not step_unit_id
+            or str(item.get("unit_id") or _first_list_item((item.get("artifact") or {}).get("unit_ids") or []) or "").strip() in {"", step_unit_id}
+        ]
+    if not matched:
+        matched = resource_items
+
+    return [
+        normalize_plan_resource(item, step, step_index, r_index)
+        for r_index, item in enumerate(matched[:3])
+    ]
+
+
 # =========================
 # Learning Plan
 # =========================
@@ -68,56 +145,6 @@ def save_generated_plan(
 ):
     plans = get_plans_by_username(db, username)
 
-    resource_items = [
-        item for item in (resources or [])
-        if isinstance(item, dict) and item.get("title")
-    ]
-
-    def _resource_type_matches(focus_type: str, resource_type: str) -> bool:
-        focus = str(focus_type or "").strip()
-        current = str(resource_type or "").strip()
-        if not focus or not current:
-            return False
-        return focus == current or focus in current or current in focus
-
-    def _resource_for_step(step: dict, idx: int):
-        step_unit_id = str(step.get("unit_id") or "").strip()
-        focus_types = step.get("resource_focus") if isinstance(step.get("resource_focus"), list) else []
-        matched = []
-        for item in resource_items:
-            item_unit_id = str(item.get("unit_id") or "").strip()
-            item_type = str(item.get("type") or "").strip()
-            unit_ok = not step_unit_id or not item_unit_id or item_unit_id == step_unit_id
-            focus_ok = not focus_types or any(_resource_type_matches(focus, item_type) for focus in focus_types)
-            if unit_ok and focus_ok:
-                matched.append(item)
-
-        if not matched:
-            matched = [
-                item for item in resource_items
-                if not step_unit_id or str(item.get("unit_id") or "").strip() in {"", step_unit_id}
-            ]
-        if not matched:
-            matched = resource_items
-
-        result = []
-        for r_index, item in enumerate(matched[:3]):
-            resource_type = item.get("type") or "学习资源"
-            unit_id = item.get("unit_id") or step_unit_id
-            result.append({
-                "id": item.get("artifact_id") or item.get("id") or f"res_{idx + 1}_{r_index + 1}",
-                "title": item.get("title") or f"{step.get('title') or '学习步骤'}配套资源",
-                "type": resource_type,
-                "unit_id": unit_id,
-                "route": "/resource",
-                "query": {
-                    "artifact_id": item.get("artifact_id") or item.get("id") or "",
-                    "unit_id": unit_id,
-                    "type": resource_type,
-                },
-            })
-        return result
-
     def _task_from_step(step, idx):
         if isinstance(step, dict):
             unit_id = step.get("unit_id") or ""
@@ -128,7 +155,7 @@ def save_generated_plan(
                 "status": step.get("status") or ("active" if idx == 0 else "pending"),
                 "isCustom": False,
                 "unit_id": unit_id,
-                "resources": _resource_for_step(step, idx),
+                "resources": bind_resources_to_step(step, resources, idx),
                 "resource_focus": step.get("resource_focus") or [],
             }
 
@@ -141,7 +168,7 @@ def save_generated_plan(
             "status": "active" if idx == 0 else "pending",
             "isCustom": False,
             "unit_id": "",
-            "resources": _resource_for_step(step_dict, idx),
+            "resources": bind_resources_to_step(step_dict, resources, idx),
             "resource_focus": [],
         }
 
@@ -162,6 +189,26 @@ def save_generated_plan(
     save_user_plans(db, username, [new_plan] + filtered)
 
     return new_plan
+
+
+def attach_artifacts_to_plan(db: Session, username: str, plan_title: str, resources: list):
+    plans = get_plans_by_username(db, username)
+    if not plans:
+        return None
+
+    target = None
+    for plan in plans:
+        if plan_title and plan.get("title") == plan_title:
+            target = plan
+            break
+    if not target:
+        target = plans[0]
+
+    for idx, task in enumerate(target.get("tasks", []) or []):
+        task["resources"] = bind_resources_to_step(task, resources, idx)
+
+    save_user_plans(db, username, plans)
+    return target
 
 
 def delete_plan_route(db: Session, username: str, route_id: str):
