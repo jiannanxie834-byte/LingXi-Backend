@@ -1,4 +1,6 @@
+import json
 import re
+from pathlib import Path
 from typing import Dict, List, Optional
 
 
@@ -16,7 +18,7 @@ DEEP_LEARNING_CHAPTERS = [
     {"chapter_id": "chapter_05_optimization", "title": "优化算法与训练技巧"},
     {"chapter_id": "chapter_06_regularization", "title": "正则化与泛化"},
     {"chapter_id": "chapter_07_cnn", "title": "卷积神经网络 CNN"},
-    {"chapter_id": "chapter_08_rnn_lstm", "title": "循环神经网络 RNN/LSTM/GRU"},
+    {"chapter_id": "chapter_08_rnn_lstm", "title": "RNN、LSTM 与 GRU 序列建模"},
     {"chapter_id": "chapter_09_transformer", "title": "Attention 与 Transformer"},
     {"chapter_id": "chapter_10_generative_models", "title": "自编码器、GAN 与扩散模型入门"},
     {"chapter_id": "chapter_11_pytorch_practice", "title": "PyTorch 深度学习工程实践"},
@@ -220,6 +222,49 @@ DEEP_LEARNING_UNITS = [
 ]
 
 
+COURSE_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "data"
+    / "knowledge_base"
+    / "deep_learning"
+)
+KNOWLEDGE_UNITS_PATH = COURSE_DIR / "knowledge_units.jsonl"
+
+
+def _load_units_from_jsonl() -> List[Dict]:
+    if not KNOWLEDGE_UNITS_PATH.exists():
+        return []
+
+    units = []
+    with KNOWLEDGE_UNITS_PATH.open("r", encoding="utf-8") as file:
+        for line in file:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if item.get("unit_id") and item.get("title") and item.get("chapter_id"):
+                item.setdefault("course_id", COURSE_ID)
+                item.setdefault("aliases", [])
+                item.setdefault("prerequisites", [])
+                item.setdefault("related_units", [])
+                item.setdefault("compare_units", [])
+                item.setdefault("core_concepts", [])
+                item.setdefault("learning_outcomes", [])
+                item.setdefault("common_misconceptions", [])
+                item.setdefault("resource_focus", [])
+                item.setdefault("formulas", [])
+                item.setdefault("evidence_refs", [])
+                units.append(item)
+    return units
+
+
+_JSONL_UNITS = _load_units_from_jsonl()
+if _JSONL_UNITS:
+    DEEP_LEARNING_UNITS = _JSONL_UNITS
+
 CHAPTER_BY_ID = {chapter["chapter_id"]: chapter for chapter in DEEP_LEARNING_CHAPTERS}
 UNIT_BY_ID = {unit["unit_id"]: unit for unit in DEEP_LEARNING_UNITS}
 DEEP_LEARNING_COURSE_MAP = [
@@ -271,27 +316,33 @@ def _score_unit(unit: Dict, message: str, topic: str = "") -> Dict:
         return {"score": 0.0, "aliases": []}
 
     matched_aliases = []
-    score = 0.0
-    for alias in unit.get("aliases", []) + [unit.get("title", "")]:
+    alias_score = 0.0
+    alias_candidates = (
+        [(unit.get("title", ""), 0.18)]
+        + [(alias, 0.15) for alias in unit.get("aliases", [])]
+        + [(concept, 0.04) for concept in unit.get("core_concepts", [])]
+    )
+    for alias, boost in alias_candidates:
         compact_alias = _compact(alias)
         if not compact_alias:
             continue
         if compact_alias == compact_text:
-            score += 1.0
+            alias_score = max(alias_score, 1.0 + boost)
             matched_aliases.append(alias)
         elif compact_alias in compact_text:
             alias_len = len(compact_alias)
             if alias_len <= 2:
-                score += 0.62
+                alias_score = max(alias_score, 0.62 + boost)
             elif alias_len <= 4:
-                score += 0.72
+                alias_score = max(alias_score, 0.72 + boost)
             else:
-                score += min(0.92, 0.72 + alias_len / 100)
+                alias_score = max(alias_score, min(0.96, 0.72 + alias_len / 100 + boost))
             matched_aliases.append(alias)
+    score = alias_score
 
     text_tokens = set(_tokenize(text))
     concept_tokens = set()
-    for field in ["core_concepts", "prerequisites", "learning_outcomes", "resource_focus"]:
+    for field in ["core_concepts", "prerequisites", "related_units", "compare_units", "learning_outcomes", "resource_focus"]:
         for item in unit.get(field, []):
             concept_tokens.update(_tokenize(item))
     token_hits = text_tokens & concept_tokens
@@ -303,16 +354,22 @@ def _score_unit(unit: Dict, message: str, topic: str = "") -> Dict:
     if title_hits:
         score += min(0.18, 0.06 * len(title_hits))
 
-    # Project-like requests about image classification should prefer the project unit
-    # unless the user explicitly asks for CNN concept explanation.
+    # Project-like requests should prefer project units unless the user explicitly
+    # asks for a narrow concept explanation.
     compact_unit_title = _compact(unit.get("title", ""))
-    if "图像分类" in compact_text and "项目" in compact_text and "综合项目" in compact_unit_title:
-        score += 0.35
+    compact_unit_id = _compact(unit.get("unit_id", ""))
+    if any(word in compact_text for word in ["项目", "实战", "两周"]):
+        if "project" in compact_unit_id:
+            score += 0.45
+        if "项目" in compact_unit_title:
+            score += 0.25
+    if "图像分类" in compact_text and "projectimageclassification" in compact_unit_id:
+        score += 0.5
     if "图像分类" in compact_text and "pytorch" in compact_text and "pytorch" in compact_unit_title:
-        score += 0.35
+        score += 0.25
 
     return {
-        "score": round(min(score, 1.0), 3),
+        "score": round(score, 3),
         "aliases": list(dict.fromkeys(matched_aliases)),
     }
 
@@ -371,7 +428,7 @@ def match_deep_learning_topic(topic: str = "", message: str = "") -> Dict:
         or any(item in best_unit.get("resource_focus", []) for item in ["图解", "交互动画", "视频推荐"])
     )
 
-    confidence = best["score"]
+    confidence = min(best["score"], 1.0)
     return {
         "matched": True,
         "course_id": COURSE_ID,
@@ -396,9 +453,12 @@ def match_deep_learning_topic(topic: str = "", message: str = "") -> Dict:
         "core_topics": best_unit.get("core_concepts", []),
         "prerequisites": best_unit.get("prerequisites", []),
         "resource_focus": best_unit.get("resource_focus", []),
-        "practice_tasks": [best_unit.get("code_lab", "")] + best_unit.get("exercise_blueprints", []),
+        "practice_tasks": [item for item in [best_unit.get("code_lab", "")] + best_unit.get("exercise_blueprints", []) if item],
         "learning_outcomes": best_unit.get("learning_outcomes", []),
         "common_misconceptions": best_unit.get("common_misconceptions", []),
+        "related_units": best_unit.get("related_units", []),
+        "compare_units": best_unit.get("compare_units", []),
+        "evidence_refs": best_unit.get("evidence_refs", []),
         "visual_suggestions": best_unit.get("visual_suggestions", []),
         "formulas": best_unit.get("formulas", []),
     }
@@ -416,6 +476,8 @@ def format_course_map_for_prompt(course_match: Dict) -> str:
         f"知识单元 ID：{course_match.get('unit_id') or unit.get('unit_id') or ''}",
         f"核心概念：{'、'.join(course_match.get('core_topics') or unit.get('core_concepts') or [])}",
         f"前置知识：{'、'.join(course_match.get('prerequisites') or unit.get('prerequisites') or []) or '无'}",
+        f"相关知识：{'、'.join(course_match.get('related_units') or unit.get('related_units') or []) or '无'}",
+        f"对比知识：{'、'.join(course_match.get('compare_units') or unit.get('compare_units') or []) or '无'}",
         f"学习产出：{'；'.join(course_match.get('learning_outcomes') or unit.get('learning_outcomes') or [])}",
         f"常见误区：{'；'.join(course_match.get('common_misconceptions') or unit.get('common_misconceptions') or [])}",
         f"推荐资源重点：{'、'.join(course_match.get('resource_focus') or unit.get('resource_focus') or [])}",

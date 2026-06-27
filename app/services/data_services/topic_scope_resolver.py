@@ -35,6 +35,25 @@ FULL_CHAPTER_MARKERS = [
     "全部学",
 ]
 
+BROAD_CHAPTER_TOPICS = [
+    "序列模型",
+    "序列建模",
+    "循环神经网络",
+    "rnnlstmgru",
+    "优化算法",
+    "训练技巧",
+    "正则化",
+    "泛化",
+    "卷积神经网络",
+    "cnn",
+    "attentiontransformer",
+    "transformer",
+    "生成模型",
+    "pytorch实践",
+    "工程实践",
+    "课程项目",
+]
+
 COURSE_ONLY_MARKERS = [
     "学习深度学习",
     "学深度学习",
@@ -44,6 +63,8 @@ COURSE_ONLY_MARKERS = [
 ]
 
 CONCEPT_MARKERS = [
+    "不懂",
+    "不会",
     "是什么",
     "什么是",
     "概念",
@@ -105,6 +126,19 @@ def _topic_label(label: str) -> str:
     return str(label or "").strip(" ，,。.;；:：、/\\|[]（）()《》")
 
 
+def _canonical_short_label(label: str) -> str:
+    compact = _compact(label)
+    return {
+        "cnn": "CNN",
+        "rnn": "RNN",
+        "lstm": "LSTM",
+        "gru": "GRU",
+        "transformer": "Transformer",
+        "attention": "Attention",
+        "pytorch": "PyTorch",
+    }.get(compact, label)
+
+
 def _unit_payload(unit: Dict) -> Dict:
     return {
         "unit_id": unit.get("unit_id", ""),
@@ -113,12 +147,28 @@ def _unit_payload(unit: Dict) -> Dict:
     }
 
 
+def _unit_payload_from_id(unit_id: str) -> Dict:
+    unit = deep_learning_course_map_service.get_unit(unit_id or "") or {}
+    return _unit_payload(unit) if unit else {"unit_id": unit_id or "", "title": unit_id or "", "chapter_id": ""}
+
+
+def _units_from_ids(unit_ids: List[str]) -> List[Dict]:
+    result = []
+    seen = set()
+    for unit_id in unit_ids or []:
+        if not unit_id or unit_id in seen:
+            continue
+        result.append(_unit_payload_from_id(unit_id))
+        seen.add(unit_id)
+    return result
+
+
 def _score_alias(alias: str) -> int:
     compact_alias = _compact(alias)
     if not compact_alias:
         return 0
     if re.fullmatch(r"[a-z0-9+#.]+", compact_alias):
-        return max(8, len(compact_alias) * 3)
+        return max(6, len(compact_alias) * 2)
     return max(4, len(compact_alias))
 
 
@@ -129,13 +179,17 @@ def _find_unit_matches(message: str) -> List[Dict]:
 
     matches_by_unit = {}
     for unit in deep_learning_course_map_service.list_units():
-        aliases = [unit.get("title", ""), *unit.get("aliases", []), *unit.get("core_concepts", [])]
-        for alias in aliases:
+        alias_candidates = (
+            [(unit.get("title", ""), 6)]
+            + [(alias, 5) for alias in unit.get("aliases", [])]
+            + [(concept, 0) for concept in unit.get("core_concepts", [])]
+        )
+        for alias, boost in alias_candidates:
             compact_alias = _compact(alias)
             if not compact_alias or compact_alias not in compact_message:
                 continue
             current = matches_by_unit.get(unit["unit_id"])
-            score = _score_alias(alias)
+            score = _score_alias(alias) + boost
             if current is None or score > current["score"]:
                 matches_by_unit[unit["unit_id"]] = {
                     "unit": unit,
@@ -155,6 +209,11 @@ def _same_chapter_units(chapter_id: str, primary_unit_id: str = "") -> List[Dict
         for unit in deep_learning_course_map_service.list_units()
         if unit.get("chapter_id") == chapter_id and unit.get("unit_id") != primary_unit_id
     ]
+
+
+def _related_units(unit: Dict, chapter_id: str, primary_unit_id: str = "") -> List[Dict]:
+    explicit = _units_from_ids(unit.get("related_units", []))
+    return explicit if explicit else _same_chapter_units(chapter_id, primary_unit_id)
 
 
 def _resolve_prerequisite_units(unit: Dict) -> List[Dict]:
@@ -194,13 +253,13 @@ def _comparison_labels(message: str, matches: List[Dict]) -> List[str]:
     for unit in deep_learning_course_map_service.list_units():
         aliases = [unit.get("title", ""), *unit.get("aliases", []), *unit.get("core_concepts", [])]
         for alias in aliases:
-            label = _topic_label(alias)
+            label = _canonical_short_label(_topic_label(alias))
             compact_label = _compact(label)
             if not compact_label or compact_label not in compact_message:
                 continue
             labels_with_position.append((compact_message.find(compact_label), label))
     for match in sorted(matches, key=lambda item: item.get("position", 0)):
-        label = _explicit_display_label(message, match)
+        label = _canonical_short_label(_explicit_display_label(message, match))
         compact_label = _compact(label)
         if compact_label and compact_label in compact_message:
             labels_with_position.append((compact_message.find(compact_label), label))
@@ -211,6 +270,22 @@ def _comparison_labels(message: str, matches: List[Dict]) -> List[str]:
         if compact_label and compact_label not in {_compact(item) for item in labels}:
             labels.append(label)
     return labels
+
+
+def _join_compare_labels(labels: List[str]) -> str:
+    labels = [label for label in dict.fromkeys(labels) if label]
+    if len(labels) <= 2:
+        return " 与 ".join(labels)
+    return "、".join(labels[:-1]) + f" 与 {labels[-1]}"
+
+
+def _is_broad_chapter_request(message: str, matches: List[Dict]) -> bool:
+    compact_message = _compact(message)
+    if not any(marker in compact_message for marker in ["学习", "学", "了解", "复习", "掌握"]):
+        return False
+    if any(_compact(topic) in compact_message for topic in BROAD_CHAPTER_TOPICS):
+        return True
+    return any(_compact(match.get("label", "")) in {_compact(topic) for topic in BROAD_CHAPTER_TOPICS} for match in matches)
 
 
 def _chapter_payload(unit: Dict) -> Dict:
@@ -244,8 +319,8 @@ def _base_result(scope_level: str, display_topic: str = "", primary_unit: Dict =
         "chapter_id": chapter_info.get("chapter_id", ""),
         "chapter_title": chapter_info.get("chapter_title", ""),
         "prerequisite_units": _resolve_prerequisite_units(primary_unit) if primary_unit else [],
-        "related_units": _same_chapter_units(chapter_info.get("chapter_id", ""), primary_unit.get("unit_id", "")) if primary_unit else [],
-        "compare_units": [],
+        "related_units": _related_units(primary_unit, chapter_info.get("chapter_id", ""), primary_unit.get("unit_id", "")) if primary_unit else [],
+        "compare_units": _units_from_ids(primary_unit.get("compare_units", [])) if primary_unit else [],
         "expansion_policy": "out_of_course_reply" if scope_level == SCOPE_OUT_OF_COURSE else "unit_focused",
         "should_generate_full_chapter": scope_level == SCOPE_CHAPTER,
         "course_match": course_match,
@@ -261,6 +336,7 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
     has_project_marker = _contains_any(text, PROJECT_MARKERS)
     has_diagnostic_marker = _contains_any(text, DIAGNOSTIC_MARKERS)
     has_concept_marker = _contains_any(text, CONCEPT_MARKERS)
+    has_broad_chapter_marker = _is_broad_chapter_request(text, matches)
 
     if has_comparison_marker and matches:
         labels = _comparison_labels(text, matches)
@@ -269,26 +345,34 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
         if len(labels) < 2 and len(matches) == 1:
             labels = [_explicit_display_label(text, matches[0]), matches[0]["unit"].get("title", "")]
         labels = [label for label in labels if label]
-        display_topic = " 与 ".join(dict.fromkeys(labels[:3])) + " 对比学习" if labels else f"{fallback_topic} 对比学习"
+        display_topic = _join_compare_labels(labels[:3]) + " 对比学习" if labels else f"{fallback_topic} 对比学习"
         primary_unit = matches[0]["unit"]
         result = _base_result(SCOPE_COMPARISON, display_topic, primary_unit, text)
         result["compare_units"] = [_unit_payload(match["unit"]) for match in matches[:4]]
-        result["expansion_policy"] = "comparison_focused"
+        result["expansion_policy"] = "comparison"
         result["should_generate_full_chapter"] = False
         result["course_match"] = {**result["course_match"], "learning_need_type": "comparison"}
         return result
 
     if has_project_marker and matches:
-        primary_unit = matches[0]["unit"]
-        display_topic = _explicit_display_label(text, matches[0]) or primary_unit.get("title", "")
+        primary = next(
+            (
+                match for match in matches
+                if "project" in _compact(match["unit"].get("unit_id", ""))
+                or "项目" in match["unit"].get("title", "")
+            ),
+            matches[0],
+        )
+        primary_unit = primary["unit"]
+        display_topic = primary_unit.get("title", "") or _explicit_display_label(text, primary)
         result = _base_result(SCOPE_PROJECT, display_topic, primary_unit, text)
-        result["expansion_policy"] = "project_path_and_artifacts"
+        result["expansion_policy"] = "project_path_and_code_lab"
         result["course_match"] = {**result["course_match"], "learning_need_type": "project", "requires_code": True}
         return result
 
     if has_diagnostic_marker and matches:
         primary_unit = matches[0]["unit"]
-        display_topic = _explicit_display_label(text, matches[0]) or primary_unit.get("title", "")
+        display_topic = primary_unit.get("title", "") or _explicit_display_label(text, matches[0])
         result = _base_result(SCOPE_DIAGNOSTIC, display_topic, primary_unit, text)
         result["expansion_policy"] = "diagnostic_feedback_only"
         result["course_match"] = {**result["course_match"], "learning_need_type": "evaluation"}
@@ -300,8 +384,8 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
     ]
     if not specific_matches and _contains_any(text, COURSE_ONLY_MARKERS):
         intro_unit = deep_learning_course_map_service.get_unit("dl_intro_diagnosis") or {}
-        result = _base_result(SCOPE_COURSE, deep_learning_course_map_service.COURSE_NAME, intro_unit, text)
-        result["expansion_policy"] = "course_orientation_diagnosis_path_only"
+        result = _base_result(SCOPE_COURSE, "《深度学习》课程导学", intro_unit, text)
+        result["expansion_policy"] = "course_diagnostic_and_path"
         result["should_generate_full_chapter"] = False
         result["related_units"] = []
         result["course_match"] = {**result["course_match"], "learning_need_type": "course_orientation"}
@@ -310,27 +394,25 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
     if matches:
         primary = matches[0]
         primary_unit = primary["unit"]
-        display_topic = _explicit_display_label(text, primary) or primary_unit.get("title", "")
-        if has_full_chapter_marker:
-            explicit_labels = _comparison_labels(text, matches)
-            if len(explicit_labels) >= 2:
-                display_topic = "、".join(explicit_labels[:4])
+        display_topic = primary_unit.get("title", "") or _explicit_display_label(text, primary)
+        if has_full_chapter_marker or has_broad_chapter_marker:
+            display_topic = _chapter_payload(primary_unit).get("chapter_title") or display_topic
             result = _base_result(SCOPE_CHAPTER, display_topic, primary_unit, text)
-            result["expansion_policy"] = "chapter_expansion_allowed"
+            result["expansion_policy"] = "chapter_learning_path"
             result["should_generate_full_chapter"] = True
             result["course_match"] = {**result["course_match"], "learning_need_type": "path_planning"}
             return result
 
         scope_level = SCOPE_CONCEPT if has_concept_marker else SCOPE_UNIT
         result = _base_result(scope_level, display_topic, primary_unit, text)
-        result["expansion_policy"] = "concept_focused" if scope_level == SCOPE_CONCEPT else "unit_focused"
+        result["expansion_policy"] = "micro_explanation" if scope_level == SCOPE_CONCEPT else "prerequisite_and_comparison_only"
         result["should_generate_full_chapter"] = False
         return result
 
     course_match = deep_learning_course_map_service.match_deep_learning_topic(fallback_topic, text)
     if course_match.get("matched"):
         unit = course_match.get("unit") or deep_learning_course_map_service.get_unit(course_match.get("unit_id", "")) or {}
-        display_topic = fallback_topic if fallback_topic not in {"未确认主题", "当前主题"} else course_match.get("normalized_topic", "")
+        display_topic = unit.get("title") or (fallback_topic if fallback_topic not in {"未确认主题", "当前主题"} else course_match.get("normalized_topic", ""))
         result = _base_result(SCOPE_UNIT, display_topic, unit, text)
         result["course_match"] = {**course_match, "display_topic": display_topic, "scope_level": SCOPE_UNIT}
         return result
@@ -348,4 +430,5 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
         "expansion_policy": "out_of_course_reply",
         "should_generate_full_chapter": False,
         "course_match": {"matched": False, "scope_type": "out_of_course"},
+        "reply": course_scope_service.build_out_of_scope_reply(fallback_topic, text),
     }
