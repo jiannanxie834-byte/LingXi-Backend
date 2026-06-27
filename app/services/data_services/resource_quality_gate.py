@@ -3,6 +3,7 @@ from typing import Dict, List
 
 from app.services.data_services import (
     deep_learning_course_map_service,
+    deep_learning_resource_blueprint,
     resource_artifact_type_service as artifact_types,
     resource_policy_service,
 )
@@ -15,6 +16,8 @@ PROJECT_REQUIRED_TERMS = ["项目", "目标", "任务", "验收", "提交", "Rub
 VIDEO_REQUIRED_TERMS = ["原始链接", "公开视频", "推荐片段", "版权"]
 ANIMATION_REQUIRED_TERMS = ["animation", "动画", "步骤", "高亮", "规格"]
 UNSUPPORTED_LEVEL_TERMS = ["进阶学习者", "高阶学习者", "已掌握", "已经具备"]
+TEACHING_REVIEW_START = "[[LINGXI_TEACHING_QUALITY_REVIEW]]"
+TEACHING_REVIEW_END = "[[/LINGXI_TEACHING_QUALITY_REVIEW]]"
 FAKE_SOURCE_PATTERNS = [
     r"https?://example\.com",
     r"某高校",
@@ -40,6 +43,22 @@ def _append_issue(result: Dict, issue: str, suggestion: str = "", fatal: bool = 
 
 def _missing_terms(text: str, terms: List[str]) -> List[str]:
     return [term for term in terms if term not in text]
+
+
+def _content_length(text: str) -> int:
+    return len(re.sub(r"\s+", "", text or ""))
+
+
+def _heading_count(text: str) -> int:
+    return len(re.findall(r"(^|\n)#{2,3}\s+", text or ""))
+
+
+def _count_markers(text: str, markers: List[str]) -> int:
+    return sum(1 for marker in markers if marker and marker in (text or ""))
+
+
+def _normalize_topic_for_check(topic: str) -> str:
+    return re.sub(r"\s+", "", str(topic or "")).lower()
 
 
 def _has_fake_source(text: str) -> bool:
@@ -170,6 +189,140 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
     return result
 
 
+def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
+    """Evaluate whether a generated Artifact is useful as a teaching resource."""
+    context = context or {}
+    resource_type = artifact_types.normalize_artifact_type(
+        item.get("type") or context.get("resource_type") or ""
+    )
+    title = item.get("title", "")
+    summary = item.get("summary", "")
+    content = item.get("content", "")
+    source = item.get("source", "")
+    course_map = (
+        item.get("deep_learning_course_map")
+        or context.get("deep_learning_course_map")
+        or item.get("ai_course_map")
+        or context.get("ai_course_map")
+        or {}
+    )
+    unit_id = item.get("unit_id") or context.get("unit_id") or course_map.get("unit_id") or ""
+    topic = (
+        item.get("unit_title")
+        or course_map.get("normalized_topic")
+        or context.get("normalized_topic")
+        or context.get("topic")
+        or item.get("topic")
+        or title
+    )
+    full_text = "\n".join([title, summary, content, source])
+    content_len = _content_length(content)
+    headings = _heading_count(content)
+    required_terms = deep_learning_resource_blueprint.get_topic_specific_terms(unit_id, topic)
+    covered_terms = [term for term in required_terms if term in full_text]
+    evidence_chunks = context.get("evidence_chunks") or item.get("evidence_chunks") or []
+    evidence_refs = re.findall(r"evidence_id\s*[:：=]\s*[\w:\-]+", full_text, re.I)
+    examples = _count_markers(content, ["例子", "示例", "例题", "案例", "情境", "Conv2d", "torch", "PyTorch"])
+    exercises = _count_markers(content, ["自测题", "练习", "参考答案", "答案", "解析"])
+    formula_or_code = _count_markers(content, ["公式", "算法流程", "计算过程", "代码", "伪代码", "PyTorch", "torch", "梯度", "softmax", "Conv2d"])
+    personalization = _count_markers(full_text, ["基础", "目标", "偏好", "短板", "实践", "适用对象", "学习定位"])
+
+    issues = []
+    repair_suggestions = []
+    fatal = False
+
+    if content_len < 1200:
+        fatal = True
+        issues.append("内容过短，少于 1200 个中文字符")
+        repair_suggestions.append("扩展为完整讲义，补齐概念解释、公式流程、例子、练习和学习建议")
+    elif content_len < deep_learning_resource_blueprint.COURSE_NOTE_QUALITY_RULES["min_chars"] and resource_type == artifact_types.COURSE_NOTE:
+        issues.append("课程讲解文档少于 1800 个中文字符")
+        repair_suggestions.append("继续扩展核心概念、例题和代码/伪代码说明")
+
+    normalized_topic = _normalize_topic_for_check(topic)
+    normalized_full_text = _normalize_topic_for_check(full_text)
+    if normalized_topic and normalized_topic not in normalized_full_text:
+        fatal = True
+        issues.append(f"正文未明确出现当前主题：{topic}")
+        repair_suggestions.append("在标题、课程位置和核心概念讲解中明确写出当前知识点")
+
+    if resource_type == artifact_types.COURSE_NOTE and headings < 6:
+        fatal = True
+        issues.append("课程讲解文档二级标题少于 6 个")
+        repair_suggestions.append("按 12 个讲义章节重写，至少包含 8 个二级标题")
+
+    if resource_type == artifact_types.COURSE_NOTE and not any(x in content for x in ["定义", "原理", "公式", "例子", "误区", "练习"]):
+        fatal = True
+        issues.append("缺少知识点定义、原理、公式、例子、误区或练习")
+        repair_suggestions.append("补充定义、原理推导、公式解释、常见误区和课堂练习")
+
+    if "核心内容" in content and content_len < 1500:
+        issues.append("内容停留在摘要层面，没有展开讲解")
+        repair_suggestions.append("不要只列学习目标和核心内容，要逐项展开讲解")
+
+    if required_terms and len(covered_terms) < min(4, len(required_terms)):
+        fatal = True
+        missing = [term for term in required_terms if term not in covered_terms]
+        issues.append(f"核心主题词覆盖不足：缺少{'、'.join(missing[:5])}")
+        repair_suggestions.append("围绕课程图谱补齐主题关键词，并解释它们之间的关系")
+
+    if examples < 2 and resource_type == artifact_types.COURSE_NOTE:
+        issues.append("具体例子不足，少于 2 个")
+        repair_suggestions.append("加入至少 2 个深度学习模型或计算例子")
+
+    if exercises < 3 and resource_type == artifact_types.COURSE_NOTE:
+        issues.append("课堂小练习不足，未体现 3 道自测题与答案")
+        repair_suggestions.append("补充 3 道自测题，并附参考答案和解析")
+
+    if formula_or_code < 2 and resource_type == artifact_types.COURSE_NOTE:
+        issues.append("公式、代码或算法流程说明不足")
+        repair_suggestions.append("补充公式符号解释、算法流程或 Python/PyTorch 示例")
+
+    if not evidence_chunks and not evidence_refs:
+        issues.append("缺少课程知识库证据引用")
+        repair_suggestions.append("补充 evidence_id，并依据课程知识库片段展开")
+
+    score = 0
+    score += 20 if normalized_topic and normalized_topic in normalized_full_text else 6
+    score += min(15, headings * 2)
+    score += 20 if content_len >= 1800 else (12 if content_len >= 1200 else 4)
+    if required_terms:
+        score += round(min(15, 15 * len(covered_terms) / max(1, len(required_terms))))
+    else:
+        score += 12
+    score += min(10, examples * 3 + exercises)
+    score += min(10, formula_or_code * 3)
+    score += min(5, personalization)
+    score += 5 if evidence_chunks or evidence_refs else 0
+    score = max(0, min(100, int(score)))
+
+    passed = not fatal and score >= 80
+    if not issues and passed:
+        issues.append("教学质量门控通过：结构、主题、深度、例子和证据引用均达到要求")
+    if not repair_suggestions and not passed:
+        repair_suggestions.append("按深度学习讲义蓝图重写，不要只做摘要式小修")
+
+    return {
+        "teaching_quality_score": score,
+        "score": score,
+        "status": "passed" if passed else "failed",
+        "passed": passed,
+        "fatal": fatal,
+        "issues": issues,
+        "repair_suggestions": list(dict.fromkeys(repair_suggestions)),
+        "covered_terms": covered_terms,
+        "required_terms": required_terms,
+        "metrics": {
+            "content_chars": content_len,
+            "heading_count": headings,
+            "example_markers": examples,
+            "exercise_markers": exercises,
+            "formula_or_code_markers": formula_or_code,
+            "evidence_count": len(evidence_chunks) + len(evidence_refs),
+        },
+    }
+
+
 def attach_quality_note(notes: str, quality: Dict) -> str:
     issues = quality.get("issues") or []
     suggestions = quality.get("suggestions") or []
@@ -189,3 +342,80 @@ def attach_quality_note(notes: str, quality: Dict) -> str:
         "[[/LINGXI_RESOURCE_QUALITY_GATE]]",
     ]
     return "\n\n".join(part for part in [notes or "", "\n".join(lines)] if part)
+
+
+def _format_teaching_review_block(review: Dict) -> str:
+    issues = review.get("issues") or []
+    suggestions = review.get("repair_suggestions") or review.get("suggestions") or []
+    lines = [
+        TEACHING_REVIEW_START,
+        "## 教学质量门控",
+        f"score: {review.get('teaching_quality_score', review.get('score', 0))}",
+        f"status: {'passed' if review.get('passed') else 'failed'}",
+        f"fatal: {'true' if review.get('fatal') else 'false'}",
+        "",
+        "issues:",
+        *[f"- {item}" for item in issues],
+        "",
+        "repair_suggestions:",
+        *[f"- {item}" for item in suggestions],
+        TEACHING_REVIEW_END,
+    ]
+    return "\n".join(lines)
+
+
+def strip_teaching_quality_note(notes: str) -> str:
+    text = notes or ""
+    pattern = re.compile(
+        rf"\n?{re.escape(TEACHING_REVIEW_START)}.*?{re.escape(TEACHING_REVIEW_END)}\n?",
+        re.S,
+    )
+    return pattern.sub("\n", text).strip()
+
+
+def attach_teaching_quality_note(notes: str, review: Dict) -> str:
+    base_notes = strip_teaching_quality_note(notes)
+    return "\n\n".join(part for part in [base_notes, _format_teaching_review_block(review)] if part)
+
+
+def extract_teaching_quality_review(notes: str) -> Dict:
+    text = notes or ""
+    match = re.search(
+        rf"{re.escape(TEACHING_REVIEW_START)}(?P<body>.*?){re.escape(TEACHING_REVIEW_END)}",
+        text,
+        re.S,
+    )
+    if not match:
+        return {}
+
+    body = match.group("body")
+    score_match = re.search(r"score:\s*(\d+)", body)
+    status_match = re.search(r"status:\s*([^\n]+)", body)
+    fatal_match = re.search(r"fatal:\s*([^\n]+)", body)
+    issues_section = re.search(r"issues:(?P<issues>.*?)(repair_suggestions:|$)", body, re.S)
+    suggestions_section = re.search(r"repair_suggestions:(?P<suggestions>.*)$", body, re.S)
+
+    def parse_list(section):
+        if not section:
+            return []
+        return [
+            line.strip()[2:].strip()
+            for line in section.splitlines()
+            if line.strip().startswith("- ")
+        ]
+
+    score = int(score_match.group(1)) if score_match else 0
+    status = status_match.group(1).strip() if status_match else "unreviewed"
+    return {
+        "teaching_quality_score": score,
+        "score": score,
+        "status": status,
+        "passed": status == "passed",
+        "fatal": fatal_match.group(1).strip().lower() == "true" if fatal_match else False,
+        "issues": parse_list(issues_section.group("issues") if issues_section else ""),
+        "repair_suggestions": parse_list(suggestions_section.group("suggestions") if suggestions_section else ""),
+    }
+
+
+def strip_quality_blocks(notes: str) -> str:
+    return strip_teaching_quality_note(notes or "")

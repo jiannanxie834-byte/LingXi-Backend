@@ -5,7 +5,10 @@ from typing import Iterable
 from sqlalchemy.orm import Session
 
 from app.models.schemas import CourseKnowledge, Resource
-from app.services.data_services import resource_service
+from app.services.data_services import (
+    deep_learning_course_map_service,
+    resource_service,
+)
 
 
 MAX_FIELD_LEN = 1800
@@ -109,6 +112,169 @@ def _clip(text, limit=180):
     if len(compact) <= limit:
         return compact
     return compact[:limit].rstrip() + "..."
+
+
+def _content_excerpt(text, limit=1200):
+    compact = " ".join((text or "").split())
+    if len(compact) <= limit:
+        return compact
+    return compact[:limit].rstrip() + "..."
+
+
+def _evidence_from_knowledge(row: CourseKnowledge, evidence_id: str = ""):
+    return {
+        "evidence_id": evidence_id or f"course_knowledge:{row.id}",
+        "title": row.topic or "课程知识点",
+        "source_path": row.chapter or "深度学习初始知识库",
+        "content_excerpt": _content_excerpt("\n".join([
+            row.core or "",
+            "常见误区：" + "；".join(_safe_json_list(row.pitfalls)),
+            "实践任务：" + (row.practice or ""),
+            "实践产出：" + (row.practice_output or ""),
+            "代码：" + (row.code or ""),
+        ])),
+    }
+
+
+def _evidence_from_resource(row: Resource, evidence_id: str = ""):
+    return {
+        "evidence_id": evidence_id or row.id,
+        "title": row.title or "课程资源",
+        "source_path": row.source or row.uploader or "深度学习初始知识库",
+        "content_excerpt": _content_excerpt("\n".join([
+            row.summary or "",
+            row.content or "",
+        ])),
+    }
+
+
+def _matches_any(value, terms):
+    compact = _compact(value)
+    return any(_compact(term) and _compact(term) in compact for term in terms)
+
+
+def _unit_evidence_score(value, unit, chapter, terms):
+    compact = _compact(value)
+    score = 0
+    if _compact(unit.get("title", "")) and _compact(unit.get("title", "")) in compact:
+        score += 10
+    if _compact(unit.get("unit_id", "")) and _compact(unit.get("unit_id", "")) in compact:
+        score += 8
+    if _compact(chapter.get("title", "")) and _compact(chapter.get("title", "")) in compact:
+        score += 6
+    for alias in unit.get("aliases", []):
+        if _compact(alias) and _compact(alias) in compact:
+            score += 2
+    for concept in unit.get("core_concepts", []):
+        if _compact(concept) and _compact(concept) in compact:
+            score += 1
+    if not score and _matches_any(value, terms):
+        score = 1
+    return score
+
+
+def get_evidence_for_unit(db: Session, course_id: str, unit_id: str, limit: int = 6):
+    """按《深度学习》课程知识单元收集可注入生成 prompt 的证据片段。"""
+    if course_id and course_id != deep_learning_course_map_service.COURSE_ID:
+        return []
+
+    unit = deep_learning_course_map_service.get_unit(unit_id or "")
+    if not unit:
+        return []
+
+    chapter = deep_learning_course_map_service.CHAPTER_BY_ID.get(unit.get("chapter_id", ""), {})
+    search_terms = [
+        unit.get("title", ""),
+        chapter.get("title", ""),
+        unit.get("unit_id", ""),
+        *unit.get("aliases", []),
+        *unit.get("core_concepts", []),
+    ]
+    scored_evidence = []
+    seen = set()
+
+    try:
+        for row in db.query(CourseKnowledge).all():
+            haystack = "\n".join([
+                row.topic or "",
+                row.chapter or "",
+                row.core or "",
+                row.keywords or "",
+            ])
+            score = _unit_evidence_score(haystack, unit, chapter, search_terms)
+            if score <= 0:
+                continue
+            item = _evidence_from_knowledge(row)
+            if item["evidence_id"] not in seen:
+                scored_evidence.append((score, item))
+                seen.add(item["evidence_id"])
+
+        resources = db.query(Resource).filter(Resource.status == "已通过").all()
+        for row in resources:
+            if resource_service._is_deprecated_resource_type(row.type):
+                continue
+            haystack = "\n".join([
+                row.id or "",
+                row.title or "",
+                row.source or "",
+                row.summary or "",
+                row.content or "",
+            ])
+            score = _unit_evidence_score(haystack, unit, chapter, search_terms)
+            if (row.id or "").startswith("KB-DL") or row.uploader == "课程知识库种子":
+                score += 20
+            if score <= 0:
+                continue
+            item = _evidence_from_resource(row)
+            if item["evidence_id"] not in seen:
+                scored_evidence.append((score, item))
+                seen.add(item["evidence_id"])
+    except Exception:
+        return []
+
+    scored_evidence.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _, item in scored_evidence[:max(1, int(limit or 6))]]
+
+
+def search_evidence(db: Session, course_id: str, query: str, limit: int = 6):
+    """按主题检索详细证据，返回统一 evidence_chunks 结构。"""
+    if course_id and course_id != deep_learning_course_map_service.COURSE_ID:
+        return []
+
+    course_match = deep_learning_course_map_service.match_deep_learning_topic(query, query)
+    if course_match.get("unit_id"):
+        unit_evidence = get_evidence_for_unit(db, course_id, course_match["unit_id"], limit=limit)
+        if unit_evidence:
+            return unit_evidence[:max(1, int(limit or 6))]
+
+    evidence = []
+    seen = set()
+    for item in search_course_evidence(db, query, limit=limit, include_irrelevant=False):
+        evidence_id = item.get("resource_id") or f"{item.get('kind', 'evidence')}:{item.get('title', '')}"
+        converted = {
+            "evidence_id": evidence_id,
+            "title": item.get("title", ""),
+            "source_path": item.get("source", ""),
+            "content_excerpt": item.get("excerpt", ""),
+        }
+        if converted["evidence_id"] not in seen:
+            evidence.append(converted)
+            seen.add(converted["evidence_id"])
+
+    return evidence[:max(1, int(limit or 6))]
+
+
+def format_evidence_chunks_for_prompt(evidence_chunks):
+    if not evidence_chunks:
+        return "当前知识库中该知识点证据不足，已生成知识库补充任务。"
+    lines = []
+    for index, item in enumerate(evidence_chunks, start=1):
+        lines.append(
+            f"{index}. {item.get('title', '课程依据')}｜{item.get('source_path', '课程知识库')}｜"
+            f"evidence_id={item.get('evidence_id', '')}\n"
+            f"   {item.get('content_excerpt', '')}"
+        )
+    return "\n".join(lines)
 
 
 def _first_matching_excerpt(fields: Iterable[str], terms):

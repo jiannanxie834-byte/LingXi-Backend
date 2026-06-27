@@ -20,6 +20,8 @@ from app.services.data_services import (
     conversation_router,
     semantic_analysis_service,
     resource_policy_service,
+    resource_quality_gate,
+    deep_learning_resource_blueprint,
     course_scope_service,
     deep_learning_course_map_service,
     resource_artifact_type_service as artifact_types,
@@ -258,7 +260,7 @@ def _validate_tutor_result(data):
     }
 
 
-def _validate_resource_output(data):
+def _validate_resource_output(data, resource_type: str = ""):
     if not isinstance(data, dict):
         raise RuntimeError("资源内容结构化结果必须是对象")
 
@@ -285,18 +287,24 @@ def _validate_resource_output(data):
 
     return {
         "summary": summary,
-        "content": _render_resource_content(summary, normalized_sections),
+        "content": _render_resource_content(summary, normalized_sections, resource_type=resource_type),
         "source_notes": source_notes,
     }
 
 
-def _render_resource_content(summary, sections):
+def _render_resource_content(summary, sections, resource_type: str = ""):
     lines = [f"# {summary}", ""]
+    is_course_note = deep_learning_resource_blueprint.is_course_note(resource_type)
 
     for section in sections:
         heading = section["heading"]
         items = section["items"]
         lines.extend([f"## {heading}", ""])
+
+        if is_course_note:
+            for item in items:
+                lines.extend([str(item).strip(), ""])
+            continue
 
         if "Mermaid" in heading or "流程图" in heading:
             lines.extend(["```mermaid", *items, "```", ""])
@@ -377,6 +385,16 @@ def _structured_artifact_content(item, resource_output, profile_result):
 
 
 def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
+    if deep_learning_resource_blueprint.is_course_note(item.get("type", "")):
+        evidence_chunks = item.get("evidence_chunks") or []
+        return deep_learning_resource_blueprint.build_course_note_prompt(
+            plan_item=item,
+            profile=profile_result or {},
+            intent=intent,
+            evidence_chunks=evidence_chunks,
+            teaching_sources_prompt=teaching_sources_prompt,
+        )
+
     subject_category = item.get("subject_category", "unknown")
     level = item.get("level") or profile_result.get("level") or "未确认"
     level_source = item.get("level_source") or profile_result.get("level_source") or "none"
@@ -506,15 +524,70 @@ JSON 形状示例：
 
 
 def _request_resource_output(prompt, item):
+    max_tokens = 7200 if deep_learning_resource_blueprint.is_course_note(item.get("type", "")) else 3600
     res = chat_json(
         [{"role": "user", "content": prompt}],
         required_fields=["summary", "sections", "source_notes"],
         temperature=0.1,
-        max_tokens=3600
+        max_tokens=max_tokens
     )
     if not res.get("ok"):
         raise RuntimeError(f"{item.get('type', '资源')} 内容结构化输出失败：{res.get('error', '未知错误')}")
-    return _validate_resource_output(res.get("data") or {})
+    return _validate_resource_output(res.get("data") or {}, resource_type=item.get("type", ""))
+
+
+def _build_resource_repair_prompt(item, draft, quality_result, evidence_prompt, teaching_sources_prompt):
+    issues = "\n".join(f"- {issue}" for issue in quality_result.get("issues", []))
+    suggestions = "\n".join(f"- {item}" for item in quality_result.get("repair_suggestions", []))
+    return f"""
+以下课程资源教学质量不达标。请根据问题清单重写，不要只小修小补。
+必须补齐缺失章节，扩展知识点解释，增加例子、公式、练习和证据引用。
+
+资源主题：{item.get('unit_title') or item.get('topic')}
+资源类型：{item.get('type')}
+课程章节：{item.get('chapter') or item.get('chapter_id')}
+知识单元 ID：{item.get('unit_id')}
+
+当前质量分：{quality_result.get('teaching_quality_score', quality_result.get('score', 0))}
+问题清单：
+{issues or '- 结构和内容深度不足'}
+
+修订建议：
+{suggestions or '- 按深度学习讲义蓝图重写'}
+
+原摘要：
+{draft.get('summary', '')}
+
+原正文：
+{draft.get('content', '')[:2600]}
+
+课程证据：
+{evidence_prompt}
+
+外部教学资料候选：
+{teaching_sources_prompt}
+
+输出要求：
+- 只输出 JSON 对象
+- summary、sections、source_notes 字段必须完整
+- 正文不少于 1800 个中文字符
+- 至少 8 个二级标题
+- 至少 5 个核心概念解释
+- 至少 2 个具体例子
+- 至少 3 道自测题并附参考答案
+- 必须引用 evidence_id
+"""
+
+
+def repair_resource_content_with_feedback(plan_item, draft, quality_result, evidence_prompt, teaching_sources_prompt):
+    prompt = _build_resource_repair_prompt(
+        item=plan_item,
+        draft=draft,
+        quality_result=quality_result,
+        evidence_prompt=evidence_prompt,
+        teaching_sources_prompt=teaching_sources_prompt,
+    )
+    return _request_resource_output(prompt, plan_item)
 
 
 def _generate_one_resource_output(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
@@ -538,11 +611,15 @@ def _generate_one_resource_output(item, profile_result, intent, evidence_prompt,
             "source": "；".join(resource_output["source_notes"][:3]),
         }
 
+    item_evidence = item.get("evidence_chunks") or []
+    if not item_evidence and item.get("course_id") == deep_learning_course_map_service.COURSE_ID:
+        raise RuntimeError("当前知识库中该知识点证据不足，已生成知识库补充任务。")
+    item_evidence_prompt = knowledge_evidence_service.format_evidence_chunks_for_prompt(item_evidence) if item_evidence else evidence_prompt
     prompt = _build_resource_prompt(
         item=item,
         profile_result=profile_result,
         intent=intent,
-        evidence_prompt=evidence_prompt,
+        evidence_prompt=item_evidence_prompt,
         teaching_sources_prompt=teaching_sources_prompt,
     )
     try:
@@ -550,11 +627,61 @@ def _generate_one_resource_output(item, profile_result, intent, evidence_prompt,
     except Exception as exc:
         retry_prompt = _build_resource_retry_prompt(item, str(exc))
         resource_output = _request_resource_output(retry_prompt, item)
+    teaching_quality = resource_quality_gate.validate_teaching_quality(
+        {**item, **resource_output, "evidence_chunks": item_evidence},
+        {
+            "topic": item.get("topic", ""),
+            "normalized_topic": item.get("unit_title", ""),
+            "unit_id": item.get("unit_id", ""),
+            "resource_type": item.get("type", ""),
+            "evidence_chunks": item_evidence,
+            "deep_learning_course_map": item.get("deep_learning_course_map") or {},
+        },
+    )
+    score = teaching_quality.get("teaching_quality_score", 0)
+    if 60 <= score < 80:
+        resource_output = repair_resource_content_with_feedback(
+            plan_item=item,
+            draft=resource_output,
+            quality_result=teaching_quality,
+            evidence_prompt=item_evidence_prompt,
+            teaching_sources_prompt=teaching_sources_prompt,
+        )
     return {
         "summary": resource_output["summary"],
         "content": _structured_artifact_content(item, resource_output, profile_result),
         "source": "；".join(resource_output["source_notes"][:3]),
     }
+
+
+def _attach_evidence_to_resource_plan(db, resource_plan, fallback_query):
+    semantic_result = resource_plan.get("semantic_result") or {}
+    course_id = semantic_result.get("course_id") or deep_learning_course_map_service.COURSE_ID
+    for item in resource_plan.get("resources", []):
+        unit_id = item.get("unit_id") or semantic_result.get("unit_id", "")
+        evidence_chunks = []
+        if unit_id:
+            evidence_chunks = knowledge_evidence_service.get_evidence_for_unit(
+                db=db,
+                course_id=course_id,
+                unit_id=unit_id,
+                limit=6,
+            )
+        if not evidence_chunks:
+            evidence_chunks = knowledge_evidence_service.search_evidence(
+                db=db,
+                course_id=course_id,
+                query=" ".join([
+                    item.get("unit_title", ""),
+                    item.get("topic", ""),
+                    fallback_query or "",
+                ]),
+                limit=6,
+            )
+        item["evidence_chunks"] = evidence_chunks
+        if evidence_chunks:
+            item["evidence_refs"] = [chunk.get("evidence_id", "") for chunk in evidence_chunks if chunk.get("evidence_id")]
+    return resource_plan
 
 
 def _generate_resource_outputs(resource_plan, profile_result, intent, evidence_prompt, teaching_sources_prompt):
@@ -656,6 +783,7 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
             teaching_sources,
             max_items=6
         )
+        resource_plan = _attach_evidence_to_resource_plan(db, resource_plan, evidence_query)
 
         if job_id:
             generation_job_service.add_event(
