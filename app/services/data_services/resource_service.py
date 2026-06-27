@@ -14,6 +14,7 @@ from app.models.schemas import (
     User,
 )
 from app.services.data_services import (
+    chapter_resource_service,
     content_guard_service,
     resource_artifact_type_service as artifact_types,
     resource_artifact_service,
@@ -250,6 +251,7 @@ def _recommendation_source_text(context):
 
 def _resource_to_dict(resource: Resource):
     raw_notes = resource.agent_notes or ""
+    metadata = chapter_resource_service.extract_metadata(raw_notes)
     safety_review = content_guard_service.extract_review(raw_notes)
     teaching_quality_review = resource_quality_gate.extract_teaching_quality_review(raw_notes)
     public_notes = content_guard_service.strip_review_block(raw_notes)
@@ -271,7 +273,17 @@ def _resource_to_dict(resource: Resource):
         "summary": resource.summary or "",
         "content": resource.content or "",
         "source": resource.source or "",
-        "agent_notes": public_notes,
+        "agent_notes": chapter_resource_service.strip_metadata(public_notes),
+        "metadata": metadata,
+        "chapter_id": metadata.get("chapter_id", ""),
+        "chapter_no": metadata.get("chapter_no"),
+        "chapter_title": metadata.get("chapter_title", ""),
+        "source_file": metadata.get("source_file", ""),
+        "suggested_minutes": metadata.get("suggested_minutes", 30),
+        "quality_level": metadata.get("quality_level", ""),
+        "display_in_chapter_hub": metadata.get("display_in_chapter_hub", False),
+        "is_chapter_primary": metadata.get("is_chapter_primary", False),
+        "student_visible": metadata.get("student_visible", True),
         "safety_review": safety_review,
         "teaching_quality_review": teaching_quality_review,
         "evidence_review": {
@@ -412,6 +424,10 @@ def get_passed_resource_bundles(db: Session):
     from app.services.data_services import resource_bundle_service
 
     return resource_bundle_service.build_topic_bundles(get_passed_resources(db))
+
+
+def get_chapter_resource_hubs(db: Session):
+    return chapter_resource_service.build_chapter_hubs(get_passed_resources(db))
 
 
 def get_recommended_resources(db: Session, username: str = "", limit: int = 80):

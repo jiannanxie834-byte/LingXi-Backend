@@ -53,6 +53,15 @@ def _heading_count(text: str) -> int:
     return len(re.findall(r"(^|\n)#{2,3}\s+", text or ""))
 
 
+def _exercise_question_count(text: str) -> int:
+    return len(re.findall(r"(^|\n)###\s*题目\s*\d+", text or ""))
+
+
+def _exercise_type_count(text: str) -> int:
+    types = ["选择题", "判断题", "简答题", "计算题", "推导题", "代码理解题", "实验分析题"]
+    return sum(1 for item in types if item in (text or ""))
+
+
 def _count_markers(text: str, markers: List[str]) -> int:
     return sum(1 for marker in markers if marker and marker in (text or ""))
 
@@ -76,6 +85,25 @@ def _coverage_categories(content: str) -> Dict[str, bool]:
 
 def _normalize_topic_for_check(topic: str) -> str:
     return re.sub(r"\s+", "", str(topic or "")).lower()
+
+
+def _term_covered(term: str, text: str) -> bool:
+    normalized_text = _normalize_topic_for_check(text)
+    normalized_term = _normalize_topic_for_check(term)
+    if not normalized_term:
+        return False
+    if normalized_term in normalized_text:
+        return True
+
+    parts = [
+        part
+        for part in re.split(r"[、,，/\\s]+|与|和|及|或", str(term or ""))
+        if len(_normalize_topic_for_check(part)) >= 2
+    ]
+    if not parts:
+        return False
+    hits = sum(1 for part in parts if _normalize_topic_for_check(part) in normalized_text)
+    return hits >= max(1, round(len(parts) * 0.6))
 
 
 def _has_fake_source(text: str) -> bool:
@@ -235,8 +263,39 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     full_text = "\n".join([title, summary, content, source])
     content_len = _content_length(content)
     headings = _heading_count(content)
+    chapter_id = (
+        item.get("chapter_id")
+        or context.get("chapter_id")
+        or course_map.get("chapter_id")
+        or ""
+    )
+    core_chapters = {
+        "chapter_04_backpropagation",
+        "chapter_05_optimization",
+        "chapter_06_regularization",
+        "chapter_07_cnn",
+        "chapter_08_rnn_lstm",
+        "chapter_08_rnn_lstm_gru",
+        "chapter_09_transformer",
+        "chapter_11_pytorch_practice",
+        "chapter_12_final_project",
+    }
+    is_core_chapter = chapter_id in core_chapters
+    compact_artifact_types = {
+        artifact_types.MIND_MAP,
+        artifact_types.INTERACTIVE_ANIMATION,
+        artifact_types.ANIMATION_STORYBOARD,
+    }
+    structured_non_long_types = {
+        artifact_types.MIND_MAP,
+        artifact_types.INTERACTIVE_ANIMATION,
+        artifact_types.ANIMATION_STORYBOARD,
+        artifact_types.READING_PACK,
+        artifact_types.PERSONALIZED_VIDEO_GUIDE,
+        artifact_types.VIDEO_RECOMMENDATION,
+    }
     required_terms = deep_learning_resource_blueprint.get_topic_specific_terms(unit_id, topic)
-    covered_terms = [term for term in required_terms if term in full_text]
+    covered_terms = [term for term in required_terms if _term_covered(term, full_text)]
     evidence_chunks = context.get("evidence_chunks") or item.get("evidence_chunks") or []
     evidence_refs = re.findall(r"evidence_id\s*[:：=]\s*[\w:\-]+", full_text, re.I)
     examples = _count_markers(content, ["例子", "示例", "例题", "案例", "情境", "Conv2d", "torch", "PyTorch"])
@@ -250,13 +309,80 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     repair_suggestions = []
     fatal = False
 
-    if content_len < 1200:
+    if resource_type == artifact_types.COURSE_NOTE:
+        min_chars = 4500 if is_core_chapter else 3000
+        if content_len < min_chars:
+            fatal = True
+            issues.append(f"章节主讲义过短，少于 {min_chars} 个中文字符")
+            repair_suggestions.append("重写为教材式章节主讲义，补齐学习定位、核心机制、例子、自测、答案和参考来源")
+        if headings < 8:
+            fatal = True
+            issues.append("章节主讲义二级标题少于 8 个")
+            repair_suggestions.append("按固定 15 节结构扩展章节主讲义")
+        if "参考来源说明" not in content:
+            fatal = True
+            issues.append("章节主讲义缺少参考来源说明")
+            repair_suggestions.append("在末尾说明公开资料仅作结构参考，不复制原文")
+        if examples < 2:
+            fatal = True
+            issues.append("章节主讲义缺少足够例子，少于 2 个")
+            repair_suggestions.append("补充模型、公式、代码或实验例子")
+        if "自测题" not in content or "参考答案" not in content:
+            fatal = True
+            issues.append("章节主讲义缺少自测题或参考答案")
+            repair_suggestions.append("补充自测题和参考解析")
+    elif resource_type not in structured_non_long_types and content_len < 1200:
         fatal = True
         issues.append("内容过短，少于 1200 个中文字符")
         repair_suggestions.append("扩展为完整讲义，补齐概念解释、公式流程、例子、练习和学习建议")
-    elif content_len < deep_learning_resource_blueprint.COURSE_NOTE_QUALITY_RULES["min_chars"] and resource_type == artifact_types.COURSE_NOTE:
-        issues.append("课程讲解文档少于 1800 个中文字符")
-        repair_suggestions.append("继续扩展核心概念、例题和代码/伪代码说明")
+
+    if resource_type == artifact_types.MIND_MAP:
+        non_empty_lines = [line for line in (content or "").splitlines() if line.strip()]
+        indentation_levels = {
+            len(line) - len(line.lstrip(" "))
+            for line in non_empty_lines
+            if line.strip() and not line.strip().startswith("%%")
+        }
+        if "mindmap" not in content.lower() and "graph" not in content.lower():
+            fatal = True
+            issues.append("思维导图缺少 Mermaid mindmap 或 graph 结构")
+            repair_suggestions.append("使用 Mermaid mindmap/graph 表达章节层级、前置关系和易混点")
+        if len(non_empty_lines) < 10 or len(indentation_levels) < 3:
+            fatal = True
+            issues.append("思维导图层级过浅，不足以表达章节知识结构")
+            repair_suggestions.append("至少展开中心主题、一级知识点、二级细节、前置关系和易混点")
+
+    if resource_type == artifact_types.EXERCISE_SET:
+        question_count = _exercise_question_count(content)
+        type_count = _exercise_type_count(content)
+        if question_count < 8:
+            fatal = True
+            issues.append("练习题集题量不足，少于 8 题")
+            repair_suggestions.append("合并为章节级题库，至少覆盖 8 道题")
+        if "答案" not in content or "解析" not in content:
+            fatal = True
+            issues.append("练习题集缺少答案或解析")
+            repair_suggestions.append("每题必须有答案、解析和常见错误")
+        if type_count < 4:
+            fatal = True
+            issues.append("练习题集题型少于 4 类")
+            repair_suggestions.append("补充选择、判断、简答、计算/推导、代码理解、实验分析等题型")
+
+    if resource_type == artifact_types.CODE_LAB:
+        required = ["完整代码", "运行命令", "学生任务", "常见报错"]
+        missing = _missing_terms(content, required)
+        if missing:
+            fatal = True
+            issues.append(f"代码实验结构不完整：缺少{'、'.join(missing)}")
+            repair_suggestions.append("代码实验必须包含完整可运行代码、运行方式、学生任务、调参建议和常见报错")
+
+    if resource_type in {artifact_types.READING_PACK, artifact_types.PERSONALIZED_VIDEO_GUIDE, artifact_types.VIDEO_RECOMMENDATION}:
+        required = ["观看/阅读前准备", "观看/阅读中关注点", "观看/阅读后任务", "版权说明"]
+        missing = _missing_terms(content, required)
+        if missing:
+            fatal = True
+            issues.append(f"阅读/视频指南结构不完整：缺少{'、'.join(missing)}")
+            repair_suggestions.append("阅读/视频指南不能只是链接列表，必须提供前中后任务和版权说明")
 
     normalized_topic = _normalize_topic_for_check(topic)
     normalized_full_text = _normalize_topic_for_check(full_text)
@@ -264,11 +390,6 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         fatal = True
         issues.append(f"正文未明确出现当前主题：{topic}")
         repair_suggestions.append("在标题、课程位置和核心概念讲解中明确写出当前知识点")
-
-    if resource_type == artifact_types.COURSE_NOTE and headings < 6:
-        fatal = True
-        issues.append("课程讲解文档二级标题少于 6 个")
-        repair_suggestions.append("按 12 个讲义章节重写，至少包含 8 个二级标题")
 
     if resource_type == artifact_types.COURSE_NOTE and len(covered_category_names) < 3:
         fatal = True
@@ -282,9 +403,19 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         issues.append("内容停留在摘要层面，没有展开讲解")
         repair_suggestions.append("不要只列学习目标和核心内容，要逐项展开讲解")
 
-    if required_terms and len(covered_terms) < min(4, len(required_terms)):
+    term_strict_resource_types = {
+        artifact_types.COURSE_NOTE,
+        artifact_types.EXERCISE_SET,
+        artifact_types.CODE_LAB,
+        artifact_types.PROJECT_BRIEF,
+    }
+    if (
+        required_terms
+        and resource_type in term_strict_resource_types
+        and len(covered_terms) < min(4, len(required_terms))
+    ):
         fatal = True
-        missing = [term for term in required_terms if term not in covered_terms]
+        missing = [term for term in required_terms if not _term_covered(term, full_text)]
         issues.append(f"核心主题词覆盖不足：缺少{'、'.join(missing[:5])}")
         repair_suggestions.append("围绕课程图谱补齐主题关键词，并解释它们之间的关系")
 
@@ -307,7 +438,12 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     score = 0
     score += 20 if normalized_topic and normalized_topic in normalized_full_text else 6
     score += min(15, headings * 2)
-    score += 20 if content_len >= 1800 else (12 if content_len >= 1200 else 4)
+    if resource_type in compact_artifact_types:
+        score += 18 if not fatal else 8
+    elif resource_type in structured_non_long_types:
+        score += 18 if content_len >= 600 else 12
+    else:
+        score += 20 if content_len >= 1800 else (12 if content_len >= 1200 else 4)
     if required_terms:
         score += round(min(15, 15 * len(covered_terms) / max(1, len(required_terms))))
     else:
@@ -318,6 +454,20 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     score += 5 if evidence_chunks or evidence_refs else 0
     if resource_type == artifact_types.COURSE_NOTE:
         score = min(100, score + min(5, len(covered_category_names)))
+    if resource_type in compact_artifact_types and not fatal:
+        score = max(score, 86)
+    if resource_type == artifact_types.EXERCISE_SET and not fatal:
+        score = max(score, 86)
+    if resource_type == artifact_types.CODE_LAB and not fatal:
+        score = max(score, 88)
+    if resource_type == artifact_types.PROJECT_BRIEF and not fatal:
+        score = max(score, 86)
+    if resource_type in {
+        artifact_types.READING_PACK,
+        artifact_types.PERSONALIZED_VIDEO_GUIDE,
+        artifact_types.VIDEO_RECOMMENDATION,
+    } and not fatal:
+        score = max(score, 84)
     score = max(0, min(100, int(score)))
 
     passed = not fatal and score >= 80

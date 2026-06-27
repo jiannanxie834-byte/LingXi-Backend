@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.models.schemas import CourseKnowledge, Resource, VideoResource
 from app.services.data_services import (
+    chapter_resource_service,
     content_guard_service,
     deep_learning_course_map_service,
     resource_artifact_service,
     resource_artifact_type_service as artifact_types,
+    resource_quality_gate,
 )
 
 
@@ -220,6 +222,9 @@ def _upsert_knowledge_points(db: Session, points: List[Dict]) -> int:
 
 def _build_resource_notes(resource: Dict, content: str, manifest: Dict) -> str:
     source = f"{manifest.get('source_prefix', '课程知识库')} / {resource.get('title', '')}"
+    metadata = resource.get("metadata") or {}
+    chapter_id = metadata.get("chapter_id", "")
+    review_unit_id = resource.get("unit_id") or chapter_id
     review = content_guard_service.review_resource_content(
         title=resource.get("title", ""),
         resource_type=resource.get("type", ""),
@@ -232,7 +237,39 @@ def _build_resource_notes(resource: Dict, content: str, manifest: Dict) -> str:
         "系统内置初始课程知识库资源，来源于参赛团队自构建的《深度学习》课程文档集；"
         "已通过预审，可直接作为学生端初始资源和智能体生成依据。"
     )
-    return content_guard_service.attach_review_note(base_note, review)
+    notes = content_guard_service.attach_review_note(base_note, review)
+    teaching_review = resource_quality_gate.validate_teaching_quality(
+        {
+            "title": resource.get("title", ""),
+            "type": resource.get("type", ""),
+            "summary": resource.get("summary", ""),
+            "content": content,
+            "source": source,
+            "chapter_id": chapter_id,
+            "unit_id": review_unit_id,
+            "evidence_chunks": [
+                review_unit_id,
+                metadata.get("source_file", ""),
+            ],
+        },
+        {
+            "resource_type": resource.get("type", ""),
+            "chapter_id": chapter_id,
+            "unit_id": review_unit_id,
+            "topic": resource.get("title", ""),
+            "evidence_chunks": [
+                review_unit_id,
+                metadata.get("source_file", ""),
+            ],
+        },
+    )
+    notes = resource_quality_gate.attach_teaching_quality_note(notes, teaching_review)
+    if resource.get("metadata"):
+        notes = "\n\n".join([
+            notes,
+            chapter_resource_service.metadata_block(resource.get("metadata") or {}),
+        ])
+    return notes
 
 
 def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: List[Dict] = None) -> int:
@@ -248,7 +285,7 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
             continue
 
         content = doc.get("content") or _read_markdown(doc.get("file", ""))
-        source = f"{manifest.get('source_prefix', '课程知识库')} / {title}"
+        source = doc.get("source") or f"{manifest.get('source_prefix', '课程知识库')} / {title}"
         row = (
             db.query(Resource)
             .filter((Resource.id == resource_id) | ((Resource.title == title) & (Resource.type == resource_type)))
@@ -271,6 +308,7 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
         db.flush()
         course_match = deep_learning_course_map_service.match_deep_learning_topic(title, content[:500])
         unit_id = doc.get("unit_id") or course_match.get("unit_id", "")
+        metadata = doc.get("metadata") or {}
         resource_artifact_service.upsert_from_resource(
             db,
             resource=row,
@@ -281,6 +319,9 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
                 "evidence_refs": [unit_id] if unit_id else [row.id],
                 "personalization_reason": "系统内置《深度学习》初始知识库资源，可作为学生端学习入口和智能体生成依据。",
                 "agent_name": "KnowledgeSeedAgent",
+                "chapter_id": metadata.get("chapter_id", ""),
+                "chapter": metadata.get("chapter_title", ""),
+                "quality_score": 96 if metadata.get("quality_level") == "curated" else 88,
             },
             semantic_result={
                 "course_id": manifest.get("course_id", "deep_learning"),
@@ -348,8 +389,7 @@ def seed_initial_course_knowledge_base(db: Session) -> Dict:
             *_knowledge_points_from_units(knowledge_units),
         ]
         resource_documents = [
-            *(manifest.get("resource_documents", []) or []),
-            *_unit_resource_documents(knowledge_units),
+            *chapter_resource_service.iter_courseware_resource_documents(),
         ]
         knowledge_count = _upsert_knowledge_points(db, knowledge_points)
         resource_count = _upsert_resource_documents(db, manifest, resource_documents)

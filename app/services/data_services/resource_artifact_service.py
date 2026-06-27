@@ -29,6 +29,9 @@ def _status_from_resource(status: str) -> str:
         "已通过": "published",
         "待审核": "needs_review",
         "未通过": "needs_review",
+        "archived_shallow": "archived",
+        "merged_into_chapter_pack": "archived",
+        "legacy_demo_only": "archived",
     }.get(status or "", "needs_review")
 
 
@@ -185,6 +188,12 @@ def to_dict(row: ResourceArtifact) -> Dict:
 
 def list_artifacts(db: Session, username: str = "", status: str = "", limit: int = 50) -> List[Dict]:
     query = db.query(ResourceArtifact)
+    if status == "published":
+        query = (
+            query
+            .join(Resource, ResourceArtifact.resource_id == Resource.id)
+            .filter(Resource.status == "已通过")
+        )
     if username:
         query = query.filter(ResourceArtifact.student_id.in_([username, ""]))
     if status:

@@ -38,6 +38,19 @@ COURSE_NOTE_QUALITY_RULES = {
 
 
 TOPIC_SPECIFIC_REQUIREMENTS = {
+    "chapter_01_intro": ["表示学习", "神经网络", "端到端学习", "课程诊断", "学习路径", "数据驱动"],
+    "chapter_02_prerequisites": ["张量", "矩阵乘法", "梯度", "概率分布", "训练集", "验证集", "测试集"],
+    "chapter_03_neural_network": ["感知机", "神经元", "权重", "偏置", "线性组合", "分类边界", "MLP", "激活函数", "损失函数", "前向传播"],
+    "chapter_04_backpropagation": ["计算图", "链式法则", "梯度流", "自动微分", "反向传播", "局部梯度", "参数更新"],
+    "chapter_05_optimization": ["梯度下降", "SGD", "Momentum", "Adam", "学习率", "收敛", "训练曲线"],
+    "chapter_06_regularization": ["过拟合", "Dropout", "BatchNorm", "权重衰减", "数据增强", "早停", "泛化"],
+    "chapter_07_cnn": ["卷积核", "步幅", "填充", "特征图", "局部连接", "参数共享", "池化", "图像分类"],
+    "chapter_08_rnn_lstm": ["RNN", "循环状态", "隐状态", "时间步", "参数共享", "梯度消失", "LSTM", "GRU", "序列分类"],
+    "chapter_08_rnn_lstm_gru": ["RNN", "循环状态", "隐状态", "时间步", "参数共享", "梯度消失", "LSTM", "GRU", "序列分类"],
+    "chapter_09_transformer": ["Query", "Key", "Value", "注意力分数", "Softmax", "多头注意力", "位置编码", "Encoder", "Mask"],
+    "chapter_10_generative_models": ["自编码器", "VAE", "GAN", "扩散模型", "生成质量评估", "潜变量"],
+    "chapter_11_pytorch_practice": ["Tensor", "Dataset", "DataLoader", "nn.Module", "训练循环", "loss.backward", "optimizer.step", "模型保存"],
+    "chapter_12_final_project": ["CNN 图像分类项目", "数据集", "CNN baseline", "训练验证", "展示报告", "项目报告", "评分 Rubric", "复现说明", "指标表", "误差分析", "消融实验"],
     "dl_cnn": ["卷积核", "步幅", "填充", "特征图", "局部连接", "参数共享", "输出尺寸计算"],
     "dl_cnn_output_size": ["输入尺寸", "卷积核", "步幅", "填充", "输出特征图", "floor", "H_out"],
     "dl_backprop": ["损失函数", "梯度", "链式法则", "前向传播", "反向传播", "参数更新"],
@@ -223,6 +236,8 @@ def _unit_concept_terms(unit_id: str = "", topic: str = "") -> List[str]:
 
 def get_topic_specific_terms(unit_id: str = "", topic: str = "") -> List[str]:
     key = UNIT_REQUIREMENT_KEYS.get(unit_id or "")
+    if not key and (unit_id or "").startswith("chapter_"):
+        key = unit_id
     if not key:
         compact_topic = str(topic or "").lower()
         if any(word in compact_topic for word in ["cnn", "卷积"]):

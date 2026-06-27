@@ -58,6 +58,16 @@ async def list_passed_bundles(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/chapter-hubs")
+async def list_chapter_hubs(db: Session = Depends(get_db)):
+    data = resource_service.get_chapter_resource_hubs(db)
+    return {
+        "code": 200,
+        "message": "ok",
+        "data": data or []
+    }
+
+
 @router.get("/recommendations")
 async def list_recommendations(
     username: str = "",

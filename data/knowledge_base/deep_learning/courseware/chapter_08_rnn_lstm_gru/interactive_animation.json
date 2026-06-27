@@ -1,0 +1,38 @@
+{
+  "animation_type": "chapter_mechanism_walkthrough",
+  "chapter_id": "chapter_08_rnn_lstm",
+  "title": "第 8 章 RNN/LSTM/GRU 序列建模 交互动画",
+  "interactive_parameters": [
+    "step",
+    "input_shape",
+    "highlight_mode"
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "label": "输入进入模型",
+      "highlight": "循环状态",
+      "explanation": "展示输入张量或序列如何进入当前章节机制。"
+    },
+    {
+      "step": 2,
+      "label": "关键计算展开",
+      "highlight": "BPTT",
+      "explanation": "展示公式、滑窗、门控或注意力权重的中间过程。"
+    },
+    {
+      "step": 3,
+      "label": "输出与反馈",
+      "highlight": "LSTM 门控",
+      "explanation": "展示输出如何影响损失、梯度或下一步预测。"
+    },
+    {
+      "step": 4,
+      "label": "常见错误对比",
+      "highlight": "GRU",
+      "explanation": "对比错误参数、错误 shape 或错误理解带来的结果。"
+    }
+  ],
+  "render_notes": "前端可用 Canvas/SVG 分步高亮，不需要下载外部媒体。",
+  "copyright": "自建动画规格，仅描述交互逻辑。"
+}
