@@ -1,7 +1,11 @@
 import unittest
+from pathlib import Path
 
 from app.services.data_services import deep_learning_course_map_service as course_map
 from app.services.data_services import course_scope_service
+
+
+COURSE_DIR = Path(__file__).resolve().parents[1] / "data" / "knowledge_base" / "deep_learning"
 
 
 class DeepLearningCourseMapTest(unittest.TestCase):
@@ -56,6 +60,38 @@ class DeepLearningCourseMapTest(unittest.TestCase):
         reply = course_scope_service.build_out_of_scope_reply("英语", "我想学习英语")
 
         self.assertEqual(reply, "本系统聚焦《深度学习》课程，「英语」暂未纳入课程图谱，请期待后续资源完善哦。")
+
+    def test_core_chapters_are_rag_ready(self):
+        rnn_content = (COURSE_DIR / "chapters" / "08_rnn_lstm.md").read_text(encoding="utf-8")
+
+        self.assertGreater(len(rnn_content), 3000)
+        for marker in [
+            "BPTT",
+            "梯度消失",
+            "长期依赖",
+            "细胞状态",
+            "隐藏状态",
+            "遗忘门",
+            "输入门",
+            "输出门",
+            "nn.LSTM",
+            "自测题与答案",
+        ]:
+            self.assertIn(marker, rnn_content)
+
+    def test_labs_are_registered_and_sufficient(self):
+        labs = list((COURSE_DIR / "labs").glob("*.py"))
+        lab_names = {path.name for path in labs}
+
+        self.assertGreaterEqual(len(labs), 8)
+        for name in [
+            "lstm_sequence_classification.py",
+            "gru_sequence_classification.py",
+            "optimizer_comparison.py",
+            "regularization_dropout_bn_demo.py",
+            "cnn_output_shape_debug.py",
+        ]:
+            self.assertIn(name, lab_names)
 
 
 if __name__ == "__main__":
