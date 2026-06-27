@@ -140,8 +140,51 @@ def should_generate_feedback_report(context: dict) -> bool:
 def select_resource_types(context: dict) -> List[str]:
     semantic_map = context.get("deep_learning_course_map") or context.get("ai_course_map") or {}
     learning_need_type = context.get("learning_need_type") or semantic_map.get("learning_need_type")
+    scope_level = context.get("scope_level") or semantic_map.get("scope_level")
     requires_code = bool(context.get("requires_code") or semantic_map.get("requires_code"))
     requires_multimodal = bool(context.get("requires_multimodal") or semantic_map.get("requires_multimodal"))
+
+    if scope_level == "course":
+        resource_types = [
+            artifact_types.COURSE_NOTE,
+            artifact_types.MIND_MAP,
+            artifact_types.EXERCISE_SET,
+            artifact_types.READING_PACK,
+        ]
+        if should_generate_feedback_report(context):
+            resource_types.append(FEEDBACK_RESOURCE_TYPE)
+        return list(dict.fromkeys(resource_types))
+
+    if scope_level == "comparison":
+        return [
+            artifact_types.COURSE_NOTE,
+            artifact_types.MIND_MAP,
+            artifact_types.EXERCISE_SET,
+            artifact_types.READING_PACK,
+            artifact_types.VIDEO_RECOMMENDATION,
+        ]
+
+    if scope_level == "project":
+        return [
+            artifact_types.PROJECT_BRIEF,
+            artifact_types.CODE_LAB,
+            artifact_types.COURSE_NOTE,
+            artifact_types.EXERCISE_SET,
+            artifact_types.PPT_OUTLINE,
+            artifact_types.VIDEO_RECOMMENDATION,
+        ]
+
+    if scope_level == "diagnostic":
+        resource_types = [artifact_types.EXERCISE_SET]
+        if should_generate_feedback_report(context):
+            resource_types.append(FEEDBACK_RESOURCE_TYPE)
+        return list(dict.fromkeys(resource_types))
+
+    if scope_level in {"unit", "concept"} and learning_need_type == "practice":
+        return [artifact_types.EXERCISE_SET]
+
+    if scope_level in {"unit", "concept"} and learning_need_type == "code_lab":
+        return [artifact_types.CODE_LAB, artifact_types.EXERCISE_SET, artifact_types.COURSE_NOTE]
 
     resource_types = [
         artifact_types.COURSE_NOTE,

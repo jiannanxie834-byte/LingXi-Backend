@@ -73,7 +73,8 @@ def run(plan, profile, semantic_result=None, generation_context=None):
     semantic_result = semantic_result or {}
     generation_context = generation_context or {}
     topic = course_scope_service.normalize_course_topic(
-        profile.get("topic")
+        semantic_result.get("display_topic")
+        or profile.get("topic")
         or profile.get("knowledge_topic")
         or semantic_result.get("normalized_topic")
         or semantic_result.get("topic")
@@ -96,6 +97,15 @@ def run(plan, profile, semantic_result=None, generation_context=None):
         "topic": topic,
         "subject_category": subject_category,
         "deep_learning_course_map": course_match,
+        "display_topic": semantic_result.get("display_topic") or course_match.get("display_topic") or topic,
+        "scope_level": semantic_result.get("scope_level") or course_match.get("scope_level") or "",
+        "primary_unit_id": semantic_result.get("primary_unit_id") or course_match.get("primary_unit_id") or "",
+        "chapter_title": semantic_result.get("chapter_title") or course_match.get("chapter_title") or course_match.get("chapter") or "",
+        "prerequisite_units": semantic_result.get("prerequisite_units", []),
+        "related_units": semantic_result.get("related_units", []),
+        "compare_units": semantic_result.get("compare_units", []),
+        "expansion_policy": semantic_result.get("expansion_policy") or course_match.get("expansion_policy") or "",
+        "should_generate_full_chapter": bool(semantic_result.get("should_generate_full_chapter") or course_match.get("should_generate_full_chapter")),
         "learning_need_type": semantic_result.get("learning_need_type") or course_match.get("learning_need_type"),
         "requires_code": bool(semantic_result.get("requires_code") or course_match.get("requires_code")),
         "requires_multimodal": bool(semantic_result.get("requires_multimodal") or course_match.get("requires_multimodal")),
@@ -130,12 +140,12 @@ def run(plan, profile, semantic_result=None, generation_context=None):
 
 
 def _title_for_resource(topic, resource_type, course_match):
-    normalized_topic = course_match.get("normalized_topic") or topic
-    return f"{normalized_topic} · {resource_type}"
+    display_topic = course_match.get("display_topic") or topic or course_match.get("normalized_topic") or "深度学习主题"
+    return f"{display_topic} · {resource_type}"
 
 
 def _summary_for_resource(resource_type, course_match, intent):
-    unit_title = course_match.get("normalized_topic") or course_match.get("topic") or "深度学习知识点"
+    unit_title = course_match.get("display_topic") or course_match.get("normalized_topic") or course_match.get("topic") or "深度学习知识点"
     chapter = course_match.get("chapter") or "《深度学习》课程"
     summary_map = {
         artifact_types.COURSE_NOTE: f"围绕「{unit_title}」生成面向学生的课程讲解，覆盖前置知识、核心概念、公式流程和易错点。",
@@ -163,8 +173,10 @@ def _build_resource_item(topic, intent, resource_type, plan_title, profile, sema
         semantic_result=semantic_result,
     )
     unit = course_match.get("unit") or {}
+    display_topic = semantic_result.get("display_topic") or course_match.get("display_topic") or topic
+    scope_level = semantic_result.get("scope_level") or course_match.get("scope_level") or ""
     return {
-        "topic": topic,
+        "topic": display_topic,
         "title": _title_for_resource(topic, resource_type, course_match),
         "type": resource_type,
         "summary": _summary_for_resource(resource_type, course_match, intent),
@@ -182,7 +194,16 @@ def _build_resource_item(topic, intent, resource_type, plan_title, profile, sema
         "chapter_id": course_match.get("chapter_id") or unit.get("chapter_id") or "",
         "chapter": course_match.get("chapter") or "",
         "unit_id": course_match.get("unit_id") or unit.get("unit_id") or "",
-        "unit_title": course_match.get("normalized_topic") or unit.get("title") or topic,
+        "unit_title": display_topic,
+        "display_topic": display_topic,
+        "scope_level": scope_level,
+        "primary_unit_id": semantic_result.get("primary_unit_id") or course_match.get("primary_unit_id") or course_match.get("unit_id") or unit.get("unit_id") or "",
+        "chapter_title": semantic_result.get("chapter_title") or course_match.get("chapter_title") or course_match.get("chapter") or "",
+        "prerequisite_units": semantic_result.get("prerequisite_units", []),
+        "related_units": semantic_result.get("related_units", []),
+        "compare_units": semantic_result.get("compare_units", []),
+        "expansion_policy": semantic_result.get("expansion_policy") or course_match.get("expansion_policy") or "",
+        "should_generate_full_chapter": bool(semantic_result.get("should_generate_full_chapter") or course_match.get("should_generate_full_chapter")),
         "evidence_refs": [course_match.get("unit_id") or unit.get("unit_id") or ""],
         "personalization_reason": _build_personalization_reason(profile, semantic_result, course_match),
         "feedback_evidence_sources": generation_context.get("evidence_sources", []),

@@ -82,7 +82,8 @@ def _project_steps(course_match, topic):
 def run(profile, semantic_result=None):
     semantic_result = semantic_result or {}
     topic = course_scope_service.normalize_course_topic(
-        profile.get("topic")
+        semantic_result.get("display_topic")
+        or profile.get("topic")
         or profile.get("knowledge_topic")
         or semantic_result.get("normalized_topic")
         or semantic_result.get("topic")
@@ -106,12 +107,36 @@ def run(profile, semantic_result=None):
     unit = course_match.get("unit") or {}
     unit_id = course_match.get("unit_id") or unit.get("unit_id") or ""
     chapter = course_match.get("chapter") or "《深度学习》课程"
-    normalized_topic = course_match.get("normalized_topic") or topic
+    normalized_topic = course_match.get("display_topic") or semantic_result.get("display_topic") or topic or course_match.get("normalized_topic")
     core_topics = course_match.get("core_topics") or unit.get("core_concepts") or [normalized_topic]
     prerequisites = course_match.get("prerequisites") or unit.get("prerequisites") or []
     misconceptions = course_match.get("common_misconceptions") or unit.get("common_misconceptions") or []
     practice_tasks = course_match.get("practice_tasks") or []
     need_type = semantic_result.get("learning_need_type") or course_match.get("learning_need_type")
+    scope_level = semantic_result.get("scope_level") or course_match.get("scope_level") or ""
+
+    if scope_level == "course":
+        return _validate_plan({
+            "title": f"{normalized_topic} · 课程导学、诊断与学习路径",
+            "steps": [
+                _step("第 1 步：完成入门诊断", "先确认 Python、线性代数、机器学习基础和神经网络概念掌握情况。", [artifact_types.EXERCISE_SET], "active", unit_id),
+                _step("第 2 步：建立课程全局地图", "了解深度学习课程的章节顺序、典型模型家族和实践任务类型。", [artifact_types.COURSE_NOTE, artifact_types.MIND_MAP], "pending", unit_id),
+                _step("第 3 步：选择第一阶段切入点", "根据诊断结果在前置知识、神经网络基础、反向传播或 PyTorch 实践中选择一个起点。", [artifact_types.READING_PACK, artifact_types.VIDEO_RECOMMENDATION], "pending", unit_id),
+                _step("第 4 步：按阶段推进学习", "后续只在确定具体章节或知识点后生成配套资源，避免一次性铺开全部章节。", [artifact_types.COURSE_NOTE, artifact_types.EXERCISE_SET], "pending", unit_id),
+            ],
+        })
+
+    if scope_level == "comparison":
+        compare_units = semantic_result.get("compare_units") or []
+        compare_titles = [item.get("title") for item in compare_units if item.get("title")]
+        return _validate_plan({
+            "title": f"{normalized_topic} · 对比学习路线",
+            "steps": [
+                _step("第 1 步：分别确认两个对象的定义", f"先独立说明：{_unit_text(compare_titles, normalized_topic)}。", [artifact_types.COURSE_NOTE], "active", unit_id),
+                _step("第 2 步：建立差异表", "从结构、输入输出、适用场景、优势局限和常见误区五个维度对比。", [artifact_types.MIND_MAP, artifact_types.READING_PACK], "pending", unit_id),
+                _step("第 3 步：用题目检验理解", "完成对比辨析题和场景选择题，避免只背结论。", [artifact_types.EXERCISE_SET], "pending", unit_id),
+            ],
+        })
 
     if need_type == "project" or "项目" in normalized_topic:
         return _validate_plan({

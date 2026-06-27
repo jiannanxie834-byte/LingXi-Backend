@@ -5,6 +5,7 @@ from app.services.llm_provider import chat_json, is_enabled
 from app.services.data_services import (
     course_scope_service,
     deep_learning_course_map_service,
+    topic_scope_resolver,
 )
 
 
@@ -36,6 +37,38 @@ ACTION_MAP = {
     "综合学习": "path_plan",
 }
 
+SCOPE_ACTION_MAP = {
+    "course": "path_plan",
+    "chapter": "path_plan",
+    "unit": "concept_explain",
+    "concept": "concept_explain",
+    "comparison": "resource_generation",
+    "project": "practice",
+    "diagnostic": "exercise",
+}
+
+SCOPE_NEED_TYPE_MAP = {
+    "course": "course_orientation",
+    "chapter": "path_planning",
+    "unit": "concept_explanation",
+    "concept": "concept_explanation",
+    "comparison": "comparison",
+    "project": "project",
+    "diagnostic": "evaluation",
+}
+
+COURSE_NEED_ACTION_MAP = {
+    "concept_explanation": "concept_explain",
+    "resource_generation": "resource_generation",
+    "practice": "exercise",
+    "code_lab": "practice",
+    "path_planning": "path_plan",
+    "course_orientation": "path_plan",
+    "evaluation": "exercise",
+    "project": "practice",
+    "comparison": "resource_generation",
+}
+
 
 def _compact(text: str) -> str:
     return re.sub(r"\s+", "", str(text or "").lower())
@@ -48,6 +81,37 @@ def _contains_any(text: str, words) -> bool:
 
 def _detect_subject_by_rule(text: str, topic: str) -> Dict:
     user_text = text or ""
+    topic_scope = topic_scope_resolver.resolve_topic_scope(user_text, topic)
+    scope_level = topic_scope.get("scope_level")
+
+    if scope_level and scope_level != "out_of_course":
+        course_match = topic_scope.get("course_match") or {}
+        requested_action = COURSE_NEED_ACTION_MAP.get(
+            course_match.get("learning_need_type"),
+            SCOPE_ACTION_MAP.get(scope_level, "concept_explain"),
+        )
+        return {
+            "topic": topic_scope.get("display_topic") or course_match.get("normalized_topic") or course_match.get("topic"),
+            "subject_category": "computer_science",
+            "language": "",
+            "confidence": int(float(course_match.get("confidence", 0.8)) * 100),
+            "topic_source": "topic_scope_resolver",
+            "course_match": course_match,
+            "topic_scope": topic_scope,
+            "requested_action": requested_action,
+        }
+
+    out_topic = topic_scope.get("display_topic") or topic_scope.get("primary_topic") or ""
+    if out_topic and out_topic not in {"未确认主题", "当前主题", "这个主题"}:
+        return {
+            "topic": out_topic,
+            "subject_category": "out_of_course",
+            "language": "",
+            "confidence": 70,
+            "topic_source": "topic_scope_resolver",
+            "topic_scope": topic_scope,
+            "requested_action": "unknown",
+        }
 
     course_match = deep_learning_course_map_service.match_deep_learning_topic(topic, user_text)
     if course_match.get("matched"):
@@ -58,15 +122,7 @@ def _detect_subject_by_rule(text: str, topic: str) -> Dict:
             "confidence": int(course_match.get("confidence", 0.8) * 100),
             "topic_source": "deep_learning_course_map",
             "course_match": course_match,
-            "requested_action": {
-                "concept_explanation": "concept_explain",
-                "resource_generation": "resource_generation",
-                "practice": "exercise",
-                "code_lab": "practice",
-                "path_planning": "path_plan",
-                "evaluation": "exercise",
-                "project": "practice",
-            }.get(course_match.get("learning_need_type"), "concept_explain"),
+            "requested_action": COURSE_NEED_ACTION_MAP.get(course_match.get("learning_need_type"), "concept_explain"),
         }
 
     if topic and topic not in {"未确认主题", "当前主题"} and _topic_grounded_in_message(topic, user_text):
@@ -215,11 +271,32 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     normalized_topic = course_scope_service.normalize_course_topic(
         rule_result.get("topic") or eval_topic or "未确认主题"
     )
+    topic_scope = (
+        rule_result.get("topic_scope")
+        or topic_scope_resolver.resolve_topic_scope(message, normalized_topic)
+    )
     ai_course_match = (
         rule_result.get("course_match")
+        or topic_scope.get("course_match")
         or deep_learning_course_map_service.match_deep_learning_topic(normalized_topic, message)
     )
-    if ai_course_match.get("matched"):
+    if topic_scope.get("scope_level") != "out_of_course" and topic_scope.get("display_topic"):
+        normalized_topic = course_scope_service.normalize_course_topic(topic_scope.get("display_topic"))
+        rule_result["topic"] = normalized_topic
+        if ai_course_match.get("matched"):
+            ai_course_match = {
+                **ai_course_match,
+                "display_topic": topic_scope.get("display_topic"),
+                "scope_level": topic_scope.get("scope_level"),
+                "primary_unit_id": topic_scope.get("primary_unit_id"),
+                "chapter_title": topic_scope.get("chapter_title"),
+                "compare_units": topic_scope.get("compare_units", []),
+                "expansion_policy": topic_scope.get("expansion_policy"),
+                "should_generate_full_chapter": topic_scope.get("should_generate_full_chapter", False),
+            }
+        if rule_result.get("subject_category") == "unknown":
+            rule_result["subject_category"] = "computer_science"
+    elif ai_course_match.get("matched"):
         normalized_topic = course_scope_service.normalize_course_topic(
             ai_course_match.get("normalized_topic")
             or ai_course_match.get("topic")
@@ -248,6 +325,7 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     should_generate_resources = (
         is_supported_scope
         and ai_course_match.get("scope_type", "in_course") == "in_course"
+        and topic_scope.get("scope_level") != "out_of_course"
         and requested_action in {
         "path_plan",
         "resource_generation",
@@ -257,6 +335,7 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     )
     learning_need_type = (
         ai_course_match.get("learning_need_type")
+        or SCOPE_NEED_TYPE_MAP.get(topic_scope.get("scope_level"))
         or {
             "concept_explain": "concept_explanation",
             "path_plan": "path_planning",
@@ -276,8 +355,18 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         "topic": normalized_topic,
         "raw_topic": eval_topic or rule_result.get("topic") or "",
         "normalized_topic": normalized_topic,
+        "display_topic": topic_scope.get("display_topic") or normalized_topic,
+        "scope_level": topic_scope.get("scope_level", ""),
+        "primary_topic": topic_scope.get("primary_topic", ""),
+        "primary_unit_id": topic_scope.get("primary_unit_id", ""),
         "chapter_id": ai_course_match.get("chapter_id", ""),
         "chapter": ai_course_match.get("chapter", ""),
+        "chapter_title": topic_scope.get("chapter_title") or ai_course_match.get("chapter", ""),
+        "prerequisite_units": topic_scope.get("prerequisite_units", []),
+        "related_units": topic_scope.get("related_units", []),
+        "compare_units": topic_scope.get("compare_units", []),
+        "expansion_policy": topic_scope.get("expansion_policy", ""),
+        "should_generate_full_chapter": bool(topic_scope.get("should_generate_full_chapter", False)),
         "unit_id": ai_course_match.get("unit_id", ""),
         "learning_need_type": learning_need_type,
         "scope_type": ai_course_match.get("scope_type", "in_course" if is_supported_scope else "out_of_course"),
@@ -292,6 +381,7 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         "is_supported_scope": is_supported_scope,
         "ai_course_map": ai_course_match,
         "deep_learning_course_map": ai_course_match,
+        "topic_scope": topic_scope,
         "is_programming_related": is_programming_related,
         "level": level_info.get("level", "未确认"),
         "level_source": level_info.get("level_source", "none"),
