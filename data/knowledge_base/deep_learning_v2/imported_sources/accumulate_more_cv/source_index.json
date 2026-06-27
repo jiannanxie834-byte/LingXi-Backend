@@ -1,0 +1,1377 @@
+{
+  "source_id": "src_accumulate_more_cv",
+  "source_root": "/tmp/lingxi_accumulate_cv",
+  "items": [
+    {
+      "source_path": "100_配置版本.ipynb",
+      "notebook_index": 100,
+      "series": "pytorch_foundation",
+      "title": "配置版本",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "101_Pytorch安装.ipynb",
+      "notebook_index": 101,
+      "series": "pytorch_foundation",
+      "title": "Pytorch安装",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "102_Python两大法宝.ipynb",
+      "notebook_index": 102,
+      "series": "pytorch_foundation",
+      "title": "Python两大法宝",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "103_Pytorch加载数据.ipynb",
+      "notebook_index": 103,
+      "series": "pytorch_foundation",
+      "title": "Pytorch加载数据",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "104_Tensorboard使用.ipynb",
+      "notebook_index": 104,
+      "series": "pytorch_foundation",
+      "title": "Tensorboard使用",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "105_Transforms使用.ipynb",
+      "notebook_index": 105,
+      "series": "pytorch_foundation",
+      "title": "Transforms使用",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "106_torchvision数据集使用.ipynb",
+      "notebook_index": 106,
+      "series": "pytorch_foundation",
+      "title": "torchvision数据集使用",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "107_Dataloader使用.ipynb",
+      "notebook_index": 107,
+      "series": "pytorch_foundation",
+      "title": "Dataloader使用",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "108_nn.Module模块使用.ipynb",
+      "notebook_index": 108,
+      "series": "pytorch_foundation",
+      "title": "nn.Module模块使用",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "109_卷积原理.ipynb",
+      "notebook_index": 109,
+      "series": "pytorch_foundation",
+      "title": "卷积原理",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "110_卷积层.ipynb",
+      "notebook_index": 110,
+      "series": "pytorch_foundation",
+      "title": "卷积层",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "111_最大池化层.ipynb",
+      "notebook_index": 111,
+      "series": "pytorch_foundation",
+      "title": "最大池化层",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "112_非线性激活.ipynb",
+      "notebook_index": 112,
+      "series": "pytorch_foundation",
+      "title": "非线性激活",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "113_线性层及其他层.ipynb",
+      "notebook_index": 113,
+      "series": "pytorch_foundation",
+      "title": "线性层及其他层",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "114_搭建小实战和Sequential使用.ipynb",
+      "notebook_index": 114,
+      "series": "pytorch_foundation",
+      "title": "搭建小实战和Sequential使用",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "115_损失函数与反向传播.ipynb",
+      "notebook_index": 115,
+      "series": "pytorch_foundation",
+      "title": "损失函数与反向传播",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics",
+        "chapter_04_deep_network_and_backprop"
+      ]
+    },
+    {
+      "source_path": "116_优化器.ipynb",
+      "notebook_index": 116,
+      "series": "pytorch_foundation",
+      "title": "优化器",
+      "mapped_chapter_candidates": [
+        "chapter_06_optimization"
+      ]
+    },
+    {
+      "source_path": "117_网络模型使用及修改.ipynb",
+      "notebook_index": 117,
+      "series": "pytorch_foundation",
+      "title": "网络模型使用及修改",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "118_网络模型保存与读取.ipynb",
+      "notebook_index": 118,
+      "series": "pytorch_foundation",
+      "title": "网络模型保存与读取",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "119_完整模型训练套路.ipynb",
+      "notebook_index": 119,
+      "series": "pytorch_foundation",
+      "title": "完整模型训练套路",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "120_利用GPU训练.ipynb",
+      "notebook_index": 120,
+      "series": "pytorch_foundation",
+      "title": "利用GPU训练",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "121_完整模型验证套路.ipynb",
+      "notebook_index": 121,
+      "series": "pytorch_foundation",
+      "title": "完整模型验证套路",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "122_查看开源项目.ipynb",
+      "notebook_index": 122,
+      "series": "pytorch_foundation",
+      "title": "查看开源项目",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "200_深度学习介绍.ipynb",
+      "notebook_index": 200,
+      "series": "d2l_deep_learning",
+      "title": "深度学习介绍",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "201_配置版本.ipynb",
+      "notebook_index": 201,
+      "series": "d2l_deep_learning",
+      "title": "配置版本",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "202_数据操作、数据预处理.ipynb",
+      "notebook_index": 202,
+      "series": "d2l_deep_learning",
+      "title": "数据操作、数据预处理",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "203_线性代数.ipynb",
+      "notebook_index": 203,
+      "series": "d2l_deep_learning",
+      "title": "线性代数",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "204_矩阵计算.ipynb",
+      "notebook_index": 204,
+      "series": "d2l_deep_learning",
+      "title": "矩阵计算",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "205_自动求导.ipynb",
+      "notebook_index": 205,
+      "series": "d2l_deep_learning",
+      "title": "自动求导",
+      "mapped_chapter_candidates": [
+        "chapter_04_deep_network_and_backprop"
+      ]
+    },
+    {
+      "source_path": "206_线性回归、优化算法.ipynb",
+      "notebook_index": 206,
+      "series": "d2l_deep_learning",
+      "title": "线性回归、优化算法",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics",
+        "chapter_06_optimization"
+      ]
+    },
+    {
+      "source_path": "207_Softmax回归、损失函数、分类.ipynb",
+      "notebook_index": 207,
+      "series": "d2l_deep_learning",
+      "title": "Softmax回归、损失函数、分类",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics"
+      ]
+    },
+    {
+      "source_path": "208_多层感知机.ipynb",
+      "notebook_index": 208,
+      "series": "d2l_deep_learning",
+      "title": "多层感知机",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics"
+      ]
+    },
+    {
+      "source_path": "209_模型选择、过拟合、欠拟合.ipynb",
+      "notebook_index": 209,
+      "series": "d2l_deep_learning",
+      "title": "模型选择、过拟合、欠拟合",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "210_权重衰退.ipynb",
+      "notebook_index": 210,
+      "series": "d2l_deep_learning",
+      "title": "权重衰退",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "211_丢弃法.ipynb",
+      "notebook_index": 211,
+      "series": "d2l_deep_learning",
+      "title": "丢弃法",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "212_数值稳定性、模型初始化、激活函数.ipynb",
+      "notebook_index": 212,
+      "series": "d2l_deep_learning",
+      "title": "数值稳定性、模型初始化、激活函数",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "213_Kaggle房价预测.ipynb",
+      "notebook_index": 213,
+      "series": "d2l_deep_learning",
+      "title": "Kaggle房价预测",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "214_PyTorch神经网络基础.ipynb",
+      "notebook_index": 214,
+      "series": "d2l_deep_learning",
+      "title": "PyTorch神经网络基础",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "215_使用购买GPU.ipynb",
+      "notebook_index": 215,
+      "series": "d2l_deep_learning",
+      "title": "使用购买GPU",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "216_卷积层.ipynb",
+      "notebook_index": 216,
+      "series": "d2l_deep_learning",
+      "title": "卷积层",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "217_卷积层里的填充和步幅.ipynb",
+      "notebook_index": 217,
+      "series": "d2l_deep_learning",
+      "title": "卷积层里的填充和步幅",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "218_卷积层里的多输入多输出通道.ipynb",
+      "notebook_index": 218,
+      "series": "d2l_deep_learning",
+      "title": "卷积层里的多输入多输出通道",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "219_池化层.ipynb",
+      "notebook_index": 219,
+      "series": "d2l_deep_learning",
+      "title": "池化层",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "220_经典神经网络LeNet.ipynb",
+      "notebook_index": 220,
+      "series": "d2l_deep_learning",
+      "title": "经典神经网络LeNet",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "221_深度卷积神经网络AlexNet.ipynb",
+      "notebook_index": 221,
+      "series": "d2l_deep_learning",
+      "title": "深度卷积神经网络AlexNet",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "222_使用块的网络VGG.ipynb",
+      "notebook_index": 222,
+      "series": "d2l_deep_learning",
+      "title": "使用块的网络VGG",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "223_网络中的网络NiN.ipynb",
+      "notebook_index": 223,
+      "series": "d2l_deep_learning",
+      "title": "网络中的网络NiN",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "224_合并行连接的网络GoogLeNet.ipynb",
+      "notebook_index": 224,
+      "series": "d2l_deep_learning",
+      "title": "合并行连接的网络GoogLeNet",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "225_批量归一化.ipynb",
+      "notebook_index": 225,
+      "series": "d2l_deep_learning",
+      "title": "批量归一化",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "226_残差神经网络ResNet.ipynb",
+      "notebook_index": 226,
+      "series": "d2l_deep_learning",
+      "title": "残差神经网络ResNet",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "227_深度学习硬件CPU和GPU.ipynb",
+      "notebook_index": 227,
+      "series": "d2l_deep_learning",
+      "title": "深度学习硬件CPU和GPU",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "228_深度学习硬件TPU和其他.ipynb",
+      "notebook_index": 228,
+      "series": "d2l_deep_learning",
+      "title": "深度学习硬件TPU和其他",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "229_单机多卡并行.ipynb",
+      "notebook_index": 229,
+      "series": "d2l_deep_learning",
+      "title": "单机多卡并行",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "230_多GPU训练实现.ipynb",
+      "notebook_index": 230,
+      "series": "d2l_deep_learning",
+      "title": "多GPU训练实现",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "231_分布式训练.ipynb",
+      "notebook_index": 231,
+      "series": "d2l_deep_learning",
+      "title": "分布式训练",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "232_数据增广.ipynb",
+      "notebook_index": 232,
+      "series": "d2l_deep_learning",
+      "title": "数据增广",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "233_微调.ipynb",
+      "notebook_index": 233,
+      "series": "d2l_deep_learning",
+      "title": "微调",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "234_实战Kaggle比赛图像分类CIFAR10.ipynb",
+      "notebook_index": 234,
+      "series": "d2l_deep_learning",
+      "title": "实战Kaggle比赛图像分类CIFAR10",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice",
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "235_实战Kaggle比赛狗的品种识别ImageNetDogs.ipynb",
+      "notebook_index": 235,
+      "series": "d2l_deep_learning",
+      "title": "实战Kaggle比赛狗的品种识别ImageNetDogs",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "236_物体检测和数据集.ipynb",
+      "notebook_index": 236,
+      "series": "d2l_deep_learning",
+      "title": "物体检测和数据集",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "237_锚框.ipynb",
+      "notebook_index": 237,
+      "series": "d2l_deep_learning",
+      "title": "锚框",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "238_树叶分类竞赛技术总结.ipynb",
+      "notebook_index": 238,
+      "series": "d2l_deep_learning",
+      "title": "树叶分类竞赛技术总结",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "239_物体检测算法R-CNN、SSD、YOLO.ipynb",
+      "notebook_index": 239,
+      "series": "d2l_deep_learning",
+      "title": "物体检测算法R-CNN、SSD、YOLO",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "240_SSD实现.ipynb",
+      "notebook_index": 240,
+      "series": "d2l_deep_learning",
+      "title": "SSD实现",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "241_语义分割和数据集.ipynb",
+      "notebook_index": 241,
+      "series": "d2l_deep_learning",
+      "title": "语义分割和数据集",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "242_转置卷积.ipynb",
+      "notebook_index": 242,
+      "series": "d2l_deep_learning",
+      "title": "转置卷积",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "243_转置卷积是一种卷积.ipynb",
+      "notebook_index": 243,
+      "series": "d2l_deep_learning",
+      "title": "转置卷积是一种卷积",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "244_全连接卷积神经网络FCN.ipynb",
+      "notebook_index": 244,
+      "series": "d2l_deep_learning",
+      "title": "全连接卷积神经网络FCN",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "245_样式迁移.ipynb",
+      "notebook_index": 245,
+      "series": "d2l_deep_learning",
+      "title": "样式迁移",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "246_序列模型.ipynb",
+      "notebook_index": 246,
+      "series": "d2l_deep_learning",
+      "title": "序列模型",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "247_文本预处理.ipynb",
+      "notebook_index": 247,
+      "series": "d2l_deep_learning",
+      "title": "文本预处理",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "248_语言模型.ipynb",
+      "notebook_index": 248,
+      "series": "d2l_deep_learning",
+      "title": "语言模型",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "249_循环神经网络RNN.ipynb",
+      "notebook_index": 249,
+      "series": "d2l_deep_learning",
+      "title": "循环神经网络RNN",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "250_循环神经网络RNN的实现.ipynb",
+      "notebook_index": 250,
+      "series": "d2l_deep_learning",
+      "title": "循环神经网络RNN的实现",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "251_门控循环单元GRU.ipynb",
+      "notebook_index": 251,
+      "series": "d2l_deep_learning",
+      "title": "门控循环单元GRU",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "252_长短期记忆网络LSTM.ipynb",
+      "notebook_index": 252,
+      "series": "d2l_deep_learning",
+      "title": "长短期记忆网络LSTM",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "253_深层循环神经网络.ipynb",
+      "notebook_index": 253,
+      "series": "d2l_deep_learning",
+      "title": "深层循环神经网络",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "254_双向循环神经网络.ipynb",
+      "notebook_index": 254,
+      "series": "d2l_deep_learning",
+      "title": "双向循环神经网络",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "255_机器翻译数据集.ipynb",
+      "notebook_index": 255,
+      "series": "d2l_deep_learning",
+      "title": "机器翻译数据集",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "256_编码器解码器架构.ipynb",
+      "notebook_index": 256,
+      "series": "d2l_deep_learning",
+      "title": "编码器解码器架构",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "257_序列到序列学习seq2seq.ipynb",
+      "notebook_index": 257,
+      "series": "d2l_deep_learning",
+      "title": "序列到序列学习seq2seq",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "258_束搜索.ipynb",
+      "notebook_index": 258,
+      "series": "d2l_deep_learning",
+      "title": "束搜索",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "259_注意力机制.ipynb",
+      "notebook_index": 259,
+      "series": "d2l_deep_learning",
+      "title": "注意力机制",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "260_注意力分数.ipynb",
+      "notebook_index": 260,
+      "series": "d2l_deep_learning",
+      "title": "注意力分数",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "261_使用注意力机制的seq2seq.ipynb",
+      "notebook_index": 261,
+      "series": "d2l_deep_learning",
+      "title": "使用注意力机制的seq2seq",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "262_自注意力.ipynb",
+      "notebook_index": 262,
+      "series": "d2l_deep_learning",
+      "title": "自注意力",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "263_Transformer.ipynb",
+      "notebook_index": 263,
+      "series": "d2l_deep_learning",
+      "title": "Transformer",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "264_BERT预训练.ipynb",
+      "notebook_index": 264,
+      "series": "d2l_deep_learning",
+      "title": "BERT预训练",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "265_BERT微调.ipynb",
+      "notebook_index": 265,
+      "series": "d2l_deep_learning",
+      "title": "BERT微调",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice",
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "266_目标检测竞赛总结.ipynb",
+      "notebook_index": 266,
+      "series": "d2l_deep_learning",
+      "title": "目标检测竞赛总结",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks",
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "267_优化算法.ipynb",
+      "notebook_index": 267,
+      "series": "d2l_deep_learning",
+      "title": "优化算法",
+      "mapped_chapter_candidates": [
+        "chapter_06_optimization"
+      ]
+    },
+    {
+      "source_path": "268_课程总结和进阶学习.ipynb",
+      "notebook_index": 268,
+      "series": "d2l_deep_learning",
+      "title": "课程总结和进阶学习",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "300_配置版本.ipynb",
+      "notebook_index": 300,
+      "series": "andrew_ng_deep_learning",
+      "title": "配置版本",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "301_课程1_第1周_深度学习概述.ipynb",
+      "notebook_index": 301,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第1周 深度学习概述",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "302_课程1_第2周a_神经网络基础之逻辑回归.ipynb",
+      "notebook_index": 302,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第2周a 神经网络基础之逻辑回归",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics"
+      ]
+    },
+    {
+      "source_path": "303_课程1_第2周b_神经网络基础之Python与向量化.ipynb",
+      "notebook_index": 303,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第2周b 神经网络基础之Python与向量化",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics"
+      ]
+    },
+    {
+      "source_path": "304_课程1_第3周_浅层神经网络.ipynb",
+      "notebook_index": 304,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第3周 浅层神经网络",
+      "mapped_chapter_candidates": [
+        "chapter_03_neural_network_basics"
+      ]
+    },
+    {
+      "source_path": "305_课程1_第4周_深层神经网络.ipynb",
+      "notebook_index": 305,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第4周 深层神经网络",
+      "mapped_chapter_candidates": [
+        "chapter_04_deep_network_and_backprop"
+      ]
+    },
+    {
+      "source_path": "306_课程1_第1周_测验题.ipynb",
+      "notebook_index": 306,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第1周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "307_课程1_第2周_测验题.ipynb",
+      "notebook_index": 307,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第2周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "308_课程1_第3周_测验题.ipynb",
+      "notebook_index": 308,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第3周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "309_课程1_第4周_测验题.ipynb",
+      "notebook_index": 309,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第4周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "310_课程1_第1周_作业题_numpy构建基本函数.ipynb",
+      "notebook_index": 310,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第1周 作业题 numpy构建基本函数",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "311_课程1_第2周_作业题_神经网络思想实现Logistic回归.ipynb",
+      "notebook_index": 311,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第2周 作业题 神经网络思想实现Logistic回归",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "312_课程1_第3周_作业题_1层隐藏层的神经网络分类二维数据.ipynb",
+      "notebook_index": 312,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第3周 作业题 1层隐藏层的神经网络分类二维数据",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "313_课程1_第4周_作业题_逐步构建你的深度神经网络.ipynb",
+      "notebook_index": 313,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程1 第4周 作业题 逐步构建你的深度神经网络",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "314_课程2_第1周_深度学习的实用层面.ipynb",
+      "notebook_index": 314,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第1周 深度学习的实用层面",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "315_课程2_第2周_优化算法.ipynb",
+      "notebook_index": 315,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第2周 优化算法",
+      "mapped_chapter_candidates": [
+        "chapter_06_optimization"
+      ]
+    },
+    {
+      "source_path": "316_课程2_第3周_超参数调试、Batch正则化和编程框架.ipynb",
+      "notebook_index": 316,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第3周 超参数调试、Batch正则化和编程框架",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "317_课程2_第1周_测验题.ipynb",
+      "notebook_index": 317,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第1周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "318_课程2_第2周_测验题.ipynb",
+      "notebook_index": 318,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第2周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "319_课程2_第3周_测验题.ipynb",
+      "notebook_index": 319,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第3周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "320_课程2_第1周_作业题_深度神经网络的初始化_正则化_梯度检验.ipynb",
+      "notebook_index": 320,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第1周 作业题 深度神经网络的初始化 正则化 梯度检验",
+      "mapped_chapter_candidates": [
+        "chapter_05_regularization_and_generalization"
+      ]
+    },
+    {
+      "source_path": "321_课程2_第2周_作业题_优化算法.ipynb",
+      "notebook_index": 321,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第2周 作业题 优化算法",
+      "mapped_chapter_candidates": [
+        "chapter_06_optimization"
+      ]
+    },
+    {
+      "source_path": "322_课程2_第3周_作业题_Tensorflow入门.ipynb",
+      "notebook_index": 322,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程2 第3周 作业题 Tensorflow入门",
+      "mapped_chapter_candidates": [
+        "chapter_02_pytorch_foundation"
+      ]
+    },
+    {
+      "source_path": "323_课程3_第1周_机器学习策略（上）.ipynb",
+      "notebook_index": 323,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程3 第1周 机器学习策略（上）",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "324_课程3_第2周_机器学习策略（下）.ipynb",
+      "notebook_index": 324,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程3 第2周 机器学习策略（下）",
+      "mapped_chapter_candidates": [
+        "chapter_12_final_project"
+      ]
+    },
+    {
+      "source_path": "325_课程3_第1周_测验题.ipynb",
+      "notebook_index": 325,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程3 第1周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "326_课程3_第2周_测验题.ipynb",
+      "notebook_index": 326,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程3 第2周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "327_课程3_第1周_无作业题.ipynb",
+      "notebook_index": 327,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程3 第1周 无作业题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "328_课程3_第2周_无作业题.ipynb",
+      "notebook_index": 328,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程3 第2周 无作业题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "329_课程4_第1周_卷积神经网络基础.ipynb",
+      "notebook_index": 329,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第1周 卷积神经网络基础",
+      "mapped_chapter_candidates": [
+        "chapter_07_cnn_foundation"
+      ]
+    },
+    {
+      "source_path": "330_课程4_第2周_深度卷积模型.ipynb",
+      "notebook_index": 330,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第2周 深度卷积模型",
+      "mapped_chapter_candidates": [
+        "chapter_08_cnn_architectures_and_cv_practice"
+      ]
+    },
+    {
+      "source_path": "331_课程4_第3周_目标检测.ipynb",
+      "notebook_index": 331,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第3周 目标检测",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "332_课程4_第4周_人脸识别与神经风格迁移.ipynb",
+      "notebook_index": 332,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第4周 人脸识别与神经风格迁移",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "333_课程4_第1周_测验题.ipynb",
+      "notebook_index": 333,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第1周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "334_课程4_第2周_测验题.ipynb",
+      "notebook_index": 334,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第2周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "335_课程4_第3周_测验题.ipynb",
+      "notebook_index": 335,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第3周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "336_课程4_第4周_测验题.ipynb",
+      "notebook_index": 336,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第4周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "337_课程4_第1周_作业题_搭建卷积神经网络以及应用.ipynb",
+      "notebook_index": 337,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第1周 作业题 搭建卷积神经网络以及应用",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "338_课程4_第2周_作业题_Keras入门与残差网络搭建.ipynb",
+      "notebook_index": 338,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第2周 作业题 Keras入门与残差网络搭建",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "339_课程4_第3周_作业题_车辆检测.ipynb",
+      "notebook_index": 339,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第3周 作业题 车辆检测",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "340_课程4_第4周_作业题a_人脸识别.ipynb",
+      "notebook_index": 340,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第4周 作业题a 人脸识别",
+      "mapped_chapter_candidates": [
+        "chapter_09_cv_advanced_tasks"
+      ]
+    },
+    {
+      "source_path": "341_课程4_第4周_作业题b_风格迁移.ipynb",
+      "notebook_index": 341,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程4 第4周 作业题b 风格迁移",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "342_课程5_第1周_循环神经网络RNN.ipynb",
+      "notebook_index": 342,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第1周 循环神经网络RNN",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "343_课程5_第2周_特征向量表征.ipynb",
+      "notebook_index": 343,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第2周 特征向量表征",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "344_课程5_第3周_序列模型和注意力机制.ipynb",
+      "notebook_index": 344,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第3周 序列模型和注意力机制",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models",
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "345_课程5_第1周_测验题.ipynb",
+      "notebook_index": 345,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第1周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "346_课程5_第2周_测验题.ipynb",
+      "notebook_index": 346,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第2周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "347_课程5_第3周_测验题.ipynb",
+      "notebook_index": 347,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第3周 测验题",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "348_课程5_第1周_作业题a_搭建RNN网络和LSTM网络.ipynb",
+      "notebook_index": 348,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第1周 作业题a 搭建RNN网络和LSTM网络",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "349_课程5_第1周_作业题b_字符语言模型和诗歌生成.ipynb",
+      "notebook_index": 349,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第1周 作业题b 字符语言模型和诗歌生成",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "350_课程5_第1周_作业题c_LSTM网络生成爵士乐.ipynb",
+      "notebook_index": 350,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第1周 作业题c LSTM网络生成爵士乐",
+      "mapped_chapter_candidates": [
+        "chapter_10_sequence_models"
+      ]
+    },
+    {
+      "source_path": "351_课程5_第2周_作业题a_词向量运算.ipynb",
+      "notebook_index": 351,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第2周 作业题a 词向量运算",
+      "mapped_chapter_candidates": [
+        "chapter_11_attention_transformer"
+      ]
+    },
+    {
+      "source_path": "352_课程5_第2周_作业题b_表情情感分类器.ipynb",
+      "notebook_index": 352,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第2周 作业题b 表情情感分类器",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "353_课程5_第3周_作业题a_机器翻译.ipynb",
+      "notebook_index": 353,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第3周 作业题a 机器翻译",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    },
+    {
+      "source_path": "354_课程5_第3周_作业题b_语音识别关键字.ipynb",
+      "notebook_index": 354,
+      "series": "andrew_ng_deep_learning",
+      "title": "课程5 第3周 作业题b 语音识别关键字",
+      "mapped_chapter_candidates": [
+        "chapter_01_intro"
+      ]
+    }
+  ],
+  "filtered": [
+    {
+      "source_path": "400_配置版本.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "401_核心概念与流程.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "402_向量数据库.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "403_基于向量的语义检索RAG.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "404_代码分析与展望.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "405_使用LangChain构建RAG.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "406_手写python大模型.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "407_PythonAPI环境安装.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "408_API基本参数.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    },
+    {
+      "source_path": "409_多轮对话.ipynb",
+      "reason": "400+ Agent/RAG notebook not in course spine"
+    }
+  ]
+}

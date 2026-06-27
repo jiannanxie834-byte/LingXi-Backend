@@ -4,229 +4,36 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
-COURSE_ID = "deep_learning"
+COURSE_ID = "deep_learning_v2"
 COURSE_NAME = "深度学习"
 COURSE_DISPLAY_NAME = "《深度学习》"
 COURSE_POSITIONING = "面向人工智能、计算机科学与技术、软件工程、电子信息等专业本科高年级或研究生低年级学生的专业核心课程"
 
 
 DEEP_LEARNING_CHAPTERS = [
-    {"chapter_id": "chapter_01_intro", "title": "深度学习导论与学习诊断"},
-    {"chapter_id": "chapter_02_prerequisites", "title": "数学与机器学习前置知识"},
-    {"chapter_id": "chapter_03_neural_network", "title": "神经网络基础与感知机"},
-    {"chapter_id": "chapter_04_backpropagation", "title": "前向传播、损失函数与反向传播"},
-    {"chapter_id": "chapter_05_optimization", "title": "优化算法与训练技巧"},
-    {"chapter_id": "chapter_06_regularization", "title": "正则化与泛化"},
-    {"chapter_id": "chapter_07_cnn", "title": "卷积神经网络 CNN"},
-    {"chapter_id": "chapter_08_rnn_lstm", "title": "RNN、LSTM 与 GRU 序列建模"},
-    {"chapter_id": "chapter_09_transformer", "title": "Attention 与 Transformer"},
-    {"chapter_id": "chapter_10_generative_models", "title": "自编码器、GAN 与扩散模型入门"},
-    {"chapter_id": "chapter_11_pytorch_practice", "title": "PyTorch 深度学习工程实践"},
-    {"chapter_id": "chapter_12_final_project", "title": "课程综合项目"},
+    {"chapter_id": "chapter_01_intro", "title": "第 1 章 深度学习导论与课程学习诊断"},
+    {"chapter_id": "chapter_02_pytorch_foundation", "title": "第 2 章 Python、NumPy 与 PyTorch 基础"},
+    {"chapter_id": "chapter_03_neural_network_basics", "title": "第 3 章 神经网络基础与向量化计算"},
+    {"chapter_id": "chapter_04_deep_network_and_backprop", "title": "第 4 章 深层神经网络与反向传播"},
+    {"chapter_id": "chapter_05_regularization_and_generalization", "title": "第 5 章 正则化、初始化与泛化"},
+    {"chapter_id": "chapter_06_optimization", "title": "第 6 章 优化算法与超参数调试"},
+    {"chapter_id": "chapter_07_cnn_foundation", "title": "第 7 章 CNN 基础：卷积、池化与图像张量"},
+    {"chapter_id": "chapter_08_cnn_architectures_and_cv_practice", "title": "第 8 章 经典 CNN 架构与图像分类实践"},
+    {"chapter_id": "chapter_09_cv_advanced_tasks", "title": "第 9 章 计算机视觉进阶任务"},
+    {"chapter_id": "chapter_10_sequence_models", "title": "第 10 章 序列模型：RNN、GRU 与 LSTM"},
+    {"chapter_id": "chapter_11_attention_transformer", "title": "第 11 章 Attention、Transformer 与 NLP 基础"},
+    {"chapter_id": "chapter_12_final_project", "title": "第 12 章 综合项目与课程成果输出"},
 ]
 
 
-DEEP_LEARNING_UNITS = [
-    {
-        "unit_id": "dl_intro_diagnosis",
-        "chapter_id": "chapter_01_intro",
-        "title": "深度学习导论与学习诊断",
-        "aliases": ["深度学习", "deep learning", "dl", "深度学习入门", "深度学习课程", "神经网络学习路线"],
-        "prerequisites": ["Python 基础", "线性代数基础", "机器学习基本概念"],
-        "learning_outcomes": ["说明深度学习解决的问题", "区分深度学习与传统机器学习", "完成学习基础诊断"],
-        "core_concepts": ["表示学习", "神经网络", "端到端学习", "数据驱动"],
-        "formulas": [],
-        "common_misconceptions": ["把深度学习等同于所有人工智能", "忽略数据和训练成本"],
-        "visual_suggestions": ["课程地图", "学习路径时间轴"],
-        "code_lab": "运行一个最小 MLP 分类示例",
-        "exercise_blueprints": ["概念辨析题", "学习基础诊断题"],
-        "resource_focus": ["课程讲解", "学习诊断", "学习路径"],
-        "difficulty": "beginner",
-    },
-    {
-        "unit_id": "dl_prereq_math_ml",
-        "chapter_id": "chapter_02_prerequisites",
-        "title": "数学与机器学习前置知识",
-        "aliases": ["前置知识", "线性代数", "矩阵", "概率", "梯度", "导数", "机器学习基础", "损失函数前置"],
-        "prerequisites": ["高等数学", "线性代数", "概率统计", "Python 基础"],
-        "learning_outcomes": ["解释矩阵乘法在神经网络中的作用", "理解梯度和损失函数", "区分训练集、验证集和测试集"],
-        "core_concepts": ["矩阵运算", "梯度", "概率分布", "训练/验证/测试划分"],
-        "formulas": ["矩阵乘法", "链式法则", "经验风险最小化"],
-        "common_misconceptions": ["只会套公式但不理解梯度方向", "混淆验证集与测试集"],
-        "visual_suggestions": ["矩阵变换示意图", "训练数据划分图"],
-        "code_lab": "用 NumPy 手写线性分类器的前向计算",
-        "exercise_blueprints": ["矩阵尺寸题", "梯度方向判断题", "训练集划分题"],
-        "resource_focus": ["前置知识自查", "公式图解", "基础练习"],
-        "difficulty": "beginner",
-    },
-    {
-        "unit_id": "dl_nn_perceptron",
-        "chapter_id": "chapter_03_neural_network",
-        "title": "神经网络基础与感知机",
-        "aliases": ["感知机", "神经元", "多层感知机", "MLP", "激活函数", "神经网络基础", "全连接网络"],
-        "prerequisites": ["矩阵运算", "线性分类", "梯度基本概念"],
-        "learning_outcomes": ["解释神经元的线性组合和非线性激活", "画出 MLP 结构", "理解隐藏层表示"],
-        "core_concepts": ["神经元", "权重", "偏置", "激活函数", "隐藏层"],
-        "formulas": ["z = Wx + b", "a = sigma(z)"],
-        "common_misconceptions": ["认为层数越深一定越好", "忽略非线性激活的作用"],
-        "visual_suggestions": ["MLP 层级结构图", "激活函数曲线"],
-        "code_lab": "用 PyTorch 搭建一个两层 MLP",
-        "exercise_blueprints": ["结构标注题", "前向计算题", "激活函数辨析题"],
-        "resource_focus": ["结构图", "公式讲解", "PyTorch 入门"],
-        "difficulty": "beginner",
-    },
-    {
-        "unit_id": "dl_backprop_basic",
-        "chapter_id": "chapter_04_backpropagation",
-        "title": "反向传播与损失函数",
-        "aliases": ["反向传播", "BP", "backprop", "backpropagation", "链式法则", "前向传播", "损失函数", "梯度传播", "梯度反传"],
-        "prerequisites": ["神经网络基础", "链式法则", "损失函数"],
-        "learning_outcomes": ["解释前向传播和反向传播的分工", "用链式法则说明梯度如何传递", "识别梯度消失和梯度爆炸现象"],
-        "core_concepts": ["前向传播", "损失函数", "链式法则", "梯度", "参数更新"],
-        "formulas": ["dL/dw = dL/dz * dz/dw", "theta = theta - lr * gradient"],
-        "common_misconceptions": ["把反向传播理解成反向运行模型", "只记公式不理解局部梯度相乘"],
-        "visual_suggestions": ["计算图梯度流动画", "链式法则路径高亮"],
-        "code_lab": "用 PyTorch autograd 查看梯度",
-        "exercise_blueprints": ["链式法则计算题", "梯度方向判断题", "代码补全题"],
-        "resource_focus": ["图解", "推导练习", "交互动画", "代码实验"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_optimization_adam",
-        "chapter_id": "chapter_05_optimization",
-        "title": "优化算法与训练技巧",
-        "aliases": ["优化器", "SGD", "Momentum", "Adam", "学习率", "学习率调度", "梯度下降", "训练技巧", "optimizer"],
-        "prerequisites": ["反向传播", "梯度下降", "损失函数"],
-        "learning_outcomes": ["比较 SGD、Momentum 和 Adam", "解释学习率对收敛的影响", "能观察训练曲线并调整超参数"],
-        "core_concepts": ["SGD", "Momentum", "Adam", "学习率", "收敛", "训练曲线"],
-        "formulas": ["theta = theta - lr * g", "一阶矩估计", "二阶矩估计"],
-        "common_misconceptions": ["以为 Adam 总是最优", "忽略学习率过大导致震荡"],
-        "visual_suggestions": ["损失曲线对比", "优化路径动画"],
-        "code_lab": "比较 SGD 与 Adam 在同一模型上的训练曲线",
-        "exercise_blueprints": ["参数选择题", "曲线分析题", "实验报告题"],
-        "resource_focus": ["曲线分析", "实验对比", "调参任务"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_regularization_dropout_bn",
-        "chapter_id": "chapter_06_regularization",
-        "title": "正则化、Dropout 与 BatchNorm",
-        "aliases": ["正则化", "L1", "L2", "Dropout", "BatchNorm", "Batch Normalization", "数据增强", "早停", "过拟合", "泛化"],
-        "prerequisites": ["训练集/验证集", "损失函数", "优化算法"],
-        "learning_outcomes": ["解释过拟合与泛化", "比较 L1/L2、Dropout、BatchNorm、数据增强", "设计缓解过拟合的实验方案"],
-        "core_concepts": ["过拟合", "泛化", "Dropout", "BatchNorm", "数据增强", "早停"],
-        "formulas": ["L2 penalty", "BatchNorm 标准化公式"],
-        "common_misconceptions": ["把 BatchNorm 当作简单归一化预处理", "训练和推理时 Dropout 行为混淆"],
-        "visual_suggestions": ["训练/验证曲线对比", "Dropout 掩码示意图"],
-        "code_lab": "在 PyTorch 模型中加入 Dropout 和 BatchNorm 对比泛化效果",
-        "exercise_blueprints": ["现象判断题", "实验分析题", "代码阅读题"],
-        "resource_focus": ["实验分析", "对比表", "代码实践"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_cnn_conv_basic",
-        "chapter_id": "chapter_07_cnn",
-        "title": "卷积神经网络中的卷积操作",
-        "aliases": ["CNN", "cnn", "卷积神经网络", "卷积", "卷积层", "卷积核", "Convolutional Neural Network", "特征图", "池化", "图像分类"],
-        "prerequisites": ["矩阵运算", "神经网络基础", "前向传播"],
-        "learning_outcomes": ["解释卷积核的作用", "计算特征图尺寸", "理解局部连接和参数共享"],
-        "core_concepts": ["卷积核", "步幅", "填充", "感受野", "特征图", "池化"],
-        "formulas": ["输出尺寸 = floor((输入尺寸 + 2*padding - kernel_size) / stride) + 1"],
-        "common_misconceptions": ["把卷积核当成固定图片滤镜", "不理解通道数变化", "混淆 padding 和 stride 对输出尺寸的影响"],
-        "visual_suggestions": ["卷积滑窗动画", "输入特征图到输出特征图流程图"],
-        "code_lab": "用 PyTorch 实现一个简单 CNN 图像分类器",
-        "exercise_blueprints": ["尺寸计算题", "概念辨析题", "代码补全题", "实验分析题"],
-        "resource_focus": ["图解", "代码实验", "练习题", "交互动画", "视频推荐"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_rnn_lstm_gru",
-        "chapter_id": "chapter_08_rnn_lstm",
-        "title": "RNN、LSTM 与 GRU 序列建模",
-        "aliases": ["RNN", "rnn", "循环神经网络", "LSTM", "lstm", "GRU", "gru", "序列模型", "长短期记忆", "门控机制", "时间序列"],
-        "prerequisites": ["反向传播", "神经网络基础", "序列数据"],
-        "learning_outcomes": ["解释循环连接如何处理序列", "比较 RNN、LSTM、GRU", "理解长期依赖与梯度问题"],
-        "core_concepts": ["隐状态", "长期依赖", "遗忘门", "输入门", "输出门", "门控机制"],
-        "formulas": ["h_t = f(x_t, h_{t-1})", "LSTM 门控更新公式"],
-        "common_misconceptions": ["认为 LSTM 可以解决所有长序列问题", "混淆门控向量和隐藏状态"],
-        "visual_suggestions": ["时间展开图", "LSTM 单元结构图"],
-        "code_lab": "用 PyTorch 写一个 LSTM 序列分类或预测实验",
-        "exercise_blueprints": ["结构标注题", "门控机制辨析题", "序列预测实验题"],
-        "resource_focus": ["结构图", "对比表", "代码实验", "练习题"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_transformer_attention",
-        "chapter_id": "chapter_09_transformer",
-        "title": "自注意力机制与 Transformer",
-        "aliases": ["Transformer", "transformer", "Attention", "attention", "注意力机制", "自注意力", "self attention", "多头注意力", "QKV", "Query", "Key", "Value", "位置编码", "Encoder", "Decoder"],
-        "prerequisites": ["矩阵乘法", "神经网络基础", "序列建模"],
-        "learning_outcomes": ["解释 Q/K/V 的含义", "计算注意力权重", "说明多头注意力和位置编码的作用"],
-        "core_concepts": ["Query", "Key", "Value", "点积注意力", "softmax", "多头注意力", "位置编码"],
-        "formulas": ["Attention(Q,K,V)=softmax(QK^T/sqrt(d_k))V"],
-        "common_misconceptions": ["把注意力权重当成绝对解释", "忽略缩放因子和位置编码"],
-        "visual_suggestions": ["Q/K/V 流程图", "attention 权重热力图", "多头并行示意图"],
-        "code_lab": "用 PyTorch 实现缩放点积注意力 demo",
-        "exercise_blueprints": ["Q/K/V 维度题", "softmax 权重题", "代码补全题"],
-        "resource_focus": ["图解", "公式拆解", "代码 demo", "交互动画", "视频推荐"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_generative_intro",
-        "chapter_id": "chapter_10_generative_models",
-        "title": "自编码器、GAN 与扩散模型入门",
-        "aliases": ["自编码器", "AutoEncoder", "AE", "GAN", "生成对抗网络", "扩散模型", "Diffusion", "生成模型", "VAE"],
-        "prerequisites": ["神经网络基础", "损失函数", "概率分布"],
-        "learning_outcomes": ["区分判别模型和生成模型", "说明自编码器、GAN、扩散模型的核心思路", "理解生成质量评价的基本风险"],
-        "core_concepts": ["编码器", "解码器", "生成器", "判别器", "去噪", "潜变量"],
-        "formulas": ["重构损失", "GAN min-max 目标", "扩散去噪目标"],
-        "common_misconceptions": ["把生成模型等同于图像生成工具", "忽略数据分布和训练不稳定性"],
-        "visual_suggestions": ["编码-解码流程图", "GAN 对抗流程图", "扩散去噪过程图"],
-        "code_lab": "用 PyTorch 训练一个简单自编码器",
-        "exercise_blueprints": ["概念对比题", "流程排序题", "实验观察题"],
-        "resource_focus": ["流程图", "对比表", "实验观察"],
-        "difficulty": "advanced",
-    },
-    {
-        "unit_id": "dl_pytorch_practice",
-        "chapter_id": "chapter_11_pytorch_practice",
-        "title": "PyTorch 深度学习工程实践",
-        "aliases": ["PyTorch", "pytorch", "torch", "Dataset", "DataLoader", "训练循环", "模型训练", "代码实验", "图像分类实验", "深度学习代码"],
-        "prerequisites": ["Python 基础", "神经网络基础", "优化器", "数据集划分"],
-        "learning_outcomes": ["搭建 Dataset/DataLoader", "编写模型、损失函数和优化器", "完成训练、验证和保存模型"],
-        "core_concepts": ["Tensor", "Dataset", "DataLoader", "Module", "训练循环", "验证集"],
-        "formulas": [],
-        "common_misconceptions": ["只复制代码不检查 tensor shape", "训练集和验证集混用"],
-        "visual_suggestions": ["训练流程图", "模型输入输出 shape 表"],
-        "code_lab": "完成 CNN 图像分类 PyTorch 实验",
-        "exercise_blueprints": ["代码补全题", "报错排查题", "实验报告题"],
-        "resource_focus": ["代码实验", "调参任务", "实验报告模板"],
-        "difficulty": "medium",
-    },
-    {
-        "unit_id": "dl_final_project",
-        "chapter_id": "chapter_12_final_project",
-        "title": "深度学习课程综合项目",
-        "aliases": ["综合项目", "课程项目", "项目任务", "图像分类项目", "文本分类项目", "时间序列预测项目", "两周项目", "毕业设计", "项目实战"],
-        "prerequisites": ["神经网络基础", "CNN 或 Transformer", "PyTorch 训练流程", "模型评估"],
-        "learning_outcomes": ["定义项目目标和数据集", "拆解模型训练与评估步骤", "形成实验报告和展示材料"],
-        "core_concepts": ["数据集", "baseline", "训练验证", "指标评估", "误差分析", "项目复盘"],
-        "formulas": ["准确率", "召回率", "F1"],
-        "common_misconceptions": ["只追求高分不做误差分析", "没有固定训练/验证划分"],
-        "visual_suggestions": ["项目路线图", "实验结果对比图"],
-        "code_lab": "完成一个图像分类、文本分类或时间序列预测小项目",
-        "exercise_blueprints": ["项目拆解题", "实验报告题", "误差分析题"],
-        "resource_focus": ["项目任务书", "代码实验", "PPT 大纲", "评价 Rubric"],
-        "difficulty": "advanced",
-    },
-]
+DEEP_LEARNING_UNITS = []
 
 
 COURSE_DIR = (
     Path(__file__).resolve().parents[3]
     / "data"
     / "knowledge_base"
-    / "deep_learning"
+    / "deep_learning_v2"
 )
 KNOWLEDGE_UNITS_PATH = COURSE_DIR / "knowledge_units.jsonl"
 
@@ -379,6 +186,19 @@ def get_unit(unit_id: str) -> Optional[Dict]:
     return dict(unit) if unit else None
 
 
+def get_intro_unit() -> Dict:
+    for unit in DEEP_LEARNING_UNITS:
+        title = _compact(unit.get("title", ""))
+        aliases = {_compact(alias) for alias in unit.get("aliases", [])}
+        if unit.get("chapter_id") == "chapter_01_intro" and (
+            "深度学习课程" in title
+            or "课程地图" in title
+            or {"深度学习", "deeplearning", "dl"} & aliases
+        ):
+            return dict(unit)
+    return dict(DEEP_LEARNING_UNITS[0]) if DEEP_LEARNING_UNITS else {}
+
+
 def list_units() -> List[Dict]:
     return [dict(unit) for unit in DEEP_LEARNING_UNITS]
 
@@ -413,7 +233,7 @@ def match_deep_learning_topic(topic: str = "", message: str = "") -> Dict:
         return {"matched": False}
 
     if best["score"] < 0.58 and general_scope:
-        best_unit = UNIT_BY_ID["dl_intro_diagnosis"]
+        best_unit = get_intro_unit()
         best = {"score": 0.62, "aliases": ["深度学习"]}
 
     chapter = CHAPTER_BY_ID.get(best_unit["chapter_id"], {})

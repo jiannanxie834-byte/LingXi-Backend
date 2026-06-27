@@ -179,7 +179,7 @@ class ProfileEvent(Base):
 
     event_id = Column(String(64), primary_key=True, index=True, comment="画像事件编码")
     student_id = Column(String(64), nullable=False, index=True, comment="学生账号")
-    course_id = Column(String(64), default="deep_learning", index=True, comment="课程编码")
+    course_id = Column(String(64), default="deep_learning_v2", index=True, comment="课程编码")
     source_type = Column(String(64), default="chat", comment="来源类型")
     source_id = Column(String(64), default="", comment="来源编码")
     extracted_features_json = Column(Text, default="{}", comment="抽取特征 JSON")
@@ -194,7 +194,7 @@ class ResourceArtifact(Base):
 
     artifact_id = Column(String(64), primary_key=True, index=True, comment="Artifact 编码")
     resource_id = Column(String(64), default="", index=True, comment="兼容旧 resources 表编码")
-    course_id = Column(String(64), default="deep_learning", index=True, comment="课程编码")
+    course_id = Column(String(64), default="deep_learning_v2", index=True, comment="课程编码")
     unit_ids_json = Column(Text, default="[]", comment="知识单元 ID JSON")
     student_id = Column(String(64), default="", index=True, comment="学生账号")
     type = Column(String(64), nullable=False, index=True, comment="Artifact 类型编码或名称")
@@ -221,7 +221,7 @@ class GenerationJob(Base):
 
     job_id = Column(String(64), primary_key=True, index=True, comment="生成任务编码")
     username = Column(String(64), nullable=False, index=True, comment="学生账号")
-    course_id = Column(String(64), default="deep_learning", index=True, comment="课程编码")
+    course_id = Column(String(64), default="deep_learning_v2", index=True, comment="课程编码")
     topic = Column(String(255), default="", comment="主题")
     unit_id = Column(String(64), default="", index=True, comment="知识单元")
     status = Column(String(32), default="queued", index=True, comment="queued/running/completed/failed")
@@ -249,7 +249,7 @@ class VideoResource(Base):
     __tablename__ = "video_resources"
 
     video_id = Column(String(64), primary_key=True, index=True, comment="视频编码")
-    course_id = Column(String(64), default="deep_learning", index=True)
+    course_id = Column(String(64), default="deep_learning_v2", index=True)
     unit_ids_json = Column(Text, default="[]")
     title = Column(String(255), nullable=False)
     platform = Column(String(128), default="")
@@ -268,7 +268,7 @@ class ExerciseAttempt(Base):
 
     attempt_id = Column(String(64), primary_key=True, index=True)
     username = Column(String(64), nullable=False, index=True)
-    course_id = Column(String(64), default="deep_learning", index=True)
+    course_id = Column(String(64), default="deep_learning_v2", index=True)
     unit_id = Column(String(64), default="", index=True)
     artifact_id = Column(String(64), default="", index=True)
     answers_json = Column(Text, default="{}")

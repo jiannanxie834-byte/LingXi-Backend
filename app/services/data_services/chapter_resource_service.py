@@ -10,7 +10,7 @@ COURSE_DIR = (
     Path(__file__).resolve().parents[3]
     / "data"
     / "knowledge_base"
-    / "deep_learning"
+    / "deep_learning_v2"
 )
 COURSEWARE_DIR = COURSE_DIR / "courseware"
 CHAPTER_INDEX_PATH = COURSE_DIR / "chapter_resource_index.json"

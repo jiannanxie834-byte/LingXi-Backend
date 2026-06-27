@@ -96,11 +96,12 @@ def run(profile, semantic_result=None):
     )
 
     if not course_match.get("matched"):
+        intro_unit_id = (deep_learning_course_map_service.get_intro_unit() or {}).get("unit_id", "")
         return _validate_plan({
             "title": f"{topic} · 主题澄清路线",
             "steps": [
-                _step("第 1 步：确认是否属于《深度学习》课程", "请补充 CNN、反向传播、Transformer、PyTorch 实验或课程项目等具体知识点。", [artifact_types.EXERCISE_SET], "active", "dl_intro_diagnosis"),
-                _step("第 2 步：完成基础水平诊断", "补充已学内容、目标水平和可投入时间，再生成正式路线。", [artifact_types.EXERCISE_SET], "pending", "dl_intro_diagnosis"),
+                _step("第 1 步：确认是否属于《深度学习》课程", "请补充 CNN、反向传播、Transformer、PyTorch 实验或课程项目等具体知识点。", [artifact_types.EXERCISE_SET], "active", intro_unit_id),
+                _step("第 2 步：完成基础水平诊断", "补充已学内容、目标水平和可投入时间，再生成正式路线。", [artifact_types.EXERCISE_SET], "pending", intro_unit_id),
             ],
         })
 

@@ -378,12 +378,13 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
         result["course_match"] = {**result["course_match"], "learning_need_type": "evaluation"}
         return result
 
+    intro_unit_id = (deep_learning_course_map_service.get_intro_unit() or {}).get("unit_id", "")
     specific_matches = [
         match for match in matches
-        if match["unit"].get("unit_id") != "dl_intro_diagnosis" or _compact(match.get("label")) not in {"深度学习", "deeplearning", "dl"}
+        if match["unit"].get("unit_id") != intro_unit_id or _compact(match.get("label")) not in {"深度学习", "deeplearning", "dl"}
     ]
     if not specific_matches and _contains_any(text, COURSE_ONLY_MARKERS):
-        intro_unit = deep_learning_course_map_service.get_unit("dl_intro_diagnosis") or {}
+        intro_unit = deep_learning_course_map_service.get_intro_unit() or {}
         result = _base_result(SCOPE_COURSE, "《深度学习》课程导学", intro_unit, text)
         result["expansion_policy"] = "course_diagnostic_and_path"
         result["should_generate_full_chapter"] = False

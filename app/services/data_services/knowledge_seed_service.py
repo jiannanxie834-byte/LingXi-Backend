@@ -20,7 +20,7 @@ COURSE_DIR = (
     Path(__file__).resolve().parents[3]
     / "data"
     / "knowledge_base"
-    / "deep_learning"
+    / "deep_learning_v2"
 )
 COURSE_MANIFEST_PATH = COURSE_DIR / "course_manifest.json"
 LEGACY_MANIFEST_PATH = COURSE_DIR / "manifest.json"
@@ -170,7 +170,7 @@ def _build_unit_resource_content(unit: Dict) -> str:
         "",
         "## 参考依据",
         f"- evidence_id: {unit.get('unit_id', '')}",
-        f"- 知识来源：data/knowledge_base/deep_learning/knowledge_units.jsonl；{chapter_title}",
+        f"- 知识来源：data/knowledge_base/deep_learning_v2/knowledge_units.jsonl；{chapter_title}",
     ]
     return "\n".join(lines)
 
@@ -313,7 +313,7 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
             db,
             resource=row,
             plan_item={
-                "course_id": manifest.get("course_id", "deep_learning"),
+                "course_id": manifest.get("course_id", "deep_learning_v2"),
                 "unit_id": unit_id,
                 "content_format": artifact_types.get_format(row.type),
                 "evidence_refs": [unit_id] if unit_id else [row.id],
@@ -324,7 +324,7 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
                 "quality_score": 96 if metadata.get("quality_level") == "curated" else 88,
             },
             semantic_result={
-                "course_id": manifest.get("course_id", "deep_learning"),
+                "course_id": manifest.get("course_id", "deep_learning_v2"),
                 "unit_id": unit_id,
             },
         )
@@ -356,7 +356,7 @@ def _upsert_video_catalog(db: Session) -> int:
             row = VideoResource(video_id=video_id, created_at=now)
             db.add(row)
 
-        row.course_id = item.get("course_id") or "deep_learning"
+        row.course_id = item.get("course_id") or "deep_learning_v2"
         row.unit_ids_json = json.dumps(item.get("unit_ids") or [], ensure_ascii=False)
         row.title = title
         row.platform = item.get("platform") or ""

@@ -1473,7 +1473,7 @@ JSON 字段：
             username=username,
             topic=topic,
             unit_id=semantic_result.get("unit_id", ""),
-            course_id=semantic_result.get("course_id", "deep_learning"),
+            course_id=semantic_result.get("course_id", "deep_learning_v2"),
             message="已创建 Artifact 生成任务，资源会在审核通过后进入资源工厂",
         )
         resource_status = {

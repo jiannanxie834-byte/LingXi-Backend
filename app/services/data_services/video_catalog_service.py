@@ -9,7 +9,7 @@ VIDEO_CATALOG_PATH = (
     Path(__file__).resolve().parents[3]
     / "data"
     / "knowledge_base"
-    / "deep_learning"
+    / "deep_learning_v2"
     / "video_catalog.json"
 )
 

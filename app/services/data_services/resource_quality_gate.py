@@ -270,14 +270,14 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         or ""
     )
     core_chapters = {
-        "chapter_04_backpropagation",
-        "chapter_05_optimization",
-        "chapter_06_regularization",
-        "chapter_07_cnn",
-        "chapter_08_rnn_lstm",
-        "chapter_08_rnn_lstm_gru",
-        "chapter_09_transformer",
-        "chapter_11_pytorch_practice",
+        "chapter_03_neural_network_basics",
+        "chapter_04_deep_network_and_backprop",
+        "chapter_05_regularization_and_generalization",
+        "chapter_06_optimization",
+        "chapter_07_cnn_foundation",
+        "chapter_08_cnn_architectures_and_cv_practice",
+        "chapter_10_sequence_models",
+        "chapter_11_attention_transformer",
         "chapter_12_final_project",
     }
     is_core_chapter = chapter_id in core_chapters

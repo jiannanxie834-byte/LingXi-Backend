@@ -9,21 +9,21 @@ sys.path.insert(0, str(ROOT))
 from app.services.data_services import chapter_resource_service
 
 
-COURSE_DIR = ROOT / "data" / "knowledge_base" / "deep_learning"
+COURSE_DIR = ROOT / "data" / "knowledge_base" / "deep_learning_v2"
 OUTPUT = ROOT / "docs" / "chapter_resource_completeness.md"
 
 CORE_CHAPTERS = {
-    "chapter_04_backpropagation",
-    "chapter_05_optimization",
-    "chapter_06_regularization",
-    "chapter_07_cnn",
-    "chapter_08_rnn_lstm",
-    "chapter_09_transformer",
-    "chapter_11_pytorch_practice",
-    "chapter_12_final_project",
+    "chapter_03_neural_network_basics",
+    "chapter_04_deep_network_and_backprop",
+    "chapter_05_regularization_and_generalization",
+    "chapter_06_optimization",
+    "chapter_07_cnn_foundation",
+    "chapter_08_cnn_architectures_and_cv_practice",
+    "chapter_10_sequence_models",
+    "chapter_11_attention_transformer",
 }
 
-REQUIRED_TYPES = ["课程讲解文档", "知识点思维导图", "练习题集", "个性化视频观看指南"]
+REQUIRED_TYPES = ["课程讲解文档", "知识点思维导图", "练习题集", "拓展阅读包"]
 CORE_EXTRA_TYPES = ["PyTorch 实操案例", "交互动画规格", "课程实践项目任务书"]
 
 
@@ -32,7 +32,7 @@ def compact_len(text: str) -> int:
 
 
 def count_exercises(text: str) -> int:
-    return len(re.findall(r"(^|\n)###\s*题目\s*\d+", text or ""))
+    return len(re.findall(r"(^|\n)##\s*\d+\.", text or ""))
 
 
 def read_file(resource_key: str) -> str:

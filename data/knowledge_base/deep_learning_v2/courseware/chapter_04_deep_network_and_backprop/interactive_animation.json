@@ -1,0 +1,63 @@
+{
+  "animation_type": "step_flow",
+  "title": "第 4 章 深层神经网络与反向传播",
+  "parameters": [
+    {
+      "name": "L 层网络",
+      "control": "toggle"
+    },
+    {
+      "name": "前向传播",
+      "control": "toggle"
+    },
+    {
+      "name": "反向传播",
+      "control": "toggle"
+    },
+    {
+      "name": "链式法则",
+      "control": "toggle"
+    },
+    {
+      "name": "参数更新",
+      "control": "toggle"
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "label": "L 层网络",
+      "description": "高亮 L 层网络 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 2,
+      "label": "前向传播",
+      "description": "高亮 前向传播 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 3,
+      "label": "反向传播",
+      "description": "高亮 反向传播 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 4,
+      "label": "链式法则",
+      "description": "高亮 链式法则 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 5,
+      "label": "参数更新",
+      "description": "高亮 参数更新 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 6,
+      "label": "梯度流",
+      "description": "高亮 梯度流 在本章流程中的输入、输出和易错点。"
+    }
+  ],
+  "student_tasks": [
+    "拖动流程顺序",
+    "标注关键张量",
+    "回答一个暂停思考问题"
+  ]
+}

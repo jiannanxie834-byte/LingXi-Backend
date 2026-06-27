@@ -62,7 +62,7 @@ def _unknown_topic_plan(topic, plan_title, semantic_result):
                 "allow_code_content": False,
                 "course_id": "",
                 "chapter_id": "",
-                "unit_id": "dl_intro_diagnosis",
+                "unit_id": (deep_learning_course_map_service.get_intro_unit() or {}).get("unit_id", ""),
                 "content_format": artifact_types.get_format(artifact_types.EXERCISE_SET),
             }
         ],

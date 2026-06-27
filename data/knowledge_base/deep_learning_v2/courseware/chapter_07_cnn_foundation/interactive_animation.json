@@ -1,0 +1,63 @@
+{
+  "animation_type": "step_flow",
+  "title": "第 7 章 CNN 基础：卷积、池化与图像张量",
+  "parameters": [
+    {
+      "name": "图像张量",
+      "control": "toggle"
+    },
+    {
+      "name": "卷积核",
+      "control": "toggle"
+    },
+    {
+      "name": "步幅",
+      "control": "toggle"
+    },
+    {
+      "name": "填充",
+      "control": "toggle"
+    },
+    {
+      "name": "输出尺寸",
+      "control": "toggle"
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "label": "图像张量",
+      "description": "高亮 图像张量 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 2,
+      "label": "卷积核",
+      "description": "高亮 卷积核 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 3,
+      "label": "步幅",
+      "description": "高亮 步幅 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 4,
+      "label": "填充",
+      "description": "高亮 填充 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 5,
+      "label": "输出尺寸",
+      "description": "高亮 输出尺寸 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 6,
+      "label": "通道",
+      "description": "高亮 通道 在本章流程中的输入、输出和易错点。"
+    }
+  ],
+  "student_tasks": [
+    "拖动流程顺序",
+    "标注关键张量",
+    "回答一个暂停思考问题"
+  ]
+}

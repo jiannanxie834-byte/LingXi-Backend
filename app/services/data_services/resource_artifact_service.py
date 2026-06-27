@@ -111,7 +111,7 @@ def upsert_from_resource(
         )
         db.add(artifact)
 
-    artifact.course_id = plan_item.get("course_id") or semantic_result.get("course_id") or "deep_learning"
+    artifact.course_id = plan_item.get("course_id") or semantic_result.get("course_id") or "deep_learning_v2"
     artifact.unit_ids_json = _json_dump([unit_id] if unit_id else [])
     artifact.student_id = resource.applicant_username or ""
     artifact.type = artifact_types.normalize_artifact_type(resource.type)

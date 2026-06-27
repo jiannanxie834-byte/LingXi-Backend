@@ -1,0 +1,63 @@
+{
+  "animation_type": "step_flow",
+  "title": "第 11 章 Attention、Transformer 与 NLP 基础",
+  "parameters": [
+    {
+      "name": "词嵌入",
+      "control": "toggle"
+    },
+    {
+      "name": "语言模型",
+      "control": "toggle"
+    },
+    {
+      "name": "Encoder-Decoder",
+      "control": "toggle"
+    },
+    {
+      "name": "Attention",
+      "control": "toggle"
+    },
+    {
+      "name": "Q/K/V",
+      "control": "toggle"
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "label": "词嵌入",
+      "description": "高亮 词嵌入 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 2,
+      "label": "语言模型",
+      "description": "高亮 语言模型 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 3,
+      "label": "Encoder-Decoder",
+      "description": "高亮 Encoder-Decoder 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 4,
+      "label": "Attention",
+      "description": "高亮 Attention 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 5,
+      "label": "Q/K/V",
+      "description": "高亮 Q/K/V 在本章流程中的输入、输出和易错点。"
+    },
+    {
+      "step": 6,
+      "label": "Scaled Dot-Product",
+      "description": "高亮 Scaled Dot-Product 在本章流程中的输入、输出和易错点。"
+    }
+  ],
+  "student_tasks": [
+    "拖动流程顺序",
+    "标注关键张量",
+    "回答一个暂停思考问题"
+  ]
+}
