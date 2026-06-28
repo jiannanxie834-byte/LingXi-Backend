@@ -10,6 +10,7 @@ from app.services.data_services import resource_service
 from app.services.data_services import resource_artifact_service
 from app.services.data_services import pptx_export_service
 from app.services.data_services import knowledge_evidence_service
+from app.services.data_services import dsa_course_content_service
 
 router = APIRouter(prefix="/resource", tags=["知识库模块"])
 
@@ -31,6 +32,35 @@ class TypeCreateRequest(BaseModel):
     name: str
     username: str = ""
     reason: str = ""
+
+
+@router.get("/course/tree")
+async def get_dsa_course_tree():
+    return {
+        "code": 200,
+        "message": "ok",
+        "data": dsa_course_content_service.get_course_tree(),
+    }
+
+
+@router.get("/course/chapter/{chapter_id}")
+async def get_dsa_course_chapter(chapter_id: str):
+    result = dsa_course_content_service.get_chapter_detail(chapter_id)
+    return {
+        "code": 200 if result["ok"] else 404,
+        "message": result["message"],
+        "data": result["data"],
+    }
+
+
+@router.get("/course/section/{chapter_id}/{section_id}")
+async def get_dsa_course_section(chapter_id: str, section_id: str):
+    result = dsa_course_content_service.get_section_detail(chapter_id, section_id)
+    return {
+        "code": 200 if result["ok"] else 404,
+        "message": result["message"],
+        "data": result["data"],
+    }
 
 
 # =========================
