@@ -1,6 +1,6 @@
 from app.services.data_services import (
     course_scope_service,
-    deep_learning_course_map_service,
+    dsa_course_map_service,
     resource_artifact_type_service as artifact_types,
 )
 
@@ -56,8 +56,8 @@ def _project_steps(course_match, topic):
             unit_id,
         ),
         _step(
-            "第 3 步：完成 PyTorch 最小实验",
-            "用可运行代码跑通 Dataset、DataLoader、模型、损失函数、优化器和训练循环。",
+            "第 3 步：完成算法最小实验",
+            "用可运行代码跑通输入样例、核心函数、边界用例、复杂度记录和调试输出。",
             [artifact_types.CODE_LAB, artifact_types.VIDEO_RECOMMENDATION, artifact_types.PERSONALIZED_VIDEO_GUIDE],
             "pending",
             "dl_pytorch_practice",
@@ -90,24 +90,24 @@ def run(profile, semantic_result=None):
         or "当前主题"
     )
     course_match = (
-        semantic_result.get("deep_learning_course_map")
+        semantic_result.get("dsa_course_map")
         or semantic_result.get("ai_course_map")
-        or deep_learning_course_map_service.match_deep_learning_topic(topic)
+        or dsa_course_map_service.match_dsa_topic(topic)
     )
 
     if not course_match.get("matched"):
-        intro_unit_id = (deep_learning_course_map_service.get_intro_unit() or {}).get("unit_id", "")
+        intro_unit_id = (dsa_course_map_service.get_intro_unit() or {}).get("unit_id", "")
         return _validate_plan({
             "title": f"{topic} · 主题澄清路线",
             "steps": [
-                _step("第 1 步：确认是否属于《深度学习》课程", "请补充 CNN、反向传播、Transformer、PyTorch 实验或课程项目等具体知识点。", [artifact_types.EXERCISE_SET], "active", intro_unit_id),
+                _step("第 1 步：确认是否属于《数据结构与算法》课程", "请补充复杂度分析、线性结构、排序查找、树图、动态规划或算法项目等具体知识点。", [artifact_types.EXERCISE_SET], "active", intro_unit_id),
                 _step("第 2 步：完成基础水平诊断", "补充已学内容、目标水平和可投入时间，再生成正式路线。", [artifact_types.EXERCISE_SET], "pending", intro_unit_id),
             ],
         })
 
     unit = course_match.get("unit") or {}
     unit_id = course_match.get("unit_id") or unit.get("unit_id") or ""
-    chapter = course_match.get("chapter") or "《深度学习》课程"
+    chapter = course_match.get("chapter") or "《数据结构与算法》课程"
     normalized_topic = course_match.get("display_topic") or semantic_result.get("display_topic") or topic or course_match.get("normalized_topic")
     core_topics = course_match.get("core_topics") or unit.get("core_concepts") or [normalized_topic]
     prerequisites = course_match.get("prerequisites") or unit.get("prerequisites") or []
@@ -120,9 +120,9 @@ def run(profile, semantic_result=None):
         return _validate_plan({
             "title": f"{normalized_topic} · 课程导学、诊断与学习路径",
             "steps": [
-                _step("第 1 步：完成入门诊断", "先确认 Python、线性代数、机器学习基础和神经网络概念掌握情况。", [artifact_types.EXERCISE_SET], "active", unit_id),
-                _step("第 2 步：建立课程全局地图", "了解深度学习课程的章节顺序、典型模型家族和实践任务类型。", [artifact_types.COURSE_NOTE, artifact_types.MIND_MAP], "pending", unit_id),
-                _step("第 3 步：选择第一阶段切入点", "根据诊断结果在前置知识、神经网络基础、反向传播或 PyTorch 实践中选择一个起点。", [artifact_types.READING_PACK, artifact_types.VIDEO_RECOMMENDATION], "pending", unit_id),
+                _step("第 1 步：完成入门诊断", "先确认循环、函数、数组/列表、基础数学表达和代码调试能力。", [artifact_types.EXERCISE_SET], "active", unit_id),
+                _step("第 2 步：建立课程全局地图", "了解数据结构、复杂度分析、算法设计思想、代码实现和题目训练之间的关系。", [artifact_types.COURSE_NOTE, artifact_types.MIND_MAP], "pending", unit_id),
+                _step("第 3 步：选择第一阶段切入点", "根据诊断结果在复杂度、线性结构、递归回溯、排序查找或树图基础中选择起点。", [artifact_types.READING_PACK, artifact_types.VIDEO_RECOMMENDATION], "pending", unit_id),
                 _step("第 4 步：按阶段推进学习", "后续只在确定具体章节或知识点后生成配套资源，避免一次性铺开全部章节。", [artifact_types.COURSE_NOTE, artifact_types.EXERCISE_SET], "pending", unit_id),
             ],
         })
@@ -148,7 +148,7 @@ def run(profile, semantic_result=None):
     steps = [
         _step(
             "第 1 步：确认前置知识",
-            f"先检查「{_unit_text(prerequisites, 'Python、矩阵运算和神经网络基础')}」是否掌握，再进入「{chapter}」。",
+            f"先检查「{_unit_text(prerequisites, '循环、函数、数组和基本调试能力')}」是否掌握，再进入「{chapter}」。",
             [artifact_types.COURSE_NOTE, artifact_types.EXERCISE_SET],
             "active",
             unit_id,
@@ -178,8 +178,8 @@ def run(profile, semantic_result=None):
 
     if course_match.get("requires_code") or semantic_result.get("requires_code"):
         steps.append(_step(
-            "第 5 步：完成 PyTorch 实验",
-            practice_tasks[0] if practice_tasks else f"完成一个围绕 {normalized_topic} 的 PyTorch 小实验，并记录输入输出 shape、loss 曲线和验证结果。",
+            "第 5 步：完成代码实验",
+            practice_tasks[0] if practice_tasks else f"完成一个围绕 {normalized_topic} 的代码实验，并记录输入输出、边界样例、时间复杂度和调试过程。",
             [artifact_types.CODE_LAB, artifact_types.PROJECT_BRIEF],
             "pending",
             unit_id,

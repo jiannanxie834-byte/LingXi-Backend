@@ -1,0 +1,330 @@
+{
+  "sec_03_recursion_basic": {
+    "title": "3.1 递归的基本思想",
+    "unit_ids": [
+      "dsa_recursion_basic"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch03_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch03_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch03_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_03_recursion_basic"
+      ],
+      "unit_ids": [
+        "dsa_recursion_basic"
+      ],
+      "exercise_ids": [
+        "ch03_ex_01_recursion_idea",
+        "ch03_ex_05_factorial_trace"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_03_recursion_basic"
+      ],
+      "unit_ids": [
+        "dsa_recursion_basic"
+      ],
+      "task_ids": [
+        "ch03_code_recursive_sum"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_03_recursion_basic"
+      ],
+      "unit_ids": [
+        "dsa_recursion_basic"
+      ]
+    }
+  },
+  "sec_03_call_stack": {
+    "title": "3.2 调用栈与递归终止条件",
+    "unit_ids": [
+      "dsa_call_stack",
+      "dsa_recursion_base_case",
+      "dsa_recursion_depth"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch03_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch03_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch03_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_03_call_stack"
+      ],
+      "unit_ids": [
+        "dsa_call_stack",
+        "dsa_recursion_base_case",
+        "dsa_recursion_depth"
+      ],
+      "exercise_ids": [
+        "ch03_ex_02_base_case",
+        "ch03_ex_03_call_stack"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_03_call_stack"
+      ],
+      "unit_ids": [
+        "dsa_call_stack",
+        "dsa_recursion_base_case",
+        "dsa_recursion_depth"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_03_call_stack"
+      ],
+      "unit_ids": [
+        "dsa_call_stack",
+        "dsa_recursion_base_case",
+        "dsa_recursion_depth"
+      ]
+    }
+  },
+  "sec_03_divide_and_conquer": {
+    "title": "3.3 分治思想：拆分、求解与合并",
+    "unit_ids": [
+      "dsa_divide_and_conquer"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch03_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch03_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch03_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_03_divide_and_conquer"
+      ],
+      "unit_ids": [
+        "dsa_divide_and_conquer"
+      ],
+      "exercise_ids": [
+        "ch03_ex_01_recursion_idea"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_03_divide_and_conquer"
+      ],
+      "unit_ids": [
+        "dsa_divide_and_conquer"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_03_divide_and_conquer"
+      ],
+      "unit_ids": [
+        "dsa_divide_and_conquer"
+      ]
+    }
+  },
+  "sec_03_binary_search_recursion": {
+    "title": "3.4 递归版二分查找",
+    "unit_ids": [
+      "dsa_binary_search_recursion"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch03_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch03_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch03_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_03_binary_search_recursion"
+      ],
+      "unit_ids": [
+        "dsa_binary_search_recursion"
+      ],
+      "exercise_ids": [
+        "ch03_ex_04_binary_depth",
+        "ch03_ex_07_binary_completion"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_03_binary_search_recursion"
+      ],
+      "unit_ids": [
+        "dsa_binary_search_recursion"
+      ],
+      "task_ids": [
+        "ch03_code_recursive_binary_search"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_03_binary_search_recursion"
+      ],
+      "unit_ids": [
+        "dsa_binary_search_recursion"
+      ]
+    }
+  },
+  "sec_03_backtracking_basic": {
+    "title": "3.5 回溯思想：选择、探索与撤销",
+    "unit_ids": [
+      "dsa_backtracking_basic",
+      "dsa_choice_explore_undo"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch03_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch03_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch03_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_03_backtracking_basic"
+      ],
+      "unit_ids": [
+        "dsa_backtracking_basic",
+        "dsa_choice_explore_undo"
+      ],
+      "exercise_ids": [
+        "ch03_ex_06_backtracking_trace"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_03_backtracking_basic"
+      ],
+      "unit_ids": [
+        "dsa_backtracking_basic",
+        "dsa_choice_explore_undo"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_03_backtracking_basic"
+      ],
+      "unit_ids": [
+        "dsa_backtracking_basic",
+        "dsa_choice_explore_undo"
+      ],
+      "video_item_ids": [
+        "ch03_video_backtracking_intro"
+      ]
+    }
+  },
+  "sec_03_permutation_combination": {
+    "title": "3.6 排列、组合与搜索树入门",
+    "unit_ids": [
+      "dsa_permutation_combination",
+      "dsa_search_tree_intro"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch03_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch03_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch03_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_03_permutation_combination"
+      ],
+      "unit_ids": [
+        "dsa_permutation_combination",
+        "dsa_search_tree_intro"
+      ],
+      "exercise_ids": [
+        "ch03_ex_08_permutation_combination"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_03_permutation_combination"
+      ],
+      "unit_ids": [
+        "dsa_permutation_combination",
+        "dsa_search_tree_intro"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_03_permutation_combination"
+      ],
+      "unit_ids": [
+        "dsa_permutation_combination",
+        "dsa_search_tree_intro"
+      ]
+    }
+  }
+}

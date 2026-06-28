@@ -1,0 +1,9 @@
+{
+  "chapter_id": "chapter_07_graph_traversal",
+  "assessment_points": [
+    "能把真实关系抽象成顶点和边",
+    "能为稀疏图选择邻接表并说明理由",
+    "能手推 BFS 队列和 DFS 递归过程",
+    "能完成 BFS 遍历和 DFS 统计连通分量代码任务"
+  ]
+}

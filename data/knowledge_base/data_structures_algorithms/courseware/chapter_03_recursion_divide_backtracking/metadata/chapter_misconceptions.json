@@ -1,0 +1,21 @@
+{
+  "chapter_id": "chapter_03_recursion_divide_backtracking",
+  "items": [
+    {
+      "name": "只写递归调用不写终止条件",
+      "correction": "递归必须有明确出口，并且参数要向出口靠近。"
+    },
+    {
+      "name": "把所有递归都叫分治",
+      "correction": "分治强调独立子问题和合并结果。"
+    },
+    {
+      "name": "回溯忘记撤销状态",
+      "correction": "撤销用于恢复分支前状态，避免污染其他分支。"
+    },
+    {
+      "name": "混淆排列和组合",
+      "correction": "排列关注顺序，组合不关注顺序。"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "sec_05_hash_table_intro": {
+    "unit_ids": [
+      "dsa_hash_table",
+      "dsa_hash_function"
+    ],
+    "base_resources": [
+      "sections/01_hash_table_intro.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch05_ex01_hash_average_o1"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch05_video01_hash_dict_intro"
+    ]
+  },
+  "sec_05_hash_collision": {
+    "unit_ids": [
+      "dsa_hash_collision"
+    ],
+    "base_resources": [
+      "sections/02_hash_collision.md"
+    ],
+    "exercise_filters": [
+      "ch05_ex02_collision_judgment"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch05_video01_hash_dict_intro"
+    ]
+  },
+  "sec_05_set_map_usage": {
+    "unit_ids": [
+      "dsa_set_usage",
+      "dsa_map_usage"
+    ],
+    "base_resources": [
+      "sections/03_set_map_usage.md"
+    ],
+    "exercise_filters": [
+      "ch05_ex03_set_map_difference",
+      "ch05_ex04_map_count_complexity",
+      "ch05_ex07_dict_completion"
+    ],
+    "code_task_filters": [
+      "ch05_code01_dict_count"
+    ],
+    "video_guide_filters": [
+      "ch05_video01_hash_dict_intro"
+    ]
+  },
+  "sec_05_heap_basic": {
+    "unit_ids": [
+      "dsa_heap_basic",
+      "dsa_min_heap",
+      "dsa_max_heap"
+    ],
+    "base_resources": [
+      "sections/04_heap_basic.md"
+    ],
+    "exercise_filters": [
+      "ch05_ex05_heap_property"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch05_video02_heap_priority_queue"
+    ]
+  },
+  "sec_05_priority_queue": {
+    "unit_ids": [
+      "dsa_priority_queue"
+    ],
+    "base_resources": [
+      "sections/05_priority_queue.md"
+    ],
+    "exercise_filters": [
+      "ch05_ex06_priority_queue_reading"
+    ],
+    "code_task_filters": [
+      "ch05_code02_heap_top_k"
+    ],
+    "video_guide_filters": [
+      "ch05_video02_heap_priority_queue"
+    ]
+  },
+  "sec_05_top_k_problem": {
+    "unit_ids": [
+      "dsa_top_k_problem"
+    ],
+    "base_resources": [
+      "sections/06_top_k_problem.md"
+    ],
+    "exercise_filters": [
+      "ch05_ex08_top_k_application"
+    ],
+    "code_task_filters": [
+      "ch05_code02_heap_top_k"
+    ],
+    "video_guide_filters": [
+      "ch05_video02_heap_priority_queue"
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "chapter_id": "chapter_12_algorithm_project",
+  "stage": "curated_base_resource",
+  "objectives": [
+    {
+      "unit_id": "dsa_project_overview",
+      "objective": "能根据能力目标选择合适的综合项目方向。"
+    },
+    {
+      "unit_id": "dsa_project_algorithm_visualizer",
+      "objective": "能设计算法可视化项目的输入、步骤记录和输出。"
+    },
+    {
+      "unit_id": "dsa_project_maze_path_finder",
+      "objective": "能把迷宫网格建模为图并实现基础寻路。"
+    },
+    {
+      "unit_id": "dsa_project_online_judge_trainer",
+      "objective": "能设计简易刷题训练系统的题目、判分和反馈流程。"
+    },
+    {
+      "unit_id": "dsa_project_report_template",
+      "objective": "能按模板完成可复现的项目报告。"
+    },
+    {
+      "unit_id": "dsa_project_rubric",
+      "objective": "能使用评分标准自查项目质量。"
+    },
+    {
+      "unit_id": "dsa_project_testing",
+      "objective": "能为综合项目设计正常、边界和失败样例。"
+    },
+    {
+      "unit_id": "dsa_project_presentation",
+      "objective": "能清楚展示项目目标、算法选择和运行结果。"
+    },
+    {
+      "unit_id": "dsa_project_reflection",
+      "objective": "能复盘项目问题并提出可执行改进方向。"
+    }
+  ]
+}

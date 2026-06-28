@@ -1,0 +1,25 @@
+{
+  "chapter_id": "chapter_01_complexity",
+  "items": [
+    {
+      "id": "ch01_mis_01",
+      "title": "把算法等同于程序代码",
+      "remediation": "先用输入、输出和有限步骤描述算法，再讨论代码实现。"
+    },
+    {
+      "id": "ch01_mis_02",
+      "title": "把运行秒数当成复杂度",
+      "remediation": "强调复杂度描述的是随 n 增长的趋势。"
+    },
+    {
+      "id": "ch01_mis_03",
+      "title": "只凭循环层数判断复杂度",
+      "remediation": "检查循环变量变化方式和总执行次数。"
+    },
+    {
+      "id": "ch01_mis_04",
+      "title": "忽略二分查找的有序前提",
+      "remediation": "把区间减半与有序性绑定讲解。"
+    }
+  ]
+}

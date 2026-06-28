@@ -1,0 +1,113 @@
+{
+  "sec_07_graph_basic": {
+    "unit_ids": [
+      "dsa_graph_basic",
+      "dsa_directed_undirected_graph",
+      "dsa_weighted_unweighted_graph"
+    ],
+    "base_resources": [
+      "sections/01_graph_basic.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch07_ex01_graph_concepts"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch07_video01_graph_representation"
+    ]
+  },
+  "sec_07_graph_representation": {
+    "unit_ids": [
+      "dsa_adjacency_matrix",
+      "dsa_adjacency_list"
+    ],
+    "base_resources": [
+      "sections/02_graph_representation.md"
+    ],
+    "exercise_filters": [
+      "ch07_ex02_matrix_list_judgment",
+      "ch07_ex04_bfs_complexity"
+    ],
+    "code_task_filters": [
+      "ch07_code01_bfs_adjacency_list"
+    ],
+    "video_guide_filters": [
+      "ch07_video01_graph_representation"
+    ]
+  },
+  "sec_07_bfs": {
+    "unit_ids": [
+      "dsa_bfs",
+      "dsa_visited_marking"
+    ],
+    "base_resources": [
+      "sections/03_bfs.md"
+    ],
+    "exercise_filters": [
+      "ch07_ex03_bfs_dfs_compare",
+      "ch07_ex04_bfs_complexity",
+      "ch07_ex05_bfs_code_reading",
+      "ch07_ex07_bfs_completion"
+    ],
+    "code_task_filters": [
+      "ch07_code01_bfs_adjacency_list"
+    ],
+    "video_guide_filters": [
+      "ch07_video02_bfs_dfs_process"
+    ]
+  },
+  "sec_07_dfs": {
+    "unit_ids": [
+      "dsa_dfs",
+      "dsa_visited_marking"
+    ],
+    "base_resources": [
+      "sections/04_dfs.md"
+    ],
+    "exercise_filters": [
+      "ch07_ex03_bfs_dfs_compare",
+      "ch07_ex06_dfs_code_reading"
+    ],
+    "code_task_filters": [
+      "ch07_code02_dfs_components"
+    ],
+    "video_guide_filters": [
+      "ch07_video02_bfs_dfs_process"
+    ]
+  },
+  "sec_07_connected_components": {
+    "unit_ids": [
+      "dsa_connected_components",
+      "dsa_visited_marking"
+    ],
+    "base_resources": [
+      "sections/05_connected_components.md"
+    ],
+    "exercise_filters": [
+      "ch07_ex06_dfs_code_reading"
+    ],
+    "code_task_filters": [
+      "ch07_code02_dfs_components"
+    ],
+    "video_guide_filters": [
+      "ch07_video02_bfs_dfs_process"
+    ]
+  },
+  "sec_07_maze_topological_intro": {
+    "unit_ids": [
+      "dsa_maze_search",
+      "dsa_topological_sort_intro"
+    ],
+    "base_resources": [
+      "sections/06_maze_and_topological_intro.md"
+    ],
+    "exercise_filters": [
+      "ch07_ex08_maze_application"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch07_video02_bfs_dfs_process"
+    ]
+  }
+}

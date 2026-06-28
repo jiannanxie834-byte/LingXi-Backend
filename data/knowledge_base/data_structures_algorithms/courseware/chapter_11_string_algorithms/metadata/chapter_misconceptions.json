@@ -1,0 +1,26 @@
+{
+  "chapter_id": "chapter_11_string_algorithms",
+  "stage": "curated_base_resource",
+  "misconceptions": [
+    {
+      "unit_id": "dsa_substring_pattern_text",
+      "description": "把子串和子序列混为一谈，忽略连续性要求。"
+    },
+    {
+      "unit_id": "dsa_string_matching_complexity",
+      "description": "只统计起点数量，忽略每个起点内部的字符比较。"
+    },
+    {
+      "unit_id": "dsa_kmp_next_array",
+      "description": "背诵 next 数组模板，却不能解释回退值来源。"
+    },
+    {
+      "unit_id": "dsa_trie_insert_search",
+      "description": "查询完整单词时忘记检查结束标记。"
+    },
+    {
+      "unit_id": "dsa_rolling_hash_intro",
+      "description": "把哈希值相等误认为字符串一定相等。"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_09_greedy",
+  "chapter_no": 9,
+  "title": "第 9 章 贪心算法",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_09_greedy_intro",
+      "title": "9.1 贪心算法的基本思想",
+      "unit_ids": [
+        "dsa_greedy_intro"
+      ],
+      "path": "sections/01_greedy_intro.md"
+    },
+    {
+      "section_id": "sec_09_greedy_choice_property",
+      "title": "9.2 贪心选择性质与最优子结构",
+      "unit_ids": [
+        "dsa_greedy_choice_property",
+        "dsa_optimal_substructure"
+      ],
+      "path": "sections/02_greedy_choice_property.md"
+    },
+    {
+      "section_id": "sec_09_interval_scheduling",
+      "title": "9.3 区间调度问题",
+      "unit_ids": [
+        "dsa_interval_scheduling"
+      ],
+      "path": "sections/03_interval_scheduling.md"
+    },
+    {
+      "section_id": "sec_09_activity_selection",
+      "title": "9.4 活动选择问题",
+      "unit_ids": [
+        "dsa_activity_selection"
+      ],
+      "path": "sections/04_activity_selection.md"
+    },
+    {
+      "section_id": "sec_09_huffman_intro",
+      "title": "9.5 Huffman 编码入门",
+      "unit_ids": [
+        "dsa_huffman_intro"
+      ],
+      "path": "sections/05_huffman_intro.md"
+    },
+    {
+      "section_id": "sec_09_greedy_counterexample",
+      "title": "9.6 贪心算法的反例与适用边界",
+      "unit_ids": [
+        "dsa_greedy_counterexample",
+        "dsa_greedy_vs_dp_intro"
+      ],
+      "path": "sections/06_greedy_counterexample.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch09_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch09_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch09_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

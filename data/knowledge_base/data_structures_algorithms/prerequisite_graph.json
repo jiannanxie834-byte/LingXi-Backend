@@ -1,0 +1,406 @@
+{
+  "course_id": "data_structures_algorithms",
+  "stage": "framework_placeholder",
+  "edges": [
+    {
+      "from": "dsa_algorithm_intro",
+      "to": "dsa_algorithm_vs_program",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_algorithm_intro",
+      "to": "dsa_input_size",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_input_size",
+      "to": "dsa_time_complexity",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_time_complexity",
+      "to": "dsa_big_o_notation",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_big_o_notation",
+      "to": "dsa_common_complexities",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_common_complexities",
+      "to": "dsa_loop_analysis",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_big_o_notation",
+      "to": "dsa_space_complexity",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_loop_analysis",
+      "to": "dsa_recursion_complexity_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_algorithm_intro",
+      "to": "dsa_array_basic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_linked_list_basic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_stack",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_stack",
+      "to": "dsa_queue",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_queue",
+      "to": "dsa_deque_monotonic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_two_pointers",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_algorithm_intro",
+      "to": "dsa_recursion_basic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_stack",
+      "to": "dsa_call_stack",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_recursion_basic",
+      "to": "dsa_call_stack",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_recursion_basic",
+      "to": "dsa_divide_and_conquer",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_divide_and_conquer",
+      "to": "dsa_binary_search_recursion",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_recursion_basic",
+      "to": "dsa_backtracking_basic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_backtracking_basic",
+      "to": "dsa_search_examples",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_basic_sorts",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_divide_and_conquer",
+      "to": "dsa_merge_sort",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_divide_and_conquer",
+      "to": "dsa_quick_sort",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_basic_sorts",
+      "to": "dsa_sorting_complexity_comparison",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_merge_sort",
+      "to": "dsa_sorting_complexity_comparison",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_quick_sort",
+      "to": "dsa_sorting_complexity_comparison",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_binary_search",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_binary_search",
+      "to": "dsa_binary_answer",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_hash_table",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_hash_table",
+      "to": "dsa_hash_collision",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_hash_table",
+      "to": "dsa_set_map_usage",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_tree_basic",
+      "to": "dsa_heap_basic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_heap_basic",
+      "to": "dsa_priority_queue",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_recursion_basic",
+      "to": "dsa_tree_basic",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_tree_basic",
+      "to": "dsa_binary_tree",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_binary_tree",
+      "to": "dsa_tree_traversal",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_binary_tree",
+      "to": "dsa_bst",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_bst",
+      "to": "dsa_balanced_tree_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_set_map_usage",
+      "to": "dsa_graph_representation",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_queue",
+      "to": "dsa_bfs",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_graph_representation",
+      "to": "dsa_bfs",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_recursion_basic",
+      "to": "dsa_dfs",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_graph_representation",
+      "to": "dsa_dfs",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_bfs",
+      "to": "dsa_connected_components",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dfs",
+      "to": "dsa_connected_components",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dfs",
+      "to": "dsa_topological_sort",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_queue",
+      "to": "dsa_topological_sort",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_graph_representation",
+      "to": "dsa_weighted_graph",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_priority_queue",
+      "to": "dsa_dijkstra",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_weighted_graph",
+      "to": "dsa_dijkstra",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_weighted_graph",
+      "to": "dsa_bellman_ford_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_weighted_graph",
+      "to": "dsa_mst_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_mst_intro",
+      "to": "dsa_kruskal_prim",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_union_find",
+      "to": "dsa_kruskal_prim",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_algorithm_intro",
+      "to": "dsa_greedy_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_greedy_intro",
+      "to": "dsa_interval_scheduling",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_sorting_complexity_comparison",
+      "to": "dsa_interval_scheduling",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_priority_queue",
+      "to": "dsa_huffman_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_greedy_intro",
+      "to": "dsa_huffman_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_greedy_intro",
+      "to": "dsa_greedy_counterexample",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_greedy_counterexample",
+      "to": "dsa_greedy_vs_dp",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_recursion_basic",
+      "to": "dsa_dp_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dp_intro",
+      "to": "dsa_dp_state_definition",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dp_state_definition",
+      "to": "dsa_dp_transition",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dp_transition",
+      "to": "dsa_dp_table_order",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dp_table_order",
+      "to": "dsa_knapsack_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_dp_transition",
+      "to": "dsa_lcs_lis_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_array_basic",
+      "to": "dsa_string_basics",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_string_basics",
+      "to": "dsa_string_matching_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_string_matching_intro",
+      "to": "dsa_kmp_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_tree_basic",
+      "to": "dsa_trie_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_string_basics",
+      "to": "dsa_trie_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_hash_table",
+      "to": "dsa_rolling_hash_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_string_basics",
+      "to": "dsa_rolling_hash_intro",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_algorithm_intro",
+      "to": "dsa_algorithm_project_design",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_algorithm_project_design",
+      "to": "dsa_visualization_design",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_visualization_design",
+      "to": "dsa_judge_pipeline",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_judge_pipeline",
+      "to": "dsa_report_presentation",
+      "relation": "prerequisite"
+    },
+    {
+      "from": "dsa_report_presentation",
+      "to": "dsa_project_extension",
+      "relation": "prerequisite"
+    }
+  ]
+}

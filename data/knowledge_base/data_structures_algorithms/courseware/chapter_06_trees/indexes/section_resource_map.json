@@ -1,0 +1,102 @@
+{
+  "sec_06_tree_basic": {
+    "unit_ids": [
+      "dsa_tree_basic",
+      "dsa_tree_height_depth"
+    ],
+    "base_resources": [
+      "sections/01_tree_basic.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch06_ex01_tree_terms"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": []
+  },
+  "sec_06_binary_tree_basic": {
+    "unit_ids": [
+      "dsa_binary_tree_basic"
+    ],
+    "base_resources": [
+      "sections/02_binary_tree_basic.md"
+    ],
+    "exercise_filters": [
+      "ch06_ex02_binary_tree_definition"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch06_video01_binary_tree_traversal"
+    ]
+  },
+  "sec_06_tree_traversal": {
+    "unit_ids": [
+      "dsa_preorder_traversal",
+      "dsa_inorder_traversal",
+      "dsa_postorder_traversal"
+    ],
+    "base_resources": [
+      "sections/03_tree_traversal.md"
+    ],
+    "exercise_filters": [
+      "ch06_ex03_traversal_order",
+      "ch06_ex05_preorder_code_reading"
+    ],
+    "code_task_filters": [
+      "ch06_code01_preorder_traversal"
+    ],
+    "video_guide_filters": [
+      "ch06_video01_binary_tree_traversal"
+    ]
+  },
+  "sec_06_level_order_traversal": {
+    "unit_ids": [
+      "dsa_level_order_traversal"
+    ],
+    "base_resources": [
+      "sections/04_level_order_traversal.md"
+    ],
+    "exercise_filters": [
+      "ch06_ex04_level_order_complexity",
+      "ch06_ex08_tree_application"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch06_video01_binary_tree_traversal"
+    ]
+  },
+  "sec_06_binary_search_tree": {
+    "unit_ids": [
+      "dsa_binary_search_tree",
+      "dsa_bst_search"
+    ],
+    "base_resources": [
+      "sections/05_binary_search_tree.md"
+    ],
+    "exercise_filters": [
+      "ch06_ex06_bst_code_reading"
+    ],
+    "code_task_filters": [
+      "ch06_code02_bst_search"
+    ],
+    "video_guide_filters": [
+      "ch06_video02_bst_basic"
+    ]
+  },
+  "sec_06_tree_recursion_pattern": {
+    "unit_ids": [
+      "dsa_tree_recursion_pattern"
+    ],
+    "base_resources": [
+      "sections/06_tree_recursion_pattern.md"
+    ],
+    "exercise_filters": [
+      "ch06_ex07_tree_height_completion",
+      "ch06_ex08_tree_application"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch06_video02_bst_basic"
+    ]
+  }
+}

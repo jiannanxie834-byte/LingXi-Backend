@@ -1,0 +1,21 @@
+{
+  "blueprint_id": "micro_note_blueprint",
+  "resource_type": "micro_note",
+  "trigger_scope": [
+    "concept"
+  ],
+  "required_inputs": [
+    "student_profile",
+    "unit_id",
+    "evidence_chunks"
+  ],
+  "required_sections": [
+    "概念定义",
+    "直观解释",
+    "最小例子",
+    "常见误区",
+    "立即练习"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

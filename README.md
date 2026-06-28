@@ -1,13 +1,14 @@
 # LingXi-Backend 后端
 
-灵析学伴后端项目，定位为面向高校《深度学习》课程的个性化多模态资源生成与学习多智能体系统。项目基于 FastAPI、SQLAlchemy、MySQL 构建，负责用户、Artifact 资源工厂、学习规划、学习评价、聊天历史、多智能体编排、课程图谱和初始知识库同步。
+灵析学伴后端项目，当前主线定位为面向高校《数据结构与算法：可视化理解与代码实践》课程的个性化多模态学习系统。项目基于 FastAPI、SQLAlchemy、MySQL 构建，负责用户、Artifact 资源工厂、学习规划、学习评价、聊天历史、多智能体编排、课程图谱和初始知识库同步。
 
 ## 当前主线
 
-- 课程主线：`《深度学习》`
-- 核心知识图谱：12 个章节、70+ 细粒度知识单元，覆盖数学前置、神经网络基础、反向传播、优化、正则化、CNN、RNN/LSTM/GRU、Attention/Transformer、生成模型、PyTorch 实践和课程项目
+- 课程主线：`《数据结构与算法》`
+- 核心框架：12 个章节、80 个知识单元骨架，覆盖复杂度分析、线性结构、递归分治回溯、排序查找、哈希堆、树图、最短路径、贪心、动态规划、字符串算法和综合项目
+- 当前阶段：课程框架迁移阶段，只包含章节入口、知识单元 schema 和占位资源，不包含正式课程正文、题库或代码实验
 - 资源体系：不再把“总包型多模态资源”作为平级资源生成，而是生成多个具体 Artifact，再由主题学习包聚合展示
-- 范围门禁：只有命中《深度学习》课程图谱的主题才允许生成路径和资源；其他学科或泛化计算机主题会进入课程外提示，不套用资源模板
+- 范围门禁：只有命中《数据结构与算法》课程图谱的主题才允许生成路径和资源；深度学习、数据库、操作系统、计算机网络、外语、高数等默认进入课程外提示
 - 质量闭环：内容安全分、教学质量分、证据完整性分开保存和展示，安全无风险不等于教学质量合格
 
 ## 主要目录
@@ -21,15 +22,12 @@ app/
     data_services/         业务服务层
     llm_provider.py        DeepSeek / 讯飞星火调用封装，开发占位输出不用于正式演示
 data/
-  knowledge_base/deep_learning/
-                            《深度学习》初始课程知识库、章节文档、公开视频目录和实验代码
+  knowledge_base/data_structures_algorithms/
+                            《数据结构与算法》课程框架、12 章章节入口和知识单元骨架
 scripts/
   create_admin.py          幂等创建/更新管理员 admin / 123456
   seed_demo_data.py        兼容旧入口的演示基准数据重置脚本
-  seed_deep_learning_demo_data.py
-                            深度学习演示数据初始化脚本
-  seed_deep_learning_course.py
-                            同步《深度学习》课程知识库
+  seed_dsa_course.py         同步《数据结构与算法》课程框架占位资源
 ```
 
 ## 分支
@@ -95,34 +93,34 @@ LINGXI_DEBUG_LLM=1
 
 ```bash
 source .venv/bin/activate
-python scripts/seed_deep_learning_course.py
+python scripts/seed_dsa_course.py
 python scripts/create_admin.py
-python scripts/seed_deep_learning_demo_data.py
 ```
 
 脚本效果：
 
-- `seed_deep_learning_course.py`：同步《深度学习》课程知识库、章节、知识单元和实验资源。
+- `seed_dsa_course.py`：同步《数据结构与算法》课程框架、章节、知识单元骨架和占位资源。
 - `create_admin.py`：幂等创建或更新 `admin / 123456 / role=admin`，不清空课程数据。
-- `seed_deep_learning_demo_data.py`：写入演示学生、画像、路线、评价、反馈、资源和聊天历史；只重置演示范围数据。
 
-## 深度学习课程知识库
+## 数据结构与算法课程知识库
 
 ```bash
 source .venv/bin/activate
-python scripts/seed_deep_learning_course.py
+python scripts/seed_dsa_course.py
 ```
 
 课程资料位于：
 
 ```text
-data/knowledge_base/deep_learning/
+data/knowledge_base/data_structures_algorithms/
   course_manifest.json
+  chapter_resource_index.json
   knowledge_units.jsonl
+  source_references.json
   video_catalog.json
-  references.json
-  chapters/
+  courseware/
   labs/
+  evidence/
 ```
 
 ## 资源 Artifact 类型
@@ -133,37 +131,35 @@ data/knowledge_base/deep_learning/
 - 知识点思维导图
 - 练习题集
 - 拓展阅读包
-- PyTorch 实操案例
+- 代码实验
 - PPT 大纲
 - 外部公开视频推荐卡
 - 个性化视频观看指南
-- 交互动画规格
+- 算法可视化动画规格
 - 动画分镜
-- 课程实践项目任务书
+- 算法项目任务书
 - 诊断与补弱报告
 
 主题学习包是展示层聚合结构，不作为平级资源正文入库。
 
 ## 稳定演示用例
 
-建议按以下三条学生端输入演示：
+当前阶段建议按以下输入验证课程边界和框架路由：
 
-1. `我是大二学生，学过一点机器学习，但是反向传播和 CNN 不太懂，想两周内做一个图像分类项目，比较喜欢图解和代码。`
-   - 预期：识别 CNN、反向传播、PyTorch 项目；更新画像；生成两周路线；进入 Artifact 生成任务。
-2. `我想学习 LSTM`
-   - 预期：`scope_level=unit`，主题保持为 `LSTM 长短期记忆网络`；RNN 作为前置，GRU 作为对比拓展；生成讲义、导图、题集、代码实验和 LSTM 门控动画规格。
-3. `我做 CNN 练习题时总是算错输出特征图尺寸。`
-   - 预期：命中 `dl_cnn_output_size`；更新薄弱点；路线插入补弱节点；生成输出尺寸讲解、题集、卷积滑窗动画和错因建议。
+1. `我想学习数据结构与算法`
+   - 预期：`scope_level=course`，只生成课程导学、诊断和学习路径，不一次性铺开全部章节资源。
+2. `比较 BFS 和 DFS`
+   - 预期：`scope_level=comparison`，主题为 `BFS 与 DFS 对比学习`。
+3. `我想学习 CNN`
+   - 预期：返回课程外提示：本系统聚焦《数据结构与算法》课程。
 
 ## 检查命令
 
 ```bash
 PYTHONPYCACHEPREFIX=/private/tmp/lingxi_pycache .venv/bin/python -m unittest \
-  tests.test_topic_scope_resolver \
-  tests.test_deep_learning_course_map \
-  tests.test_teaching_quality_gate \
-  tests.test_plan_resource_binding \
-  tests.test_resource_artifact_generation
+  tests.test_dsa_course_map \
+  tests.test_dsa_scope_resolver \
+  tests.test_dsa_seed_framework
 
 PYTHONPYCACHEPREFIX=/private/tmp/lingxi_pycache .venv/bin/python -m compileall app tests
 ```

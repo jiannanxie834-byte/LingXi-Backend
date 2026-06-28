@@ -1,0 +1,20 @@
+{
+  "chapter_id": "chapter_04_sorting_searching",
+  "misconceptions": [
+    {
+      "id": "ch04_mis01",
+      "title": "无序数据误用二分查找",
+      "correction": "二分查找依赖有序性或单调性，前提不成立时不能直接使用。"
+    },
+    {
+      "id": "ch04_mis02",
+      "title": "只看平均复杂度选择排序算法",
+      "correction": "还要看最坏情况、稳定性、空间开销和数据规模。"
+    },
+    {
+      "id": "ch04_mis03",
+      "title": "排序后忘记原始位置",
+      "correction": "若题目要求返回原下标，排序前应保存位置或选择其他结构。"
+    }
+  ]
+}

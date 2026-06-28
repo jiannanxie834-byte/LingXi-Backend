@@ -1,0 +1,85 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_10_dynamic_programming",
+  "chapter_no": 10,
+  "title": "第 10 章 动态规划",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_10_dp_intro",
+      "title": "10.1 动态规划的基本思想",
+      "unit_ids": [
+        "dsa_dp_intro",
+        "dsa_overlapping_subproblems",
+        "dsa_optimal_substructure_dp"
+      ],
+      "path": "sections/01_dp_intro.md"
+    },
+    {
+      "section_id": "sec_10_state_definition",
+      "title": "10.2 状态定义：把问题描述成可复用的子问题",
+      "unit_ids": [
+        "dsa_dp_state_definition"
+      ],
+      "path": "sections/02_state_definition.md"
+    },
+    {
+      "section_id": "sec_10_transition_equation",
+      "title": "10.3 状态转移方程",
+      "unit_ids": [
+        "dsa_dp_transition"
+      ],
+      "path": "sections/03_transition_equation.md"
+    },
+    {
+      "section_id": "sec_10_table_order",
+      "title": "10.4 初始化、遍历顺序与 DP 表",
+      "unit_ids": [
+        "dsa_dp_initialization",
+        "dsa_dp_table_order"
+      ],
+      "path": "sections/04_table_order.md"
+    },
+    {
+      "section_id": "sec_10_classic_dp_cases",
+      "title": "10.5 经典案例：爬楼梯、背包与最长公共子序列",
+      "unit_ids": [
+        "dsa_climbing_stairs",
+        "dsa_knapsack_01",
+        "dsa_longest_common_subsequence"
+      ],
+      "path": "sections/05_classic_dp_cases.md"
+    },
+    {
+      "section_id": "sec_10_dp_common_mistakes",
+      "title": "10.6 动态规划常见错误与优化入门",
+      "unit_ids": [
+        "dsa_dp_common_mistakes",
+        "dsa_dp_rolling_array_intro"
+      ],
+      "path": "sections/06_dp_common_mistakes.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch10_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch10_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch10_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

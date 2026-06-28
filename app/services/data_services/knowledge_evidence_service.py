@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.schemas import CourseKnowledge, Resource
 from app.services.data_services import (
-    deep_learning_course_map_service,
+    dsa_course_map_service,
     resource_service,
 )
 
@@ -48,18 +48,18 @@ GENERIC_QUERY_TERMS = {
 }
 
 TOPIC_ALIAS_GROUPS = {
-    "dl_intro": ["深度学习", "deep learning", "神经网络", "表示学习", "端到端学习"],
-    "prerequisites": ["矩阵", "梯度", "链式法则", "概率", "训练集", "验证集", "测试集", "损失函数"],
-    "mlp": ["感知机", "神经元", "mlp", "多层感知机", "激活函数", "全连接网络"],
-    "backprop": ["反向传播", "bp", "backprop", "backpropagation", "前向传播", "链式法则", "梯度传播"],
-    "optimization": ["sgd", "momentum", "adam", "优化器", "学习率", "学习率调度", "训练曲线"],
-    "regularization": ["正则化", "dropout", "batchnorm", "batch normalization", "数据增强", "早停", "过拟合", "泛化"],
-    "cnn": ["cnn", "卷积神经网络", "卷积", "卷积层", "卷积核", "步幅", "填充", "池化", "特征图", "图像分类"],
-    "rnn_lstm": ["rnn", "循环神经网络", "lstm", "gru", "长短期记忆", "门控机制", "序列模型", "时间序列"],
-    "transformer": ["transformer", "attention", "注意力机制", "自注意力", "多头注意力", "qkv", "位置编码", "encoder", "decoder"],
-    "generative": ["自编码器", "autoencoder", "vae", "gan", "生成对抗网络", "扩散模型", "diffusion", "生成模型"],
-    "pytorch": ["pytorch", "torch", "dataset", "dataloader", "训练循环", "模型训练", "代码实验", "图像分类实验"],
-    "project": ["课程项目", "综合项目", "项目任务", "图像分类项目", "文本分类项目", "时间序列预测项目", "rubric"],
+    "dsa_intro": ["数据结构与算法", "dsa", "算法", "数据结构", "复杂度分析"],
+    "linear_structures": ["数组", "链表", "栈", "队列", "双端队列", "单调栈", "双指针"],
+    "recursion": ["递归", "调用栈", "分治", "回溯", "排列组合", "n皇后"],
+    "sorting_searching": ["排序", "查找", "二分查找", "归并排序", "快速排序", "冒泡排序"],
+    "hash_heap": ["哈希表", "哈希冲突", "堆", "优先队列", "top k"],
+    "trees": ["树", "二叉树", "二叉搜索树", "层序遍历", "前序", "中序", "后序"],
+    "graphs": ["图", "bfs", "dfs", "邻接矩阵", "邻接表", "拓扑排序", "迷宫"],
+    "shortest_mst": ["dijkstra", "最短路径", "最小生成树", "kruskal", "prim", "并查集"],
+    "greedy": ["贪心", "贪心选择", "区间调度", "活动选择", "huffman", "反例"],
+    "dp": ["动态规划", "dp", "状态定义", "状态转移", "背包", "最长公共子序列", "最长递增子序列"],
+    "string": ["字符串", "kmp", "前缀函数", "trie", "字典树", "滚动哈希"],
+    "project": ["算法项目", "算法可视化", "刷题训练系统", "迷宫寻路", "rubric"],
 }
 
 
@@ -125,7 +125,7 @@ def _evidence_from_knowledge(row: CourseKnowledge, evidence_id: str = ""):
     return {
         "evidence_id": evidence_id or f"course_knowledge:{row.id}",
         "title": row.topic or "课程知识点",
-        "source_path": row.chapter or "深度学习初始知识库",
+        "source_path": row.chapter or "数据结构与算法课程框架",
         "content_excerpt": _content_excerpt("\n".join([
             row.core or "",
             "常见误区：" + "；".join(_safe_json_list(row.pitfalls)),
@@ -140,7 +140,7 @@ def _evidence_from_resource(row: Resource, evidence_id: str = ""):
     return {
         "evidence_id": evidence_id or row.id,
         "title": row.title or "课程资源",
-        "source_path": row.source or row.uploader or "深度学习初始知识库",
+        "source_path": row.source or row.uploader or "数据结构与算法课程框架",
         "content_excerpt": _content_excerpt("\n".join([
             row.summary or "",
             row.content or "",
@@ -174,15 +174,15 @@ def _unit_evidence_score(value, unit, chapter, terms):
 
 
 def get_evidence_for_unit(db: Session, course_id: str, unit_id: str, limit: int = 6):
-    """按《深度学习》课程知识单元收集可注入生成 prompt 的证据片段。"""
-    if course_id and course_id != deep_learning_course_map_service.COURSE_ID:
+    """按《数据结构与算法》课程知识单元收集可注入生成 prompt 的证据片段。"""
+    if course_id and course_id != dsa_course_map_service.COURSE_ID:
         return []
 
-    unit = deep_learning_course_map_service.get_unit(unit_id or "")
+    unit = dsa_course_map_service.get_unit(unit_id or "")
     if not unit:
         return []
 
-    chapter = deep_learning_course_map_service.CHAPTER_BY_ID.get(unit.get("chapter_id", ""), {})
+    chapter = dsa_course_map_service.CHAPTER_BY_ID.get(unit.get("chapter_id", ""), {})
     search_terms = [
         unit.get("title", ""),
         chapter.get("title", ""),
@@ -209,7 +209,7 @@ def get_evidence_for_unit(db: Session, course_id: str, unit_id: str, limit: int 
                 scored_evidence.append((score, item))
                 seen.add(item["evidence_id"])
 
-        resources = db.query(Resource).filter(Resource.status == "已通过").all()
+        resources = db.query(Resource).filter(Resource.status.in_(["已通过", "framework_placeholder"])).all()
         for row in resources:
             if resource_service._is_deprecated_resource_type(row.type):
                 continue
@@ -221,7 +221,7 @@ def get_evidence_for_unit(db: Session, course_id: str, unit_id: str, limit: int 
                 row.content or "",
             ])
             score = _unit_evidence_score(haystack, unit, chapter, search_terms)
-            if (row.id or "").startswith("KB-DL") or row.uploader == "课程知识库种子":
+            if (row.id or "").startswith("KB-DSA") or row.uploader == "课程知识库种子":
                 score += 20
             if score <= 0:
                 continue
@@ -238,10 +238,10 @@ def get_evidence_for_unit(db: Session, course_id: str, unit_id: str, limit: int 
 
 def search_evidence(db: Session, course_id: str, query: str, limit: int = 6):
     """按主题检索详细证据，返回统一 evidence_chunks 结构。"""
-    if course_id and course_id != deep_learning_course_map_service.COURSE_ID:
+    if course_id and course_id != dsa_course_map_service.COURSE_ID:
         return []
 
-    course_match = deep_learning_course_map_service.match_deep_learning_topic(query, query)
+    course_match = dsa_course_map_service.match_dsa_topic(query, query)
     if course_match.get("unit_id"):
         unit_evidence = get_evidence_for_unit(db, course_id, course_match["unit_id"], limit=limit)
         if unit_evidence:
@@ -357,7 +357,7 @@ def _score_candidate(query, terms, topic_fields, body_fields, keywords=None):
 
 
 def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: float = MIN_RELEVANCE_SCORE, include_irrelevant: bool = False):
-    """从课程知识点和已通过资源中检索回答依据，用于防幻觉和演示证据链。"""
+    """从课程知识点和已开放或框架占位资源中检索回答依据，用于防幻觉和演示证据链。"""
     terms = _query_terms(query)
     if not terms:
         return []
@@ -394,7 +394,7 @@ def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: f
             candidates.append({
                 "kind": "course_knowledge",
                 "title": row.topic or "课程知识点",
-                "source": row.chapter or "深度学习初始知识库",
+                "source": row.chapter or "数据结构与算法课程框架",
                 "excerpt": _first_matching_excerpt(topic_fields + body_fields, terms),
                 "score": relevance["score"],
                 "topic_match": relevance["topic_match"],
@@ -406,7 +406,7 @@ def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: f
 
         resource_rows = (
             db.query(Resource)
-            .filter(Resource.status == "已通过")
+            .filter(Resource.status.in_(["已通过", "framework_placeholder"]))
             .all()
         )
         for row in resource_rows:

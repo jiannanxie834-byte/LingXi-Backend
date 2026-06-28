@@ -1,0 +1,20 @@
+{
+  "chapter_id": "chapter_07_graph_traversal",
+  "misconceptions": [
+    {
+      "id": "ch07_mis01",
+      "title": "图搜索不需要 visited",
+      "correction": "图可能存在环或多路径，visited 是避免重复访问和无限循环的关键。"
+    },
+    {
+      "id": "ch07_mis02",
+      "title": "DFS 第一次找到的一定是最短路",
+      "correction": "DFS 不按层扩展，无权最短步数通常使用 BFS。"
+    },
+    {
+      "id": "ch07_mis03",
+      "title": "邻接矩阵总是优于邻接表",
+      "correction": "邻接矩阵查询单边方便，但稀疏图空间浪费明显。"
+    }
+  ]
+}

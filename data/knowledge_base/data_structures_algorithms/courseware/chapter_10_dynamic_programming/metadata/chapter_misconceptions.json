@@ -1,0 +1,20 @@
+{
+  "chapter_id": "chapter_10_dynamic_programming",
+  "misconceptions": [
+    {
+      "id": "ch10_mis01",
+      "title": "把 DP 等同于递归",
+      "correction": "DP 的关键是保存并复用重叠子问题结果，递归只是实现方式之一。"
+    },
+    {
+      "id": "ch10_mis02",
+      "title": "先背公式再解释状态",
+      "correction": "状态定义决定转移方程，必须先说明 dp 的含义。"
+    },
+    {
+      "id": "ch10_mis03",
+      "title": "忽略初始化和遍历顺序",
+      "correction": "转移依赖决定初始值和填表方向，顺序错误会读到错误状态。"
+    }
+  ]
+}

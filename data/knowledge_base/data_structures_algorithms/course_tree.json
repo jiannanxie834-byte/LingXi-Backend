@@ -1,0 +1,724 @@
+{
+  "course_id": "data_structures_algorithms",
+  "course_title": "数据结构与算法：可视化理解与代码实践",
+  "stage": "framework_placeholder",
+  "chapters": [
+    {
+      "chapter_id": "chapter_01_complexity",
+      "chapter_no": 1,
+      "title": "第 1 章 算法导论与复杂度分析",
+      "sections": [
+        {
+          "section_id": "sec_01_algorithm_program_input_size",
+          "title": "1.1 算法、程序与问题规模",
+          "unit_ids": [
+            "dsa_algorithm_intro",
+            "dsa_algorithm_vs_program",
+            "dsa_input_size"
+          ],
+          "path": "sections/01_algorithm_program_input_size.md"
+        },
+        {
+          "section_id": "sec_01_time_complexity_big_o",
+          "title": "1.2 时间复杂度与大 O 表示法",
+          "unit_ids": [
+            "dsa_time_complexity",
+            "dsa_big_o_notation"
+          ],
+          "path": "sections/02_time_complexity_big_o.md"
+        },
+        {
+          "section_id": "sec_01_common_complexities_growth",
+          "title": "1.3 常见复杂度等级与增长趋势",
+          "unit_ids": [
+            "dsa_common_complexities"
+          ],
+          "path": "sections/03_common_complexities_growth.md"
+        },
+        {
+          "section_id": "sec_01_loop_analysis",
+          "title": "1.4 循环结构复杂度分析",
+          "unit_ids": [
+            "dsa_loop_analysis"
+          ],
+          "path": "sections/04_loop_analysis.md"
+        },
+        {
+          "section_id": "sec_01_space_complexity_case_analysis",
+          "title": "1.5 空间复杂度与情况分析",
+          "unit_ids": [
+            "dsa_space_complexity",
+            "dsa_case_analysis"
+          ],
+          "path": "sections/05_space_complexity_case_analysis.md"
+        },
+        {
+          "section_id": "sec_01_search_and_recursion_cases",
+          "title": "1.6 复杂度分析案例：线性查找、二分查找与递归初步",
+          "unit_ids": [
+            "dsa_linear_search_complexity",
+            "dsa_binary_search_complexity",
+            "dsa_recursion_complexity_intro"
+          ],
+          "path": "sections/06_search_and_recursion_cases.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_02_linear_structures",
+      "chapter_no": 2,
+      "title": "第 2 章 数组、链表、栈与队列",
+      "sections": [
+        {
+          "section_id": "sec_02_linear_structure_intro",
+          "title": "2.1 线性结构概述",
+          "unit_ids": [
+            "dsa_linear_structure_intro"
+          ],
+          "path": "sections/01_linear_structure_intro.md"
+        },
+        {
+          "section_id": "sec_02_array",
+          "title": "2.2 数组：连续存储与随机访问",
+          "unit_ids": [
+            "dsa_array_basic",
+            "dsa_array_operations"
+          ],
+          "path": "sections/02_array.md"
+        },
+        {
+          "section_id": "sec_02_linked_list",
+          "title": "2.3 链表：节点、指针与动态连接",
+          "unit_ids": [
+            "dsa_linked_list_basic",
+            "dsa_linked_list_operations"
+          ],
+          "path": "sections/03_linked_list.md"
+        },
+        {
+          "section_id": "sec_02_stack",
+          "title": "2.4 栈：后进先出的操作模型",
+          "unit_ids": [
+            "dsa_stack"
+          ],
+          "path": "sections/04_stack.md"
+        },
+        {
+          "section_id": "sec_02_queue_deque",
+          "title": "2.5 队列与双端队列：先进先出与双端操作",
+          "unit_ids": [
+            "dsa_queue",
+            "dsa_deque"
+          ],
+          "path": "sections/05_queue_deque.md"
+        },
+        {
+          "section_id": "sec_02_two_pointers_monotonic_stack",
+          "title": "2.6 双指针与单调栈入门",
+          "unit_ids": [
+            "dsa_two_pointers_intro",
+            "dsa_monotonic_stack_intro"
+          ],
+          "path": "sections/06_two_pointers_monotonic_stack.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_03_recursion_divide_backtracking",
+      "chapter_no": 3,
+      "title": "第 3 章 递归、分治与回溯",
+      "sections": [
+        {
+          "section_id": "sec_03_recursion_basic",
+          "title": "3.1 递归的基本思想",
+          "unit_ids": [
+            "dsa_recursion_basic"
+          ],
+          "path": "sections/01_recursion_basic.md"
+        },
+        {
+          "section_id": "sec_03_call_stack",
+          "title": "3.2 调用栈与递归终止条件",
+          "unit_ids": [
+            "dsa_call_stack",
+            "dsa_recursion_base_case",
+            "dsa_recursion_depth"
+          ],
+          "path": "sections/02_call_stack.md"
+        },
+        {
+          "section_id": "sec_03_divide_and_conquer",
+          "title": "3.3 分治思想：拆分、求解与合并",
+          "unit_ids": [
+            "dsa_divide_and_conquer"
+          ],
+          "path": "sections/03_divide_and_conquer.md"
+        },
+        {
+          "section_id": "sec_03_binary_search_recursion",
+          "title": "3.4 递归版二分查找",
+          "unit_ids": [
+            "dsa_binary_search_recursion"
+          ],
+          "path": "sections/04_binary_search_recursion.md"
+        },
+        {
+          "section_id": "sec_03_backtracking_basic",
+          "title": "3.5 回溯思想：选择、探索与撤销",
+          "unit_ids": [
+            "dsa_backtracking_basic",
+            "dsa_choice_explore_undo"
+          ],
+          "path": "sections/05_backtracking_basic.md"
+        },
+        {
+          "section_id": "sec_03_permutation_combination",
+          "title": "3.6 排列、组合与搜索树入门",
+          "unit_ids": [
+            "dsa_permutation_combination",
+            "dsa_search_tree_intro"
+          ],
+          "path": "sections/06_permutation_combination.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_04_sorting_searching",
+      "chapter_no": 4,
+      "title": "第 4 章 排序与查找算法",
+      "sections": [
+        {
+          "section_id": "sec_04_sorting_searching_intro",
+          "title": "4.1 排序与查找的基本问题",
+          "unit_ids": [
+            "dsa_sorting_searching_intro"
+          ],
+          "path": "sections/01_sorting_searching_intro.md"
+        },
+        {
+          "section_id": "sec_04_simple_sorting",
+          "title": "4.2 简单排序：冒泡、选择与插入",
+          "unit_ids": [
+            "dsa_bubble_sort",
+            "dsa_selection_sort",
+            "dsa_insertion_sort"
+          ],
+          "path": "sections/02_simple_sorting.md"
+        },
+        {
+          "section_id": "sec_04_merge_quick_sort",
+          "title": "4.3 分治排序：归并排序与快速排序",
+          "unit_ids": [
+            "dsa_merge_sort",
+            "dsa_quick_sort"
+          ],
+          "path": "sections/03_merge_sort_quick_sort.md"
+        },
+        {
+          "section_id": "sec_04_binary_search",
+          "title": "4.4 二分查找与有序数据",
+          "unit_ids": [
+            "dsa_binary_search",
+            "dsa_binary_search_boundary"
+          ],
+          "path": "sections/04_binary_search.md"
+        },
+        {
+          "section_id": "sec_04_complexity_stability",
+          "title": "4.5 排序算法复杂度、稳定性与适用场景",
+          "unit_ids": [
+            "dsa_sorting_complexity_comparison",
+            "dsa_sort_stability"
+          ],
+          "path": "sections/05_sorting_complexity_stability.md"
+        },
+        {
+          "section_id": "sec_04_common_mistakes_applications",
+          "title": "4.6 排序与查找的常见错误和综合应用",
+          "unit_ids": [
+            "dsa_sorting_searching_intro",
+            "dsa_binary_search_boundary",
+            "dsa_sort_stability"
+          ],
+          "path": "sections/06_common_mistakes_and_applications.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_05_hash_heap_priority_queue",
+      "chapter_no": 5,
+      "title": "第 5 章 哈希表、堆与优先队列",
+      "sections": [
+        {
+          "section_id": "sec_05_hash_table_intro",
+          "title": "5.1 哈希表的基本思想",
+          "unit_ids": [
+            "dsa_hash_table",
+            "dsa_hash_function"
+          ],
+          "path": "sections/01_hash_table_intro.md"
+        },
+        {
+          "section_id": "sec_05_hash_collision",
+          "title": "5.2 哈希冲突与解决方法",
+          "unit_ids": [
+            "dsa_hash_collision"
+          ],
+          "path": "sections/02_hash_collision.md"
+        },
+        {
+          "section_id": "sec_05_set_map_usage",
+          "title": "5.3 Set 与 Map 的典型使用",
+          "unit_ids": [
+            "dsa_set_usage",
+            "dsa_map_usage"
+          ],
+          "path": "sections/03_set_map_usage.md"
+        },
+        {
+          "section_id": "sec_05_heap_basic",
+          "title": "5.4 堆的基本结构与性质",
+          "unit_ids": [
+            "dsa_heap_basic",
+            "dsa_min_heap",
+            "dsa_max_heap"
+          ],
+          "path": "sections/04_heap_basic.md"
+        },
+        {
+          "section_id": "sec_05_priority_queue",
+          "title": "5.5 优先队列的操作模型",
+          "unit_ids": [
+            "dsa_priority_queue"
+          ],
+          "path": "sections/05_priority_queue.md"
+        },
+        {
+          "section_id": "sec_05_top_k_problem",
+          "title": "5.6 Top-K 问题与应用场景",
+          "unit_ids": [
+            "dsa_top_k_problem"
+          ],
+          "path": "sections/06_top_k_problem.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_06_trees",
+      "chapter_no": 6,
+      "title": "第 6 章 树、二叉树与搜索树",
+      "sections": [
+        {
+          "section_id": "sec_06_tree_basic",
+          "title": "6.1 树结构的基本概念",
+          "unit_ids": [
+            "dsa_tree_basic",
+            "dsa_tree_height_depth"
+          ],
+          "path": "sections/01_tree_basic.md"
+        },
+        {
+          "section_id": "sec_06_binary_tree_basic",
+          "title": "6.2 二叉树的基本概念",
+          "unit_ids": [
+            "dsa_binary_tree_basic"
+          ],
+          "path": "sections/02_binary_tree_basic.md"
+        },
+        {
+          "section_id": "sec_06_tree_traversal",
+          "title": "6.3 二叉树遍历：前序、中序与后序",
+          "unit_ids": [
+            "dsa_preorder_traversal",
+            "dsa_inorder_traversal",
+            "dsa_postorder_traversal"
+          ],
+          "path": "sections/03_tree_traversal.md"
+        },
+        {
+          "section_id": "sec_06_level_order_traversal",
+          "title": "6.4 层序遍历与队列",
+          "unit_ids": [
+            "dsa_level_order_traversal"
+          ],
+          "path": "sections/04_level_order_traversal.md"
+        },
+        {
+          "section_id": "sec_06_binary_search_tree",
+          "title": "6.5 二叉搜索树",
+          "unit_ids": [
+            "dsa_binary_search_tree",
+            "dsa_bst_search"
+          ],
+          "path": "sections/05_binary_search_tree.md"
+        },
+        {
+          "section_id": "sec_06_tree_recursion_pattern",
+          "title": "6.6 树上的递归模式",
+          "unit_ids": [
+            "dsa_tree_recursion_pattern"
+          ],
+          "path": "sections/06_tree_recursion_pattern.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_07_graph_traversal",
+      "chapter_no": 7,
+      "title": "第 7 章 图的表示、BFS 与 DFS",
+      "sections": [
+        {
+          "section_id": "sec_07_graph_basic",
+          "title": "7.1 图的基本概念",
+          "unit_ids": [
+            "dsa_graph_basic",
+            "dsa_directed_undirected_graph",
+            "dsa_weighted_unweighted_graph"
+          ],
+          "path": "sections/01_graph_basic.md"
+        },
+        {
+          "section_id": "sec_07_graph_representation",
+          "title": "7.2 图的表示：邻接矩阵与邻接表",
+          "unit_ids": [
+            "dsa_adjacency_matrix",
+            "dsa_adjacency_list"
+          ],
+          "path": "sections/02_graph_representation.md"
+        },
+        {
+          "section_id": "sec_07_bfs",
+          "title": "7.3 BFS：按层扩展的广度优先搜索",
+          "unit_ids": [
+            "dsa_bfs",
+            "dsa_visited_marking"
+          ],
+          "path": "sections/03_bfs.md"
+        },
+        {
+          "section_id": "sec_07_dfs",
+          "title": "7.4 DFS：沿路径深入的深度优先搜索",
+          "unit_ids": [
+            "dsa_dfs",
+            "dsa_visited_marking"
+          ],
+          "path": "sections/04_dfs.md"
+        },
+        {
+          "section_id": "sec_07_connected_components",
+          "title": "7.5 连通分量与访问标记",
+          "unit_ids": [
+            "dsa_connected_components",
+            "dsa_visited_marking"
+          ],
+          "path": "sections/05_connected_components.md"
+        },
+        {
+          "section_id": "sec_07_maze_topological_intro",
+          "title": "7.6 迷宫搜索与拓扑排序入门",
+          "unit_ids": [
+            "dsa_maze_search",
+            "dsa_topological_sort_intro"
+          ],
+          "path": "sections/06_maze_and_topological_intro.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_08_shortest_path_mst",
+      "chapter_no": 8,
+      "title": "第 8 章 最短路径与最小生成树",
+      "sections": [
+        {
+          "section_id": "sec_08_shortest_path_intro",
+          "title": "8.1 最短路径问题与带权图",
+          "unit_ids": [
+            "dsa_weighted_graph",
+            "dsa_shortest_path_problem"
+          ],
+          "path": "sections/01_shortest_path_intro.md"
+        },
+        {
+          "section_id": "sec_08_dijkstra",
+          "title": "8.2 Dijkstra 算法：非负权图中的单源最短路径",
+          "unit_ids": [
+            "dsa_dijkstra",
+            "dsa_relaxation"
+          ],
+          "path": "sections/02_dijkstra.md"
+        },
+        {
+          "section_id": "sec_08_bellman_ford_floyd_intro",
+          "title": "8.3 Bellman-Ford 与 Floyd-Warshall 入门",
+          "unit_ids": [
+            "dsa_bellman_ford_intro",
+            "dsa_floyd_warshall_intro",
+            "dsa_relaxation"
+          ],
+          "path": "sections/03_bellman_ford_floyd_intro.md"
+        },
+        {
+          "section_id": "sec_08_mst_intro",
+          "title": "8.4 最小生成树问题",
+          "unit_ids": [
+            "dsa_mst_intro"
+          ],
+          "path": "sections/04_mst_intro.md"
+        },
+        {
+          "section_id": "sec_08_kruskal_prim",
+          "title": "8.5 Kruskal 与 Prim 算法",
+          "unit_ids": [
+            "dsa_kruskal",
+            "dsa_prim"
+          ],
+          "path": "sections/05_kruskal_prim.md"
+        },
+        {
+          "section_id": "sec_08_union_find_for_mst",
+          "title": "8.6 并查集在 Kruskal 中的作用",
+          "unit_ids": [
+            "dsa_union_find",
+            "dsa_cycle_detection_union_find"
+          ],
+          "path": "sections/06_union_find_for_mst.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_09_greedy",
+      "chapter_no": 9,
+      "title": "第 9 章 贪心算法",
+      "sections": [
+        {
+          "section_id": "sec_09_greedy_intro",
+          "title": "9.1 贪心算法的基本思想",
+          "unit_ids": [
+            "dsa_greedy_intro"
+          ],
+          "path": "sections/01_greedy_intro.md"
+        },
+        {
+          "section_id": "sec_09_greedy_choice_property",
+          "title": "9.2 贪心选择性质与最优子结构",
+          "unit_ids": [
+            "dsa_greedy_choice_property",
+            "dsa_optimal_substructure"
+          ],
+          "path": "sections/02_greedy_choice_property.md"
+        },
+        {
+          "section_id": "sec_09_interval_scheduling",
+          "title": "9.3 区间调度问题",
+          "unit_ids": [
+            "dsa_interval_scheduling"
+          ],
+          "path": "sections/03_interval_scheduling.md"
+        },
+        {
+          "section_id": "sec_09_activity_selection",
+          "title": "9.4 活动选择问题",
+          "unit_ids": [
+            "dsa_activity_selection"
+          ],
+          "path": "sections/04_activity_selection.md"
+        },
+        {
+          "section_id": "sec_09_huffman_intro",
+          "title": "9.5 Huffman 编码入门",
+          "unit_ids": [
+            "dsa_huffman_intro"
+          ],
+          "path": "sections/05_huffman_intro.md"
+        },
+        {
+          "section_id": "sec_09_greedy_counterexample",
+          "title": "9.6 贪心算法的反例与适用边界",
+          "unit_ids": [
+            "dsa_greedy_counterexample",
+            "dsa_greedy_vs_dp_intro"
+          ],
+          "path": "sections/06_greedy_counterexample.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_10_dynamic_programming",
+      "chapter_no": 10,
+      "title": "第 10 章 动态规划",
+      "sections": [
+        {
+          "section_id": "sec_10_dp_intro",
+          "title": "10.1 动态规划的基本思想",
+          "unit_ids": [
+            "dsa_dp_intro",
+            "dsa_overlapping_subproblems",
+            "dsa_optimal_substructure_dp"
+          ],
+          "path": "sections/01_dp_intro.md"
+        },
+        {
+          "section_id": "sec_10_state_definition",
+          "title": "10.2 状态定义：把问题描述成可复用的子问题",
+          "unit_ids": [
+            "dsa_dp_state_definition"
+          ],
+          "path": "sections/02_state_definition.md"
+        },
+        {
+          "section_id": "sec_10_transition_equation",
+          "title": "10.3 状态转移方程",
+          "unit_ids": [
+            "dsa_dp_transition"
+          ],
+          "path": "sections/03_transition_equation.md"
+        },
+        {
+          "section_id": "sec_10_table_order",
+          "title": "10.4 初始化、遍历顺序与 DP 表",
+          "unit_ids": [
+            "dsa_dp_initialization",
+            "dsa_dp_table_order"
+          ],
+          "path": "sections/04_table_order.md"
+        },
+        {
+          "section_id": "sec_10_classic_dp_cases",
+          "title": "10.5 经典案例：爬楼梯、背包与最长公共子序列",
+          "unit_ids": [
+            "dsa_climbing_stairs",
+            "dsa_knapsack_01",
+            "dsa_longest_common_subsequence"
+          ],
+          "path": "sections/05_classic_dp_cases.md"
+        },
+        {
+          "section_id": "sec_10_dp_common_mistakes",
+          "title": "10.6 动态规划常见错误与优化入门",
+          "unit_ids": [
+            "dsa_dp_common_mistakes",
+            "dsa_dp_rolling_array_intro"
+          ],
+          "path": "sections/06_dp_common_mistakes.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_11_string_algorithms",
+      "chapter_no": 11,
+      "title": "第 11 章 字符串算法与匹配",
+      "sections": [
+        {
+          "section_id": "sec_11_string_basic",
+          "title": "11.1 字符串问题的基本概念",
+          "unit_ids": [
+            "dsa_string_basic",
+            "dsa_substring_pattern_text"
+          ],
+          "path": "sections/01_string_basic.md"
+        },
+        {
+          "section_id": "sec_11_brute_force_matching",
+          "title": "11.2 暴力字符串匹配",
+          "unit_ids": [
+            "dsa_brute_force_matching",
+            "dsa_string_matching_complexity"
+          ],
+          "path": "sections/02_brute_force_matching.md"
+        },
+        {
+          "section_id": "sec_11_kmp_intro",
+          "title": "11.3 KMP 算法的核心思想",
+          "unit_ids": [
+            "dsa_kmp_intro"
+          ],
+          "path": "sections/03_kmp_intro.md"
+        },
+        {
+          "section_id": "sec_11_prefix_function",
+          "title": "11.4 前缀函数与 next 数组",
+          "unit_ids": [
+            "dsa_prefix_function",
+            "dsa_kmp_next_array"
+          ],
+          "path": "sections/04_prefix_function.md"
+        },
+        {
+          "section_id": "sec_11_trie",
+          "title": "11.5 Trie 字典树",
+          "unit_ids": [
+            "dsa_trie",
+            "dsa_trie_insert_search"
+          ],
+          "path": "sections/05_trie.md"
+        },
+        {
+          "section_id": "sec_11_rolling_hash_intro",
+          "title": "11.6 滚动哈希入门",
+          "unit_ids": [
+            "dsa_rolling_hash_intro"
+          ],
+          "path": "sections/06_rolling_hash_intro.md"
+        }
+      ]
+    },
+    {
+      "chapter_id": "chapter_12_algorithm_project",
+      "chapter_no": 12,
+      "title": "第 12 章 综合项目：算法可视化与刷题训练系统",
+      "sections": [
+        {
+          "section_id": "sec_12_project_overview",
+          "title": "12.1 综合项目的目标与选题方式",
+          "unit_ids": [
+            "dsa_project_overview"
+          ],
+          "path": "sections/01_project_overview.md"
+        },
+        {
+          "section_id": "sec_12_algorithm_visualizer",
+          "title": "12.2 项目一：算法可视化小系统",
+          "unit_ids": [
+            "dsa_project_algorithm_visualizer"
+          ],
+          "path": "sections/02_algorithm_visualizer.md"
+        },
+        {
+          "section_id": "sec_12_maze_path_finder",
+          "title": "12.3 项目二：迷宫寻路与路径规划",
+          "unit_ids": [
+            "dsa_project_maze_path_finder"
+          ],
+          "path": "sections/03_maze_path_finder.md"
+        },
+        {
+          "section_id": "sec_12_online_judge_trainer",
+          "title": "12.4 项目三：简易刷题训练系统",
+          "unit_ids": [
+            "dsa_project_online_judge_trainer",
+            "dsa_project_testing"
+          ],
+          "path": "sections/04_online_judge_trainer.md"
+        },
+        {
+          "section_id": "sec_12_project_report",
+          "title": "12.5 项目报告与代码提交规范",
+          "unit_ids": [
+            "dsa_project_report_template",
+            "dsa_project_rubric"
+          ],
+          "path": "sections/05_project_report.md"
+        },
+        {
+          "section_id": "sec_12_presentation_reflection",
+          "title": "12.6 项目展示、反思与能力迁移",
+          "unit_ids": [
+            "dsa_project_presentation",
+            "dsa_project_reflection"
+          ],
+          "path": "sections/06_presentation_and_reflection.md"
+        }
+      ]
+    }
+  ]
+}

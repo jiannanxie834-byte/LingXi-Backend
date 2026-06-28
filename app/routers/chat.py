@@ -175,7 +175,7 @@ def send_message(
                 source_type="chat",
                 source_id=session.id,
                 profile=result.get("profile", {}),
-                reason=f"本轮对话围绕「{result.get('topic') or '深度学习主题'}」更新画像。",
+                reason=f"本轮对话围绕「{result.get('topic') or '算法学习主题'}」更新画像。",
             )
 
         student_response = orchestrator_service.build_student_response(result, trace_id)
@@ -253,7 +253,7 @@ def stream_message(
     def generate():
         progress_events = [
             ("已识别学习需求", 10, "IntentSemanticAgent"),
-            ("已归一到《深度学习》课程知识单元", 25, "CourseMapAgent"),
+            ("已归一到《数据结构与算法》课程知识单元", 25, "CourseMapAgent"),
             ("已更新学生画像", 40, "ProfileAgent"),
             ("已检索课程知识库", 55, "EvidenceRetrievalAgent"),
             ("正在生成学习路径与资源计划", 70, "LearningPathAgent"),

@@ -27,6 +27,7 @@ def _json_load(value, default):
 def _status_from_resource(status: str) -> str:
     return {
         "已通过": "published",
+        "framework_placeholder": "framework_placeholder",
         "待审核": "needs_review",
         "未通过": "needs_review",
         "archived_shallow": "archived",
@@ -111,7 +112,7 @@ def upsert_from_resource(
         )
         db.add(artifact)
 
-    artifact.course_id = plan_item.get("course_id") or semantic_result.get("course_id") or "deep_learning_v2"
+    artifact.course_id = plan_item.get("course_id") or semantic_result.get("course_id") or "data_structures_algorithms"
     artifact.unit_ids_json = _json_dump([unit_id] if unit_id else [])
     artifact.student_id = resource.applicant_username or ""
     artifact.type = artifact_types.normalize_artifact_type(resource.type)
@@ -125,7 +126,7 @@ def upsert_from_resource(
     ]
     assets.append(review_bundle)
     artifact.assets_json = _json_dump(assets)
-    artifact.personalization_reason = plan_item.get("personalization_reason") or "根据本轮深度学习主题、学生画像和学习目标生成。"
+    artifact.personalization_reason = plan_item.get("personalization_reason") or "根据本轮算法学习主题、学生画像和学习目标生成。"
     artifact.evidence_refs_json = _json_dump(evidence_refs)
     artifact.quality_score = float(
         teaching_review.get("teaching_quality_score")

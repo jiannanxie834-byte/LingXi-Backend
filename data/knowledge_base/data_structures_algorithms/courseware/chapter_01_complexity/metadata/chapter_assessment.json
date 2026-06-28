@@ -1,0 +1,33 @@
+{
+  "chapter_id": "chapter_01_complexity",
+  "assessment_dimensions": [
+    {
+      "dimension": "概念辨析",
+      "evidence": [
+        "算法与程序",
+        "问题规模 n"
+      ]
+    },
+    {
+      "dimension": "复杂度表达",
+      "evidence": [
+        "大 O 化简",
+        "常见复杂度排序"
+      ]
+    },
+    {
+      "dimension": "代码分析",
+      "evidence": [
+        "循环结构",
+        "查找代码"
+      ]
+    },
+    {
+      "dimension": "边界意识",
+      "evidence": [
+        "最好最坏情况",
+        "额外空间"
+      ]
+    }
+  ]
+}

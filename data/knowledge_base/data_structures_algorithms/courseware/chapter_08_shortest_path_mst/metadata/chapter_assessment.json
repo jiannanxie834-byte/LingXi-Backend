@@ -1,0 +1,10 @@
+{
+  "chapter_id": "chapter_08_shortest_path_mst",
+  "assessment_points": [
+    "能区分无权图最少步数和带权图最短路径",
+    "能解释一次松弛操作",
+    "能判断不同最短路径算法的适用条件",
+    "能说明 MST 的目标和 Kruskal/Prim 的差异",
+    "能完成 Dijkstra 阅读和并查集补全任务"
+  ]
+}

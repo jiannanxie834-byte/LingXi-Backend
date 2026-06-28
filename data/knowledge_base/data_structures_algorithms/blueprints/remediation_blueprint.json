@@ -1,0 +1,24 @@
+{
+  "blueprint_id": "remediation_blueprint",
+  "resource_type": "remediation_report",
+  "trigger_scope": [
+    "remediation"
+  ],
+  "required_inputs": [
+    "student_profile",
+    "weak_point",
+    "error_pattern",
+    "unit_id",
+    "evidence_chunks"
+  ],
+  "required_sections": [
+    "问题表现",
+    "可能错因",
+    "核心概念回补",
+    "一步一步纠正",
+    "针对性练习",
+    "学习路径补丁"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

@@ -1,0 +1,38 @@
+{
+  "course": [
+    "course_orientation",
+    "diagnostic_quiz",
+    "learning_path"
+  ],
+  "chapter": [
+    "chapter_overview",
+    "chapter_learning_path",
+    "recommended_base_resources"
+  ],
+  "unit": [
+    "course_note",
+    "mind_map",
+    "exercise_set",
+    "code_lab"
+  ],
+  "concept": [
+    "micro_note",
+    "visual_explanation",
+    "targeted_exercises"
+  ],
+  "comparison": [
+    "comparison_note",
+    "comparison_table",
+    "exercise_set"
+  ],
+  "project": [
+    "project_brief",
+    "code_lab",
+    "rubric"
+  ],
+  "remediation": [
+    "misconception_analysis",
+    "targeted_exercises",
+    "learning_path_patch"
+  ]
+}

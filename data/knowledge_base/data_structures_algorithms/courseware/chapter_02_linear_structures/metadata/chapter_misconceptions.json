@@ -1,0 +1,21 @@
+{
+  "chapter_id": "chapter_02_linear_structures",
+  "items": [
+    {
+      "name": "把线性结构等同于数组",
+      "correction": "线性结构强调逻辑顺序，数组只是实现方式之一。"
+    },
+    {
+      "name": "忽略链表定位成本",
+      "correction": "链表插入删除快通常以已经定位为前提。"
+    },
+    {
+      "name": "混淆栈和队列",
+      "correction": "栈后进先出，队列先进先出。"
+    },
+    {
+      "name": "机械套用双指针或单调栈",
+      "correction": "必须能解释移动或弹出规则为什么成立。"
+    }
+  ]
+}

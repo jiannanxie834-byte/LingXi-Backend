@@ -1,0 +1,20 @@
+{
+  "chapter_id": "chapter_08_shortest_path_mst",
+  "misconceptions": [
+    {
+      "id": "ch08_mis01",
+      "title": "把最短路径和最小生成树混为一谈",
+      "correction": "最短路径关注路径代价，MST 关注连接所有顶点的总成本。"
+    },
+    {
+      "id": "ch08_mis02",
+      "title": "负权图直接使用 Dijkstra",
+      "correction": "Dijkstra 依赖非负权，负权边需要考虑其他算法。"
+    },
+    {
+      "id": "ch08_mis03",
+      "title": "Kruskal 只看边权小就加入",
+      "correction": "边权小也要判断是否成环，成环边必须跳过。"
+    }
+  ]
+}

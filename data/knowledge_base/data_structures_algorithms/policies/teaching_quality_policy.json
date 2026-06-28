@@ -1,0 +1,11 @@
+{
+  "course_id": "data_structures_algorithms",
+  "stage": "framework_placeholder",
+  "checks": [
+    "scope_grounding",
+    "evidence_traceability",
+    "no_formal_content_in_framework",
+    "student_visibility_copy"
+  ],
+  "placeholder_status": "framework_placeholder"
+}

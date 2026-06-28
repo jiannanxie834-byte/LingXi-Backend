@@ -1,0 +1,9 @@
+{
+  "chapter_id": "chapter_03_recursion_divide_backtracking",
+  "assessment_points": [
+    "能判断递归函数是否一定停止。",
+    "能手动追踪简单递归调用栈。",
+    "能分析递归版二分查找复杂度。",
+    "能画出基础排列组合搜索树。"
+  ]
+}

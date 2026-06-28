@@ -1,0 +1,11 @@
+{
+  "chapter_id": "chapter_08_shortest_path_mst",
+  "title": "第 8 章 最短路径与最小生成树",
+  "objectives": [
+    "理解带权图、路径长度、单源和多源最短路径",
+    "掌握松弛操作和 Dijkstra 的非负权适用条件",
+    "能初步区分 Bellman-Ford 与 Floyd-Warshall 的应用场景",
+    "理解最小生成树的定义和目标",
+    "能比较 Kruskal、Prim，并说明并查集在 Kruskal 中的作用"
+  ]
+}

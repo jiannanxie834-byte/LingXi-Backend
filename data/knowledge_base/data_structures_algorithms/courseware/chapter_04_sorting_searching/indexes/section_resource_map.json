@@ -1,0 +1,109 @@
+{
+  "sec_04_sorting_searching_intro": {
+    "unit_ids": [
+      "dsa_sorting_searching_intro"
+    ],
+    "base_resources": [
+      "sections/01_sorting_searching_intro.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch04_ex01_sort_search_role"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": []
+  },
+  "sec_04_simple_sorting": {
+    "unit_ids": [
+      "dsa_bubble_sort",
+      "dsa_selection_sort",
+      "dsa_insertion_sort"
+    ],
+    "base_resources": [
+      "sections/02_simple_sorting.md"
+    ],
+    "exercise_filters": [
+      "ch04_ex02_simple_sort_stability",
+      "ch04_ex06_insertion_code_reading"
+    ],
+    "code_task_filters": [
+      "ch04_code01_insertion_sort_completion"
+    ],
+    "video_guide_filters": [
+      "ch04_video01_sorting_complexity"
+    ]
+  },
+  "sec_04_merge_quick_sort": {
+    "unit_ids": [
+      "dsa_merge_sort",
+      "dsa_quick_sort"
+    ],
+    "base_resources": [
+      "sections/03_merge_sort_quick_sort.md"
+    ],
+    "exercise_filters": [
+      "ch04_ex03_merge_quick_difference",
+      "ch04_ex04_merge_complexity"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch04_video01_sorting_complexity"
+    ]
+  },
+  "sec_04_binary_search": {
+    "unit_ids": [
+      "dsa_binary_search",
+      "dsa_binary_search_boundary"
+    ],
+    "base_resources": [
+      "sections/04_binary_search.md"
+    ],
+    "exercise_filters": [
+      "ch04_ex05_binary_boundary",
+      "ch04_ex07_binary_code_completion"
+    ],
+    "code_task_filters": [
+      "ch04_code02_binary_search_boundary"
+    ],
+    "video_guide_filters": [
+      "ch04_video02_binary_search_boundary"
+    ]
+  },
+  "sec_04_complexity_stability": {
+    "unit_ids": [
+      "dsa_sorting_complexity_comparison",
+      "dsa_sort_stability"
+    ],
+    "base_resources": [
+      "sections/05_sorting_complexity_stability.md"
+    ],
+    "exercise_filters": [
+      "ch04_ex04_merge_complexity",
+      "ch04_ex08_application_two_pointers"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch04_video01_sorting_complexity"
+    ]
+  },
+  "sec_04_common_mistakes_applications": {
+    "unit_ids": [
+      "dsa_sorting_searching_intro",
+      "dsa_binary_search_boundary",
+      "dsa_sort_stability"
+    ],
+    "base_resources": [
+      "sections/06_common_mistakes_and_applications.md"
+    ],
+    "exercise_filters": [
+      "ch04_ex05_binary_boundary",
+      "ch04_ex08_application_two_pointers"
+    ],
+    "code_task_filters": [
+      "ch04_code02_binary_search_boundary"
+    ],
+    "video_guide_filters": [
+      "ch04_video02_binary_search_boundary"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "course_id": "data_structures_algorithms",
+  "stage": "framework_placeholder",
+  "scope_levels": [
+    "course",
+    "chapter",
+    "unit",
+    "concept",
+    "comparison",
+    "project",
+    "remediation",
+    "out_of_course"
+  ],
+  "rule": "优先精确命中 section_id / unit_id；只有明确系统学习才扩大到 chapter。"
+}

@@ -1,0 +1,20 @@
+{
+  "chapter_id": "chapter_09_greedy",
+  "misconceptions": [
+    {
+      "id": "ch09_mis01",
+      "title": "把贪心理解成凭感觉选择",
+      "correction": "贪心策略必须有明确规则和正确性理由。"
+    },
+    {
+      "id": "ch09_mis02",
+      "title": "有最优子结构就能贪心",
+      "correction": "动态规划也有最优子结构，贪心还需要贪心选择性质。"
+    },
+    {
+      "id": "ch09_mis03",
+      "title": "所有零钱兑换都适合最大面值优先",
+      "correction": "某些币值体系存在反例，需要动态规划或证明支持。"
+    }
+  ]
+}

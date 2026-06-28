@@ -9,10 +9,9 @@ from app.models.schemas import CourseKnowledge, Resource, VideoResource
 from app.services.data_services import (
     chapter_resource_service,
     content_guard_service,
-    deep_learning_course_map_service,
+    dsa_course_map_service,
     resource_artifact_service,
     resource_artifact_type_service as artifact_types,
-    resource_quality_gate,
 )
 
 
@@ -20,7 +19,7 @@ COURSE_DIR = (
     Path(__file__).resolve().parents[3]
     / "data"
     / "knowledge_base"
-    / "deep_learning_v2"
+    / "data_structures_algorithms"
 )
 COURSE_MANIFEST_PATH = COURSE_DIR / "course_manifest.json"
 LEGACY_MANIFEST_PATH = COURSE_DIR / "manifest.json"
@@ -59,7 +58,7 @@ def _load_knowledge_units() -> List[Dict]:
 def _chapter_title_map() -> Dict[str, str]:
     return {
         item.get("chapter_id", ""): item.get("title", "")
-        for item in deep_learning_course_map_service.DEEP_LEARNING_CHAPTERS
+        for item in dsa_course_map_service.DSA_CHAPTERS
     }
 
 
@@ -102,6 +101,7 @@ def _knowledge_points_from_units(units: List[Dict]) -> List[Dict]:
             "chapter": chapter_title,
             "core": "\n".join([
                 f"知识单元 ID：{unit.get('unit_id', '')}",
+                f"小节 ID：{unit.get('section_id', '')}",
                 f"核心概念：{'、'.join(core_concepts) or '待补充'}",
                 f"学习产出：{'；'.join(outcomes) or '待补充'}",
                 f"前置知识：{'、'.join(prerequisites) or '无'}",
@@ -110,10 +110,10 @@ def _knowledge_points_from_units(units: List[Dict]) -> List[Dict]:
                 f"公式/机制：{'；'.join(formulas) or '按章节材料理解'}",
             ]),
             "pitfalls": misconceptions,
-            "practice": "；".join(resource_focus or outcomes or [f"围绕「{title}」完成概念解释、练习和复盘"]),
+            "practice": "；".join(resource_focus or outcomes or [f"占位：围绕「{title}」的练习与复盘将在个性化生成阶段补充"]),
             "practice_kind": "knowledge_unit",
-            "practice_output": unit.get("code_lab") or f"完成「{title}」学习检查清单与 3 道自测题。",
-            "code_lang": "python" if "PyTorch" in " ".join([title, *aliases, unit.get("code_lab", "")]) else None,
+            "practice_output": unit.get("code_lab") or f"占位：后续根据画像生成「{title}」学习检查清单。",
+            "code_lang": "python" if unit.get("code_lab") else None,
             "code": unit.get("code_lab") or None,
         })
     return points
@@ -121,12 +121,12 @@ def _knowledge_points_from_units(units: List[Dict]) -> List[Dict]:
 
 def _unit_resource_id(unit_id: str) -> str:
     safe_unit_id = "".join(ch if ch.isalnum() else "_" for ch in str(unit_id or "").upper())
-    return f"KB-DL-UNIT-{safe_unit_id}"[:64]
+    return f"KB-DSA-UNIT-{safe_unit_id}"[:64]
 
 
 def _build_unit_resource_content(unit: Dict) -> str:
     chapters = _chapter_title_map()
-    title = unit.get("title", "深度学习知识点")
+    title = unit.get("title", "数据结构与算法知识点")
     chapter_title = chapters.get(unit.get("chapter_id", ""), unit.get("chapter_id", ""))
     core_concepts = unit.get("core_concepts") or []
     outcomes = unit.get("learning_outcomes") or []
@@ -141,7 +141,7 @@ def _build_unit_resource_content(unit: Dict) -> str:
         f"# {title} · 初始知识点资源卡",
         "",
         "## 课程位置",
-        f"本资源属于《深度学习》课程的「{chapter_title or '未标注章节'}」部分，知识单元 ID 为 `{unit.get('unit_id', '')}`。",
+        f"本资源属于《数据结构与算法》课程的「{chapter_title or '未标注章节'}」部分，知识单元 ID 为 `{unit.get('unit_id', '')}`。",
         "",
         "## 前置知识",
         "、".join(prerequisites) if prerequisites else "该知识点暂无强制前置知识，可从课程导学或本章导论开始。",
@@ -165,32 +165,18 @@ def _build_unit_resource_content(unit: Dict) -> str:
         "",
         "## 学习检查",
         f"1. 能用自己的话解释「{title}」是什么。",
-        "2. 能说明它在深度学习模型训练、结构设计或项目实践中的作用。",
+        "2. 能说明它在算法设计、复杂度分析、代码实现或题目训练中的作用。",
         "3. 能指出至少一个常见误区，并给出纠正方式。",
         "",
         "## 参考依据",
         f"- evidence_id: {unit.get('unit_id', '')}",
-        f"- 知识来源：data/knowledge_base/deep_learning_v2/knowledge_units.jsonl；{chapter_title}",
+        f"- 知识来源：data/knowledge_base/data_structures_algorithms/knowledge_units.jsonl；{chapter_title}",
     ]
     return "\n".join(lines)
 
 
 def _unit_resource_documents(units: List[Dict]) -> List[Dict]:
-    docs = []
-    for unit in units:
-        unit_id = unit.get("unit_id", "")
-        title = unit.get("title", "").strip()
-        if not unit_id or not title:
-            continue
-        docs.append({
-            "id": _unit_resource_id(unit_id),
-            "title": f"{title} · 初始知识点资源卡",
-            "type": artifact_types.COURSE_NOTE,
-            "summary": f"由《深度学习》细粒度课程图谱生成的「{title}」初始学习入口。",
-            "content": _build_unit_resource_content(unit),
-            "unit_id": unit_id,
-        })
-    return docs
+    return []
 
 
 def _upsert_knowledge_points(db: Session, points: List[Dict]) -> int:
@@ -234,36 +220,10 @@ def _build_resource_notes(resource: Dict, content: str, manifest: Dict) -> str:
         reviewer="课程知识库预审 Agent",
     )
     base_note = (
-        "系统内置初始课程知识库资源，来源于参赛团队自构建的《深度学习》课程文档集；"
-        "已通过预审，可直接作为学生端初始资源和智能体生成依据。"
+        "系统内置《数据结构与算法》课程框架占位资源；"
+        "本阶段只建立章节入口和资源结构，不包含正式课程正文。"
     )
     notes = content_guard_service.attach_review_note(base_note, review)
-    teaching_review = resource_quality_gate.validate_teaching_quality(
-        {
-            "title": resource.get("title", ""),
-            "type": resource.get("type", ""),
-            "summary": resource.get("summary", ""),
-            "content": content,
-            "source": source,
-            "chapter_id": chapter_id,
-            "unit_id": review_unit_id,
-            "evidence_chunks": [
-                review_unit_id,
-                metadata.get("source_file", ""),
-            ],
-        },
-        {
-            "resource_type": resource.get("type", ""),
-            "chapter_id": chapter_id,
-            "unit_id": review_unit_id,
-            "topic": resource.get("title", ""),
-            "evidence_chunks": [
-                review_unit_id,
-                metadata.get("source_file", ""),
-            ],
-        },
-    )
-    notes = resource_quality_gate.attach_teaching_quality_note(notes, teaching_review)
     if resource.get("metadata"):
         notes = "\n\n".join([
             notes,
@@ -298,7 +258,7 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
 
         row.title = title
         row.type = resource_type
-        row.status = "已通过"
+        row.status = "framework_placeholder"
         row.uploader = uploader
         row.time = now
         row.summary = doc.get("summary", "")
@@ -306,25 +266,25 @@ def _upsert_resource_documents(db: Session, manifest: Dict, resource_documents: 
         row.source = source
         row.agent_notes = _build_resource_notes(doc, content, manifest)
         db.flush()
-        course_match = deep_learning_course_map_service.match_deep_learning_topic(title, content[:500])
+        course_match = dsa_course_map_service.match_dsa_topic(title, content[:500])
         unit_id = doc.get("unit_id") or course_match.get("unit_id", "")
         metadata = doc.get("metadata") or {}
         resource_artifact_service.upsert_from_resource(
             db,
             resource=row,
             plan_item={
-                "course_id": manifest.get("course_id", "deep_learning_v2"),
+                "course_id": manifest.get("course_id", dsa_course_map_service.COURSE_ID),
                 "unit_id": unit_id,
                 "content_format": artifact_types.get_format(row.type),
                 "evidence_refs": [unit_id] if unit_id else [row.id],
-                "personalization_reason": "系统内置《深度学习》初始知识库资源，可作为学生端学习入口和智能体生成依据。",
+                "personalization_reason": "系统内置《数据结构与算法》课程框架占位资源，正式内容将在后续知识库构建阶段导入。",
                 "agent_name": "KnowledgeSeedAgent",
                 "chapter_id": metadata.get("chapter_id", ""),
                 "chapter": metadata.get("chapter_title", ""),
-                "quality_score": 96 if metadata.get("quality_level") == "curated" else 88,
+                "quality_score": 0,
             },
             semantic_result={
-                "course_id": manifest.get("course_id", "deep_learning_v2"),
+                "course_id": manifest.get("course_id", dsa_course_map_service.COURSE_ID),
                 "unit_id": unit_id,
             },
         )
@@ -356,7 +316,7 @@ def _upsert_video_catalog(db: Session) -> int:
             row = VideoResource(video_id=video_id, created_at=now)
             db.add(row)
 
-        row.course_id = item.get("course_id") or "deep_learning_v2"
+        row.course_id = item.get("course_id") or dsa_course_map_service.COURSE_ID
         row.unit_ids_json = json.dumps(item.get("unit_ids") or [], ensure_ascii=False)
         row.title = title
         row.platform = item.get("platform") or ""
@@ -397,7 +357,7 @@ def seed_initial_course_knowledge_base(db: Session) -> Dict:
         db.commit()
         return {
             "success": True,
-            "course": manifest.get("course_name", "深度学习"),
+            "course": manifest.get("course_name", "数据结构与算法"),
             "knowledge_points": knowledge_count,
             "resources": resource_count,
             "video_resources": video_count,

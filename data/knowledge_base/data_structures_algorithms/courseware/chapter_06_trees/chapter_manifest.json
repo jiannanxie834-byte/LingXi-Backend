@@ -1,0 +1,83 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_06_trees",
+  "chapter_no": 6,
+  "title": "第 6 章 树、二叉树与搜索树",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_06_tree_basic",
+      "title": "6.1 树结构的基本概念",
+      "unit_ids": [
+        "dsa_tree_basic",
+        "dsa_tree_height_depth"
+      ],
+      "path": "sections/01_tree_basic.md"
+    },
+    {
+      "section_id": "sec_06_binary_tree_basic",
+      "title": "6.2 二叉树的基本概念",
+      "unit_ids": [
+        "dsa_binary_tree_basic"
+      ],
+      "path": "sections/02_binary_tree_basic.md"
+    },
+    {
+      "section_id": "sec_06_tree_traversal",
+      "title": "6.3 二叉树遍历：前序、中序与后序",
+      "unit_ids": [
+        "dsa_preorder_traversal",
+        "dsa_inorder_traversal",
+        "dsa_postorder_traversal"
+      ],
+      "path": "sections/03_tree_traversal.md"
+    },
+    {
+      "section_id": "sec_06_level_order_traversal",
+      "title": "6.4 层序遍历与队列",
+      "unit_ids": [
+        "dsa_level_order_traversal"
+      ],
+      "path": "sections/04_level_order_traversal.md"
+    },
+    {
+      "section_id": "sec_06_binary_search_tree",
+      "title": "6.5 二叉搜索树",
+      "unit_ids": [
+        "dsa_binary_search_tree",
+        "dsa_bst_search"
+      ],
+      "path": "sections/05_binary_search_tree.md"
+    },
+    {
+      "section_id": "sec_06_tree_recursion_pattern",
+      "title": "6.6 树上的递归模式",
+      "unit_ids": [
+        "dsa_tree_recursion_pattern"
+      ],
+      "path": "sections/06_tree_recursion_pattern.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch06_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch06_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch06_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_05_hash_heap_priority_queue",
+  "chapter_no": 5,
+  "title": "第 5 章 哈希表、堆与优先队列",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_05_hash_table_intro",
+      "title": "5.1 哈希表的基本思想",
+      "unit_ids": [
+        "dsa_hash_table",
+        "dsa_hash_function"
+      ],
+      "path": "sections/01_hash_table_intro.md"
+    },
+    {
+      "section_id": "sec_05_hash_collision",
+      "title": "5.2 哈希冲突与解决方法",
+      "unit_ids": [
+        "dsa_hash_collision"
+      ],
+      "path": "sections/02_hash_collision.md"
+    },
+    {
+      "section_id": "sec_05_set_map_usage",
+      "title": "5.3 Set 与 Map 的典型使用",
+      "unit_ids": [
+        "dsa_set_usage",
+        "dsa_map_usage"
+      ],
+      "path": "sections/03_set_map_usage.md"
+    },
+    {
+      "section_id": "sec_05_heap_basic",
+      "title": "5.4 堆的基本结构与性质",
+      "unit_ids": [
+        "dsa_heap_basic",
+        "dsa_min_heap",
+        "dsa_max_heap"
+      ],
+      "path": "sections/04_heap_basic.md"
+    },
+    {
+      "section_id": "sec_05_priority_queue",
+      "title": "5.5 优先队列的操作模型",
+      "unit_ids": [
+        "dsa_priority_queue"
+      ],
+      "path": "sections/05_priority_queue.md"
+    },
+    {
+      "section_id": "sec_05_top_k_problem",
+      "title": "5.6 Top-K 问题与应用场景",
+      "unit_ids": [
+        "dsa_top_k_problem"
+      ],
+      "path": "sections/06_top_k_problem.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch05_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch05_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch05_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_08_shortest_path_mst",
+  "chapter_no": 8,
+  "title": "第 8 章 最短路径与最小生成树",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_08_shortest_path_intro",
+      "title": "8.1 最短路径问题与带权图",
+      "unit_ids": [
+        "dsa_weighted_graph",
+        "dsa_shortest_path_problem"
+      ],
+      "path": "sections/01_shortest_path_intro.md"
+    },
+    {
+      "section_id": "sec_08_dijkstra",
+      "title": "8.2 Dijkstra 算法：非负权图中的单源最短路径",
+      "unit_ids": [
+        "dsa_dijkstra",
+        "dsa_relaxation"
+      ],
+      "path": "sections/02_dijkstra.md"
+    },
+    {
+      "section_id": "sec_08_bellman_ford_floyd_intro",
+      "title": "8.3 Bellman-Ford 与 Floyd-Warshall 入门",
+      "unit_ids": [
+        "dsa_bellman_ford_intro",
+        "dsa_floyd_warshall_intro",
+        "dsa_relaxation"
+      ],
+      "path": "sections/03_bellman_ford_floyd_intro.md"
+    },
+    {
+      "section_id": "sec_08_mst_intro",
+      "title": "8.4 最小生成树问题",
+      "unit_ids": [
+        "dsa_mst_intro"
+      ],
+      "path": "sections/04_mst_intro.md"
+    },
+    {
+      "section_id": "sec_08_kruskal_prim",
+      "title": "8.5 Kruskal 与 Prim 算法",
+      "unit_ids": [
+        "dsa_kruskal",
+        "dsa_prim"
+      ],
+      "path": "sections/05_kruskal_prim.md"
+    },
+    {
+      "section_id": "sec_08_union_find_for_mst",
+      "title": "8.6 并查集在 Kruskal 中的作用",
+      "unit_ids": [
+        "dsa_union_find",
+        "dsa_cycle_detection_union_find"
+      ],
+      "path": "sections/06_union_find_for_mst.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch08_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch08_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch08_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

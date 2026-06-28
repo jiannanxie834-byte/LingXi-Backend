@@ -1,0 +1,21 @@
+{
+  "blueprint_id": "comparison_blueprint",
+  "resource_type": "comparison_note",
+  "trigger_scope": [
+    "comparison"
+  ],
+  "required_inputs": [
+    "compare_units",
+    "student_profile",
+    "evidence_chunks"
+  ],
+  "required_sections": [
+    "对象定义",
+    "差异表",
+    "适用场景",
+    "易混点",
+    "练习检验"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

@@ -1,0 +1,12 @@
+{
+  "course_id": "data_structures_algorithms",
+  "stage": "framework_placeholder",
+  "inputs": [
+    "student_profile",
+    "session_state",
+    "unit_id",
+    "section_resource_map",
+    "evidence_chunks"
+  ],
+  "do_not_write_back_to_initial_courseware": true
+}

@@ -4,7 +4,7 @@ from typing import Dict
 from app.services.llm_provider import chat_json, is_enabled
 from app.services.data_services import (
     course_scope_service,
-    deep_learning_course_map_service,
+    dsa_course_map_service,
     topic_scope_resolver,
 )
 
@@ -113,14 +113,14 @@ def _detect_subject_by_rule(text: str, topic: str) -> Dict:
             "requested_action": "unknown",
         }
 
-    course_match = deep_learning_course_map_service.match_deep_learning_topic(topic, user_text)
+    course_match = dsa_course_map_service.match_dsa_topic(topic, user_text)
     if course_match.get("matched"):
         return {
             "topic": course_match.get("normalized_topic") or course_match.get("topic"),
             "subject_category": "computer_science",
             "language": "",
             "confidence": int(course_match.get("confidence", 0.8) * 100),
-            "topic_source": "deep_learning_course_map",
+            "topic_source": "dsa_course_map",
             "course_match": course_match,
             "requested_action": COURSE_NEED_ACTION_MAP.get(course_match.get("learning_need_type"), "concept_explain"),
         }
@@ -178,7 +178,7 @@ def _llm_result_is_grounded(message: str, data: Dict) -> bool:
     if subject_category == "unknown":
         return True
     if subject_category == "computer_science":
-        return deep_learning_course_map_service.match_deep_learning_topic(topic, message).get("matched")
+        return dsa_course_map_service.match_dsa_topic(topic, message).get("matched")
     if subject_category == "out_of_course":
         return bool(topic and topic not in {"未确认主题", "当前主题"}) and _topic_grounded_in_message(topic, message)
     if _topic_grounded_in_message(topic, message):
@@ -191,10 +191,10 @@ def _infer_by_llm(message: str, eval_topic: str) -> Dict:
         return {}
 
     prompt = f"""
-你是《深度学习》课程学习平台的语义接地模块。请判断学生输入是否属于本课程范围、真实主题、请求类型和是否需要代码内容。
+你是《数据结构与算法》课程学习平台的语义接地模块。请判断学生输入是否属于本课程范围、真实主题、请求类型和是否需要代码内容。
 不要生成学习建议。
 不要猜测用户水平。如果用户没有明确说明水平，level 必须返回“未确认”。
-只有命中《深度学习》课程图谱的主题才能返回 computer_science；其他学科或泛化计算机主题返回 out_of_course；主题不明确返回 unknown。
+只有命中《数据结构与算法》课程图谱的主题才能返回 computer_science；深度学习、数据库、操作系统、计算机网络、外语、高数、金融等返回 out_of_course；主题不明确返回 unknown。
 
 学生输入：{message}
 初步主题：{eval_topic}
@@ -278,7 +278,7 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     ai_course_match = (
         rule_result.get("course_match")
         or topic_scope.get("course_match")
-        or deep_learning_course_map_service.match_deep_learning_topic(normalized_topic, message)
+        or dsa_course_map_service.match_dsa_topic(normalized_topic, message)
     )
     if topic_scope.get("scope_level") != "out_of_course" and topic_scope.get("display_topic"):
         normalized_topic = course_scope_service.normalize_course_topic(topic_scope.get("display_topic"))
@@ -380,7 +380,7 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         "is_learning_request": requested_action not in {"chat", "unknown"},
         "is_supported_scope": is_supported_scope,
         "ai_course_map": ai_course_match,
-        "deep_learning_course_map": ai_course_match,
+        "dsa_course_map": ai_course_match,
         "topic_scope": topic_scope,
         "is_programming_related": is_programming_related,
         "level": level_info.get("level", "未确认"),

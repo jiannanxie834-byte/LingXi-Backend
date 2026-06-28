@@ -1,0 +1,22 @@
+{
+  "blueprint_id": "project_blueprint",
+  "resource_type": "project_brief",
+  "trigger_scope": [
+    "project"
+  ],
+  "required_inputs": [
+    "project_goal",
+    "unit_ids",
+    "student_profile"
+  ],
+  "required_sections": [
+    "项目背景",
+    "目标",
+    "任务拆解",
+    "验收标准",
+    "提交物",
+    "评分 Rubric"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

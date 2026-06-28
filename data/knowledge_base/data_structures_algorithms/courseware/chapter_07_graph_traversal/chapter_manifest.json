@@ -1,0 +1,86 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_07_graph_traversal",
+  "chapter_no": 7,
+  "title": "第 7 章 图的表示、BFS 与 DFS",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_07_graph_basic",
+      "title": "7.1 图的基本概念",
+      "unit_ids": [
+        "dsa_graph_basic",
+        "dsa_directed_undirected_graph",
+        "dsa_weighted_unweighted_graph"
+      ],
+      "path": "sections/01_graph_basic.md"
+    },
+    {
+      "section_id": "sec_07_graph_representation",
+      "title": "7.2 图的表示：邻接矩阵与邻接表",
+      "unit_ids": [
+        "dsa_adjacency_matrix",
+        "dsa_adjacency_list"
+      ],
+      "path": "sections/02_graph_representation.md"
+    },
+    {
+      "section_id": "sec_07_bfs",
+      "title": "7.3 BFS：按层扩展的广度优先搜索",
+      "unit_ids": [
+        "dsa_bfs",
+        "dsa_visited_marking"
+      ],
+      "path": "sections/03_bfs.md"
+    },
+    {
+      "section_id": "sec_07_dfs",
+      "title": "7.4 DFS：沿路径深入的深度优先搜索",
+      "unit_ids": [
+        "dsa_dfs",
+        "dsa_visited_marking"
+      ],
+      "path": "sections/04_dfs.md"
+    },
+    {
+      "section_id": "sec_07_connected_components",
+      "title": "7.5 连通分量与访问标记",
+      "unit_ids": [
+        "dsa_connected_components",
+        "dsa_visited_marking"
+      ],
+      "path": "sections/05_connected_components.md"
+    },
+    {
+      "section_id": "sec_07_maze_topological_intro",
+      "title": "7.6 迷宫搜索与拓扑排序入门",
+      "unit_ids": [
+        "dsa_maze_search",
+        "dsa_topological_sort_intro"
+      ],
+      "path": "sections/06_maze_and_topological_intro.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch07_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch07_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch07_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

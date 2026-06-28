@@ -1,0 +1,24 @@
+{
+  "blueprint_id": "course_note_blueprint",
+  "resource_type": "course_note",
+  "trigger_scope": [
+    "chapter",
+    "unit"
+  ],
+  "required_inputs": [
+    "student_profile",
+    "unit_id",
+    "evidence_chunks"
+  ],
+  "required_sections": [
+    "学习目标",
+    "前置知识",
+    "核心概念",
+    "直观解释",
+    "例子",
+    "易错点",
+    "下一步建议"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

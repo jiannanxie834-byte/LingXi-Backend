@@ -1,0 +1,18 @@
+{
+  "chapter_id": "chapter_12_algorithm_project",
+  "stage": "curated_base_resource",
+  "assessment_dimensions": [
+    "算法理解与正确性",
+    "代码实现与工程结构",
+    "可视化或交互体验",
+    "实验分析与错误处理",
+    "报告表达与项目反思"
+  ],
+  "recommended_checks": [
+    "项目是否能运行",
+    "输入输出是否清楚",
+    "算法是否正确",
+    "测试是否覆盖边界",
+    "报告是否能复现项目"
+  ]
+}

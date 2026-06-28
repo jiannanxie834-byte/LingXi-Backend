@@ -1,0 +1,18 @@
+{
+  "chapter_id": "chapter_11_string_algorithms",
+  "stage": "curated_base_resource",
+  "assessment_dimensions": [
+    "术语辨析",
+    "匹配过程追踪",
+    "复杂度分析",
+    "前缀函数理解",
+    "Trie 代码实现",
+    "哈希冲突意识"
+  ],
+  "recommended_checks": [
+    "手算一次暴力匹配",
+    "解释一个 next 数组值",
+    "补全 Trie 插入和查询",
+    "判断滚动哈希候选匹配是否需要校验"
+  ]
+}

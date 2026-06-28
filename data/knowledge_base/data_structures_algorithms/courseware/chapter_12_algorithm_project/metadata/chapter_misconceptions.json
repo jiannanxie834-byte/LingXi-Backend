@@ -1,0 +1,34 @@
+{
+  "chapter_id": "chapter_12_algorithm_project",
+  "stage": "curated_base_resource",
+  "misconceptions": [
+    {
+      "unit_id": "dsa_project_overview",
+      "description": "题目过大，导致核心算法无法稳定完成。"
+    },
+    {
+      "unit_id": "dsa_project_algorithm_visualizer",
+      "description": "只追求界面效果，缺少算法状态记录。"
+    },
+    {
+      "unit_id": "dsa_project_maze_path_finder",
+      "description": "只判断可达，不保存前驱节点恢复路径。"
+    },
+    {
+      "unit_id": "dsa_project_online_judge_trainer",
+      "description": "只记录对错，不记录错因和知识标签。"
+    },
+    {
+      "unit_id": "dsa_project_report_template",
+      "description": "报告只放截图，不说明建模、算法和测试。"
+    },
+    {
+      "unit_id": "dsa_project_testing",
+      "description": "只用一个成功样例证明项目，缺少边界和失败情况。"
+    },
+    {
+      "unit_id": "dsa_project_reflection",
+      "description": "反思停留在空泛优化，没有具体问题和改进方案。"
+    }
+  ]
+}

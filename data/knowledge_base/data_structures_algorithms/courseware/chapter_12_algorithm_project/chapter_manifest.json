@@ -1,0 +1,97 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_12_algorithm_project",
+  "chapter_no": 12,
+  "title": "第 12 章 综合项目：算法可视化与刷题训练系统",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_12_project_overview",
+      "title": "12.1 综合项目的目标与选题方式",
+      "unit_ids": [
+        "dsa_project_overview"
+      ],
+      "path": "sections/01_project_overview.md"
+    },
+    {
+      "section_id": "sec_12_algorithm_visualizer",
+      "title": "12.2 项目一：算法可视化小系统",
+      "unit_ids": [
+        "dsa_project_algorithm_visualizer"
+      ],
+      "path": "sections/02_algorithm_visualizer.md"
+    },
+    {
+      "section_id": "sec_12_maze_path_finder",
+      "title": "12.3 项目二：迷宫寻路与路径规划",
+      "unit_ids": [
+        "dsa_project_maze_path_finder"
+      ],
+      "path": "sections/03_maze_path_finder.md"
+    },
+    {
+      "section_id": "sec_12_online_judge_trainer",
+      "title": "12.4 项目三：简易刷题训练系统",
+      "unit_ids": [
+        "dsa_project_online_judge_trainer",
+        "dsa_project_testing"
+      ],
+      "path": "sections/04_online_judge_trainer.md"
+    },
+    {
+      "section_id": "sec_12_project_report",
+      "title": "12.5 项目报告与代码提交规范",
+      "unit_ids": [
+        "dsa_project_report_template",
+        "dsa_project_rubric"
+      ],
+      "path": "sections/05_project_report.md"
+    },
+    {
+      "section_id": "sec_12_presentation_reflection",
+      "title": "12.6 项目展示、反思与能力迁移",
+      "unit_ids": [
+        "dsa_project_presentation",
+        "dsa_project_reflection"
+      ],
+      "path": "sections/06_presentation_and_reflection.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch12_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch12_project_brief",
+      "type": "project_brief",
+      "path": "resources/project_brief.md"
+    },
+    {
+      "resource_id": "ch12_rubric",
+      "type": "rubric",
+      "path": "resources/rubric.md"
+    },
+    {
+      "resource_id": "ch12_report_template",
+      "type": "report_template",
+      "path": "resources/report_template.md"
+    },
+    {
+      "resource_id": "ch12_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch12_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

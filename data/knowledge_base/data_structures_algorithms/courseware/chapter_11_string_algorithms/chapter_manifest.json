@@ -1,0 +1,83 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_11_string_algorithms",
+  "chapter_no": 11,
+  "title": "第 11 章 字符串算法与匹配",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_11_string_basic",
+      "title": "11.1 字符串问题的基本概念",
+      "unit_ids": [
+        "dsa_string_basic",
+        "dsa_substring_pattern_text"
+      ],
+      "path": "sections/01_string_basic.md"
+    },
+    {
+      "section_id": "sec_11_brute_force_matching",
+      "title": "11.2 暴力字符串匹配",
+      "unit_ids": [
+        "dsa_brute_force_matching",
+        "dsa_string_matching_complexity"
+      ],
+      "path": "sections/02_brute_force_matching.md"
+    },
+    {
+      "section_id": "sec_11_kmp_intro",
+      "title": "11.3 KMP 算法的核心思想",
+      "unit_ids": [
+        "dsa_kmp_intro"
+      ],
+      "path": "sections/03_kmp_intro.md"
+    },
+    {
+      "section_id": "sec_11_prefix_function",
+      "title": "11.4 前缀函数与 next 数组",
+      "unit_ids": [
+        "dsa_prefix_function",
+        "dsa_kmp_next_array"
+      ],
+      "path": "sections/04_prefix_function.md"
+    },
+    {
+      "section_id": "sec_11_trie",
+      "title": "11.5 Trie 字典树",
+      "unit_ids": [
+        "dsa_trie",
+        "dsa_trie_insert_search"
+      ],
+      "path": "sections/05_trie.md"
+    },
+    {
+      "section_id": "sec_11_rolling_hash_intro",
+      "title": "11.6 滚动哈希入门",
+      "unit_ids": [
+        "dsa_rolling_hash_intro"
+      ],
+      "path": "sections/06_rolling_hash_intro.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch11_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch11_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch11_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

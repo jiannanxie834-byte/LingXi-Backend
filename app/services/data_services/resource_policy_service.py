@@ -5,7 +5,10 @@ from typing import Dict, List
 from sqlalchemy.orm import Session
 
 from app.models.schemas import EvaluationRecord
-from app.services.data_services import resource_artifact_type_service as artifact_types
+from app.services.data_services import (
+    dsa_resource_policy_service,
+    resource_artifact_type_service as artifact_types,
+)
 
 
 FEEDBACK_RESOURCE_TYPE = artifact_types.DIAGNOSTIC_REPORT
@@ -91,18 +94,26 @@ def _record_matches(record: EvaluationRecord, topic: str, subject_category: str)
 
     subject_aliases = {
         "computer_science": [
-            "深度学习",
-            "神经网络",
-            "反向传播",
-            "梯度下降",
-            "卷积神经网络",
-            "CNN",
-            "RNN",
-            "LSTM",
-            "Transformer",
-            "自注意力",
-            "PyTorch",
-            "图像分类",
+            "数据结构",
+            "算法",
+            "复杂度",
+            "数组",
+            "链表",
+            "栈",
+            "队列",
+            "递归",
+            "回溯",
+            "排序",
+            "二分查找",
+            "哈希表",
+            "堆",
+            "二叉树",
+            "图",
+            "BFS",
+            "DFS",
+            "Dijkstra",
+            "动态规划",
+            "KMP",
         ],
     }.get(subject_category, [])
     text_compact = _compact(text)
@@ -138,7 +149,14 @@ def should_generate_feedback_report(context: dict) -> bool:
 
 
 def select_resource_types(context: dict) -> List[str]:
-    semantic_map = context.get("deep_learning_course_map") or context.get("ai_course_map") or {}
+    if (
+        context.get("course_id") == "data_structures_algorithms"
+        or context.get("dsa_course_map")
+        or (context.get("ai_course_map") or {}).get("course_id") == "data_structures_algorithms"
+    ):
+        return dsa_resource_policy_service.select_dsa_resource_types(context)
+
+    semantic_map = context.get("dsa_course_map") or context.get("ai_course_map") or {}
     learning_need_type = context.get("learning_need_type") or semantic_map.get("learning_need_type")
     scope_level = context.get("scope_level") or semantic_map.get("scope_level")
     requires_code = bool(context.get("requires_code") or semantic_map.get("requires_code"))

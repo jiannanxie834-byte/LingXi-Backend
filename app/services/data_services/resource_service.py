@@ -411,7 +411,7 @@ def get_passed_resources(db: Session):
         return [
             _resource_to_dict(r)
             for r in db.query(Resource)
-            .filter(Resource.status == "已通过")
+            .filter(Resource.status.in_(["已通过", "framework_placeholder"]))
             .all()
             if not _is_deprecated_resource_type(r.type)
         ]
@@ -437,7 +437,7 @@ def get_recommended_resources(db: Session, username: str = "", limit: int = 80):
         resources = [
             r
             for r in db.query(Resource)
-            .filter(Resource.status == "已通过")
+            .filter(Resource.status.in_(["已通过", "framework_placeholder"]))
             .all()
             if not _is_deprecated_resource_type(r.type)
         ]

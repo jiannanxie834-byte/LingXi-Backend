@@ -1,0 +1,103 @@
+{
+  "sec_09_greedy_intro": {
+    "unit_ids": [
+      "dsa_greedy_intro"
+    ],
+    "base_resources": [
+      "sections/01_greedy_intro.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch09_ex01_greedy_idea"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch09_video01_greedy_interval"
+    ]
+  },
+  "sec_09_greedy_choice_property": {
+    "unit_ids": [
+      "dsa_greedy_choice_property",
+      "dsa_optimal_substructure"
+    ],
+    "base_resources": [
+      "sections/02_greedy_choice_property.md"
+    ],
+    "exercise_filters": [
+      "ch09_ex02_optimal_substructure"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch09_video01_greedy_interval"
+    ]
+  },
+  "sec_09_interval_scheduling": {
+    "unit_ids": [
+      "dsa_interval_scheduling"
+    ],
+    "base_resources": [
+      "sections/03_interval_scheduling.md"
+    ],
+    "exercise_filters": [
+      "ch09_ex03_interval_strategy",
+      "ch09_ex05_interval_code_reading"
+    ],
+    "code_task_filters": [
+      "ch09_code01_interval_selection"
+    ],
+    "video_guide_filters": [
+      "ch09_video01_greedy_interval"
+    ]
+  },
+  "sec_09_activity_selection": {
+    "unit_ids": [
+      "dsa_activity_selection"
+    ],
+    "base_resources": [
+      "sections/04_activity_selection.md"
+    ],
+    "exercise_filters": [
+      "ch09_ex04_activity_complexity",
+      "ch09_ex07_activity_completion"
+    ],
+    "code_task_filters": [
+      "ch09_code01_interval_selection"
+    ],
+    "video_guide_filters": [
+      "ch09_video01_greedy_interval"
+    ]
+  },
+  "sec_09_huffman_intro": {
+    "unit_ids": [
+      "dsa_huffman_intro"
+    ],
+    "base_resources": [
+      "sections/05_huffman_intro.md"
+    ],
+    "exercise_filters": [
+      "ch09_ex06_huffman_reading"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch09_video02_huffman_greedy"
+    ]
+  },
+  "sec_09_greedy_counterexample": {
+    "unit_ids": [
+      "dsa_greedy_counterexample",
+      "dsa_greedy_vs_dp_intro"
+    ],
+    "base_resources": [
+      "sections/06_greedy_counterexample.md"
+    ],
+    "exercise_filters": [
+      "ch09_ex08_coin_counterexample"
+    ],
+    "code_task_filters": [
+      "ch09_code02_coin_greedy_counterexample"
+    ],
+    "video_guide_filters": [
+      "ch09_video02_huffman_greedy"
+    ]
+  }
+}

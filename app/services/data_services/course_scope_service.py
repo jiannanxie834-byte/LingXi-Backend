@@ -1,33 +1,38 @@
 import re
 
-from app.services.data_services import deep_learning_course_map_service
+from app.services.data_services import dsa_course_map_service
 
 
-PRIMARY_COURSE_DISPLAY_NAME = "深度学习"
-PRIMARY_COURSE_TITLE = deep_learning_course_map_service.COURSE_DISPLAY_NAME
+PRIMARY_COURSE_DISPLAY_NAME = "数据结构与算法"
+PRIMARY_COURSE_TITLE = dsa_course_map_service.COURSE_DISPLAY_NAME
 
 CANONICAL_TOPIC_NAMES = {
-    "cnn": "卷积神经网络",
-    "rnn": "RNN",
-    "lstm": "LSTM",
-    "gru": "GRU",
-    "transformer": "Transformer",
-    "attention": "自注意力机制",
-    "qkv": "自注意力机制",
-    "pytorch": "PyTorch 深度学习工程实践",
-    "torch": "PyTorch 深度学习工程实践",
-    "dl": PRIMARY_COURSE_DISPLAY_NAME,
-    "deep learning": PRIMARY_COURSE_DISPLAY_NAME,
+    "dsa": PRIMARY_COURSE_DISPLAY_NAME,
+    "data structures": PRIMARY_COURSE_DISPLAY_NAME,
+    "algorithm": "算法",
+    "algorithms": "算法",
+    "big-o": "大 O 记号",
+    "bigo": "大 O 记号",
+    "bfs": "广度优先搜索 BFS",
+    "dfs": "深度优先搜索 DFS",
+    "dp": "动态规划",
+    "kmp": "KMP 算法入门",
+    "dijkstra": "Dijkstra 算法",
+    "union find": "并查集",
+    "并查集": "并查集",
 }
 
 OUT_OF_COURSE_ALIASES = {
     "英语": ["英语", "英文", "english"],
     "高数": ["高数", "高等数学", "微积分"],
-    "JavaScript": ["javascript", "js", "前端"],
-    "Java": ["java"],
+    "深度学习": ["深度学习", "deep learning", "cnn", "lstm", "transformer", "神经网络"],
+    "数据库": ["数据库", "mysql", "sql"],
+    "操作系统": ["操作系统", "进程", "线程", "linux内核"],
+    "计算机网络": ["计算机网络", "tcp", "udp", "http"],
     "信息安全": ["信息安全", "网络安全"],
     "物理": ["物理"],
     "法语": ["法语", "french"],
+    "金融": ["金融", "股票", "基金"],
 }
 
 
@@ -74,7 +79,7 @@ def is_supported_learning_scope(semantic_result: dict) -> bool:
     semantic_result = semantic_result or {}
     topic = normalize_course_topic(semantic_result.get("topic") or "")
     message = semantic_result.get("message") or semantic_result.get("raw_message") or ""
-    return bool(deep_learning_course_map_service.match_deep_learning_topic(topic, message).get("matched"))
+    return bool(dsa_course_map_service.match_dsa_topic(topic, message).get("matched"))
 
 
 def build_out_of_scope_reply(topic: str = "", raw_message: str = "") -> str:

@@ -1,0 +1,110 @@
+{
+  "sec_10_dp_intro": {
+    "unit_ids": [
+      "dsa_dp_intro",
+      "dsa_overlapping_subproblems",
+      "dsa_optimal_substructure_dp"
+    ],
+    "base_resources": [
+      "sections/01_dp_intro.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch10_ex01_dp_condition"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch10_video01_dp_state_transition"
+    ]
+  },
+  "sec_10_state_definition": {
+    "unit_ids": [
+      "dsa_dp_state_definition"
+    ],
+    "base_resources": [
+      "sections/02_state_definition.md"
+    ],
+    "exercise_filters": [
+      "ch10_ex02_state_definition"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch10_video01_dp_state_transition"
+    ]
+  },
+  "sec_10_transition_equation": {
+    "unit_ids": [
+      "dsa_dp_transition"
+    ],
+    "base_resources": [
+      "sections/03_transition_equation.md"
+    ],
+    "exercise_filters": [
+      "ch10_ex03_transition_explain",
+      "ch10_ex07_stairs_completion"
+    ],
+    "code_task_filters": [
+      "ch10_code01_climbing_stairs"
+    ],
+    "video_guide_filters": [
+      "ch10_video01_dp_state_transition"
+    ]
+  },
+  "sec_10_table_order": {
+    "unit_ids": [
+      "dsa_dp_initialization",
+      "dsa_dp_table_order"
+    ],
+    "base_resources": [
+      "sections/04_table_order.md"
+    ],
+    "exercise_filters": [
+      "ch10_ex04_knapsack_order",
+      "ch10_ex05_stairs_code_reading"
+    ],
+    "code_task_filters": [
+      "ch10_code02_knapsack_table_reading"
+    ],
+    "video_guide_filters": [
+      "ch10_video02_knapsack_table"
+    ]
+  },
+  "sec_10_classic_dp_cases": {
+    "unit_ids": [
+      "dsa_climbing_stairs",
+      "dsa_knapsack_01",
+      "dsa_longest_common_subsequence"
+    ],
+    "base_resources": [
+      "sections/05_classic_dp_cases.md"
+    ],
+    "exercise_filters": [
+      "ch10_ex05_stairs_code_reading",
+      "ch10_ex06_lcs_code_reading",
+      "ch10_ex07_stairs_completion"
+    ],
+    "code_task_filters": [
+      "ch10_code01_climbing_stairs",
+      "ch10_code02_knapsack_table_reading"
+    ],
+    "video_guide_filters": [
+      "ch10_video02_knapsack_table"
+    ]
+  },
+  "sec_10_dp_common_mistakes": {
+    "unit_ids": [
+      "dsa_dp_common_mistakes",
+      "dsa_dp_rolling_array_intro"
+    ],
+    "base_resources": [
+      "sections/06_dp_common_mistakes.md"
+    ],
+    "exercise_filters": [
+      "ch10_ex08_dp_vs_greedy"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch10_video02_knapsack_table"
+    ]
+  }
+}

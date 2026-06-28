@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 from app.services.data_services import (
+    dsa_resource_blueprint,
     deep_learning_resource_blueprint,
     resource_artifact_type_service as artifact_types,
 )
@@ -21,9 +22,9 @@ PROGRAMMING_FORBIDDEN = [
 ]
 
 
-def _deep_learning_constraints(resource_type: str, semantic_result: Dict) -> List[str]:
+def _base_course_constraints(resource_type: str, semantic_result: Dict) -> List[str]:
     constraints = [
-        "必须属于《深度学习》课程范围，并绑定 chapter_id 与 unit_id",
+        "必须属于当前课程范围，并绑定 chapter_id 与 unit_id",
         "必须体现课程知识单元的核心概念、前置知识、常见误区或实践任务",
         "不得虚构教材、MOOC、论文或视频链接",
         "视频类资源只提供原始公开入口和观看建议，不下载、不搬运、不重新托管",
@@ -34,7 +35,7 @@ def _deep_learning_constraints(resource_type: str, semantic_result: Dict) -> Lis
     if resource_type == artifact_types.READING_PACK:
         constraints.append("阅读包必须给出阅读顺序、阅读目标和可核验的公开入口或教材章节建议")
     if resource_type == artifact_types.CODE_LAB:
-        constraints.append("代码实验必须说明运行方式、依赖、训练流程、调参任务和实验报告模板")
+        constraints.append("代码实验必须说明运行方式、依赖、输入输出样例、复杂度记录、调试任务和实验报告模板")
     if resource_type in {artifact_types.INTERACTIVE_ANIMATION, artifact_types.ANIMATION_STORYBOARD}:
         constraints.append("动画资源必须输出结构化规格或分镜，不要求生成 MP4")
     if resource_type == artifact_types.VIDEO_RECOMMENDATION:
@@ -57,7 +58,11 @@ def get_resource_spec(subject_category: str, resource_type: str, topic: str, sem
     subject_category = subject_category or semantic_result.get("subject_category") or "unknown"
     semantic_result = semantic_result or {}
     deep_spec = {}
-    if deep_learning_resource_blueprint.is_deep_learning_context(subject_category, semantic_result):
+    if dsa_resource_blueprint.is_dsa_context(subject_category, semantic_result):
+        deep_spec = dsa_resource_blueprint.get_dsa_spec(normalized_type)
+        if deep_spec.get("requirements"):
+            requirements = deep_spec["requirements"]
+    elif deep_learning_resource_blueprint.is_deep_learning_context(subject_category, semantic_result):
         deep_spec = deep_learning_resource_blueprint.get_deep_learning_spec(normalized_type)
         if deep_spec.get("requirements"):
             requirements = deep_spec["requirements"]
@@ -68,7 +73,7 @@ def get_resource_spec(subject_category: str, resource_type: str, topic: str, sem
     )
     forbidden_terms = [] if allow_code else PROGRAMMING_FORBIDDEN
     quality_constraints = [
-        *_deep_learning_constraints(normalized_type, semantic_result),
+        *_base_course_constraints(normalized_type, semantic_result),
         *(deep_spec.get("quality_constraints") or []),
     ]
 

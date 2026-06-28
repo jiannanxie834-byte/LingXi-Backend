@@ -1,0 +1,30 @@
+{
+  "chapter_id": "chapter_11_string_algorithms",
+  "stage": "curated_base_resource",
+  "objectives": [
+    {
+      "unit_id": "dsa_string_basic",
+      "objective": "能准确解释字符串、子串、文本串和模式串等基本概念。"
+    },
+    {
+      "unit_id": "dsa_brute_force_matching",
+      "objective": "能追踪暴力匹配的起点枚举和逐字符比较过程。"
+    },
+    {
+      "unit_id": "dsa_kmp_intro",
+      "objective": "能说明 KMP 如何利用已匹配信息减少重复比较。"
+    },
+    {
+      "unit_id": "dsa_prefix_function",
+      "objective": "能解释最长相等前后缀与前缀函数的含义。"
+    },
+    {
+      "unit_id": "dsa_trie",
+      "objective": "能画出简单字符串集合对应的 Trie 结构。"
+    },
+    {
+      "unit_id": "dsa_rolling_hash_intro",
+      "objective": "能说明滚动哈希的窗口更新思想和冲突风险。"
+    }
+  ]
+}

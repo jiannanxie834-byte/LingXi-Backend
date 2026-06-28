@@ -1,0 +1,22 @@
+{
+  "blueprint_id": "code_lab_blueprint",
+  "resource_type": "code_lab",
+  "trigger_scope": [
+    "unit",
+    "project"
+  ],
+  "required_inputs": [
+    "unit_id",
+    "language",
+    "student_profile"
+  ],
+  "required_sections": [
+    "实验目标",
+    "输入输出",
+    "代码骨架",
+    "测试用例",
+    "复杂度记录"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

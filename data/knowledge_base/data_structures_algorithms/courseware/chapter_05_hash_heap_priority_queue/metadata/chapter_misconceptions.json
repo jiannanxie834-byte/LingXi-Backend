@@ -1,0 +1,20 @@
+{
+  "chapter_id": "chapter_05_hash_heap_priority_queue",
+  "misconceptions": [
+    {
+      "id": "ch05_mis01",
+      "title": "认为哈希表永远 O(1)",
+      "correction": "平均 O(1) 依赖冲突较少和装载控制，最坏情况可能退化。"
+    },
+    {
+      "id": "ch05_mis02",
+      "title": "把堆当成有序数组",
+      "correction": "堆只保证父子局部顺序，不能保证整体有序。"
+    },
+    {
+      "id": "ch05_mis03",
+      "title": "Top-K 总是完整排序",
+      "correction": "只需要前 K 个候选时，可以用大小为 K 的堆降低无关工作量。"
+    }
+  ]
+}

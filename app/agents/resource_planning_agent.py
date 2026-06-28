@@ -7,7 +7,7 @@ def run(plan: dict, profile: dict, semantic_result: dict = None, generation_cont
     resources = result.get("resources", [])
     return AgentResultDTO(
         agent_name="ResourcePlanningAgent",
-        input_summary=result.get("deep_learning_course_map", {}).get("normalized_topic", ""),
+        input_summary=(result.get("dsa_course_map") or result.get("ai_course_map") or {}).get("normalized_topic", ""),
         output=result,
         evidence_refs=[item.get("unit_id", "") for item in resources if item.get("unit_id")],
         quality_score=1.0 if resources else 0.0,

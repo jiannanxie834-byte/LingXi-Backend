@@ -1,0 +1,376 @@
+{
+  "sec_12_project_overview": {
+    "title": "12.1 综合项目的目标与选题方式",
+    "unit_ids": [
+      "dsa_project_overview"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch12_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch12_project_brief",
+        "type": "project_brief",
+        "path": "resources/project_brief.md"
+      },
+      {
+        "resource_id": "ch12_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch12_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch12_01_project_overview",
+        "type": "section_note",
+        "path": "sections/01_project_overview.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_12_project_overview"
+      ],
+      "unit_ids": [
+        "dsa_project_overview"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_12_project_overview"
+      ],
+      "unit_ids": [
+        "dsa_project_overview"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_12_project_overview"
+      ],
+      "unit_ids": [
+        "dsa_project_overview"
+      ]
+    }
+  },
+  "sec_12_algorithm_visualizer": {
+    "title": "12.2 项目一：算法可视化小系统",
+    "unit_ids": [
+      "dsa_project_algorithm_visualizer"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch12_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch12_project_brief",
+        "type": "project_brief",
+        "path": "resources/project_brief.md"
+      },
+      {
+        "resource_id": "ch12_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch12_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch12_02_algorithm_visualizer",
+        "type": "section_note",
+        "path": "sections/02_algorithm_visualizer.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_12_algorithm_visualizer"
+      ],
+      "unit_ids": [
+        "dsa_project_algorithm_visualizer"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_12_algorithm_visualizer"
+      ],
+      "unit_ids": [
+        "dsa_project_algorithm_visualizer"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_12_algorithm_visualizer"
+      ],
+      "unit_ids": [
+        "dsa_project_algorithm_visualizer"
+      ]
+    }
+  },
+  "sec_12_maze_path_finder": {
+    "title": "12.3 项目二：迷宫寻路与路径规划",
+    "unit_ids": [
+      "dsa_project_maze_path_finder"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch12_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch12_project_brief",
+        "type": "project_brief",
+        "path": "resources/project_brief.md"
+      },
+      {
+        "resource_id": "ch12_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch12_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch12_03_maze_path_finder",
+        "type": "section_note",
+        "path": "sections/03_maze_path_finder.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_12_maze_path_finder"
+      ],
+      "unit_ids": [
+        "dsa_project_maze_path_finder"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_12_maze_path_finder"
+      ],
+      "unit_ids": [
+        "dsa_project_maze_path_finder"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_12_maze_path_finder"
+      ],
+      "unit_ids": [
+        "dsa_project_maze_path_finder"
+      ]
+    }
+  },
+  "sec_12_online_judge_trainer": {
+    "title": "12.4 项目三：简易刷题训练系统",
+    "unit_ids": [
+      "dsa_project_online_judge_trainer",
+      "dsa_project_testing"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch12_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch12_project_brief",
+        "type": "project_brief",
+        "path": "resources/project_brief.md"
+      },
+      {
+        "resource_id": "ch12_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch12_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch12_04_online_judge_trainer",
+        "type": "section_note",
+        "path": "sections/04_online_judge_trainer.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_12_online_judge_trainer"
+      ],
+      "unit_ids": [
+        "dsa_project_online_judge_trainer",
+        "dsa_project_testing"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_12_online_judge_trainer"
+      ],
+      "unit_ids": [
+        "dsa_project_online_judge_trainer",
+        "dsa_project_testing"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_12_online_judge_trainer"
+      ],
+      "unit_ids": [
+        "dsa_project_online_judge_trainer",
+        "dsa_project_testing"
+      ]
+    }
+  },
+  "sec_12_project_report": {
+    "title": "12.5 项目报告与代码提交规范",
+    "unit_ids": [
+      "dsa_project_report_template",
+      "dsa_project_rubric"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch12_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch12_project_brief",
+        "type": "project_brief",
+        "path": "resources/project_brief.md"
+      },
+      {
+        "resource_id": "ch12_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch12_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch12_05_project_report",
+        "type": "section_note",
+        "path": "sections/05_project_report.md"
+      },
+      {
+        "resource_id": "ch12_rubric",
+        "type": "rubric",
+        "path": "resources/rubric.md"
+      },
+      {
+        "resource_id": "ch12_report_template",
+        "type": "report_template",
+        "path": "resources/report_template.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_12_project_report"
+      ],
+      "unit_ids": [
+        "dsa_project_report_template",
+        "dsa_project_rubric"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_12_project_report"
+      ],
+      "unit_ids": [
+        "dsa_project_report_template",
+        "dsa_project_rubric"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_12_project_report"
+      ],
+      "unit_ids": [
+        "dsa_project_report_template",
+        "dsa_project_rubric"
+      ]
+    }
+  },
+  "sec_12_presentation_reflection": {
+    "title": "12.6 项目展示、反思与能力迁移",
+    "unit_ids": [
+      "dsa_project_presentation",
+      "dsa_project_reflection"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch12_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch12_project_brief",
+        "type": "project_brief",
+        "path": "resources/project_brief.md"
+      },
+      {
+        "resource_id": "ch12_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch12_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch12_06_presentation_and_reflection",
+        "type": "section_note",
+        "path": "sections/06_presentation_and_reflection.md"
+      },
+      {
+        "resource_id": "ch12_rubric",
+        "type": "rubric",
+        "path": "resources/rubric.md"
+      },
+      {
+        "resource_id": "ch12_report_template",
+        "type": "report_template",
+        "path": "resources/report_template.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_12_presentation_reflection"
+      ],
+      "unit_ids": [
+        "dsa_project_presentation",
+        "dsa_project_reflection"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_12_presentation_reflection"
+      ],
+      "unit_ids": [
+        "dsa_project_presentation",
+        "dsa_project_reflection"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_12_presentation_reflection"
+      ],
+      "unit_ids": [
+        "dsa_project_presentation",
+        "dsa_project_reflection"
+      ]
+    }
+  }
+}

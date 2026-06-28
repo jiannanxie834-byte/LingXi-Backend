@@ -1,0 +1,86 @@
+{
+  "course_id": "data_structures_algorithms",
+  "chapter_id": "chapter_04_sorting_searching",
+  "chapter_no": 4,
+  "title": "第 4 章 排序与查找算法",
+  "stage": "curated_base_resource",
+  "sections": [
+    {
+      "section_id": "sec_04_sorting_searching_intro",
+      "title": "4.1 排序与查找的基本问题",
+      "unit_ids": [
+        "dsa_sorting_searching_intro"
+      ],
+      "path": "sections/01_sorting_searching_intro.md"
+    },
+    {
+      "section_id": "sec_04_simple_sorting",
+      "title": "4.2 简单排序：冒泡、选择与插入",
+      "unit_ids": [
+        "dsa_bubble_sort",
+        "dsa_selection_sort",
+        "dsa_insertion_sort"
+      ],
+      "path": "sections/02_simple_sorting.md"
+    },
+    {
+      "section_id": "sec_04_merge_quick_sort",
+      "title": "4.3 分治排序：归并排序与快速排序",
+      "unit_ids": [
+        "dsa_merge_sort",
+        "dsa_quick_sort"
+      ],
+      "path": "sections/03_merge_sort_quick_sort.md"
+    },
+    {
+      "section_id": "sec_04_binary_search",
+      "title": "4.4 二分查找与有序数据",
+      "unit_ids": [
+        "dsa_binary_search",
+        "dsa_binary_search_boundary"
+      ],
+      "path": "sections/04_binary_search.md"
+    },
+    {
+      "section_id": "sec_04_complexity_stability",
+      "title": "4.5 排序算法复杂度、稳定性与适用场景",
+      "unit_ids": [
+        "dsa_sorting_complexity_comparison",
+        "dsa_sort_stability"
+      ],
+      "path": "sections/05_sorting_complexity_stability.md"
+    },
+    {
+      "section_id": "sec_04_common_mistakes_applications",
+      "title": "4.6 排序与查找的常见错误和综合应用",
+      "unit_ids": [
+        "dsa_sorting_searching_intro",
+        "dsa_binary_search_boundary",
+        "dsa_sort_stability"
+      ],
+      "path": "sections/06_common_mistakes_and_applications.md"
+    }
+  ],
+  "chapter_level_resources": [
+    {
+      "resource_id": "ch04_chapter_overview",
+      "type": "course_note",
+      "path": "resources/chapter_overview.md"
+    },
+    {
+      "resource_id": "ch04_mind_map",
+      "type": "mind_map",
+      "path": "resources/mind_map.mmd"
+    },
+    {
+      "resource_id": "ch04_reading_video_guide",
+      "type": "reading_pack",
+      "path": "resources/reading_video_guide.md"
+    }
+  ],
+  "banks": [
+    "exercises.jsonl",
+    "code_tasks.jsonl",
+    "video_items.jsonl"
+  ]
+}

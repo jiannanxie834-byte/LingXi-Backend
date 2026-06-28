@@ -1,0 +1,11 @@
+{
+  "course_id": "data_structures_algorithms",
+  "stage": "framework_placeholder",
+  "references": [
+    {
+      "source_id": "dsa_framework_internal",
+      "title": "数据结构与算法课程框架",
+      "usage_policy": "internal_framework_placeholder"
+    }
+  ]
+}

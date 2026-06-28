@@ -1,0 +1,23 @@
+{
+  "blueprint_id": "exercise_blueprint",
+  "resource_type": "exercise_set",
+  "trigger_scope": [
+    "unit",
+    "concept",
+    "remediation"
+  ],
+  "required_inputs": [
+    "unit_id",
+    "difficulty",
+    "error_pattern"
+  ],
+  "required_sections": [
+    "题目",
+    "答案",
+    "解析",
+    "知识点",
+    "常见错误"
+  ],
+  "output_target": "ResourceArtifact",
+  "stage": "framework_placeholder"
+}

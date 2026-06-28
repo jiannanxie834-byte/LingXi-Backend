@@ -1,0 +1,9 @@
+{
+  "chapter_id": "chapter_05_hash_heap_priority_queue",
+  "assessment_points": [
+    "能区分 Set、Map 和哈希表底层思想",
+    "能说明冲突如何影响哈希表性能",
+    "能手推小根堆插入或替换堆顶过程",
+    "能完成字典计数和 Top-K 代码任务"
+  ]
+}

@@ -1,0 +1,330 @@
+{
+  "sec_11_string_basic": {
+    "title": "11.1 字符串问题的基本概念",
+    "unit_ids": [
+      "dsa_string_basic",
+      "dsa_substring_pattern_text"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch11_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch11_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch11_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch11_01_string_basic",
+        "type": "section_note",
+        "path": "sections/01_string_basic.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_11_string_basic"
+      ],
+      "unit_ids": [
+        "dsa_string_basic",
+        "dsa_substring_pattern_text"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_11_string_basic"
+      ],
+      "unit_ids": [
+        "dsa_string_basic",
+        "dsa_substring_pattern_text"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_11_string_basic"
+      ],
+      "unit_ids": [
+        "dsa_string_basic",
+        "dsa_substring_pattern_text"
+      ]
+    }
+  },
+  "sec_11_brute_force_matching": {
+    "title": "11.2 暴力字符串匹配",
+    "unit_ids": [
+      "dsa_brute_force_matching",
+      "dsa_string_matching_complexity"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch11_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch11_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch11_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch11_02_brute_force_matching",
+        "type": "section_note",
+        "path": "sections/02_brute_force_matching.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_11_brute_force_matching"
+      ],
+      "unit_ids": [
+        "dsa_brute_force_matching",
+        "dsa_string_matching_complexity"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_11_brute_force_matching"
+      ],
+      "unit_ids": [
+        "dsa_brute_force_matching",
+        "dsa_string_matching_complexity"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_11_brute_force_matching"
+      ],
+      "unit_ids": [
+        "dsa_brute_force_matching",
+        "dsa_string_matching_complexity"
+      ]
+    }
+  },
+  "sec_11_kmp_intro": {
+    "title": "11.3 KMP 算法的核心思想",
+    "unit_ids": [
+      "dsa_kmp_intro"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch11_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch11_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch11_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch11_03_kmp_intro",
+        "type": "section_note",
+        "path": "sections/03_kmp_intro.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_11_kmp_intro"
+      ],
+      "unit_ids": [
+        "dsa_kmp_intro"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_11_kmp_intro"
+      ],
+      "unit_ids": [
+        "dsa_kmp_intro"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_11_kmp_intro"
+      ],
+      "unit_ids": [
+        "dsa_kmp_intro"
+      ]
+    }
+  },
+  "sec_11_prefix_function": {
+    "title": "11.4 前缀函数与 next 数组",
+    "unit_ids": [
+      "dsa_prefix_function",
+      "dsa_kmp_next_array"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch11_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch11_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch11_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch11_04_prefix_function",
+        "type": "section_note",
+        "path": "sections/04_prefix_function.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_11_prefix_function"
+      ],
+      "unit_ids": [
+        "dsa_prefix_function",
+        "dsa_kmp_next_array"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_11_prefix_function"
+      ],
+      "unit_ids": [
+        "dsa_prefix_function",
+        "dsa_kmp_next_array"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_11_prefix_function"
+      ],
+      "unit_ids": [
+        "dsa_prefix_function",
+        "dsa_kmp_next_array"
+      ]
+    }
+  },
+  "sec_11_trie": {
+    "title": "11.5 Trie 字典树",
+    "unit_ids": [
+      "dsa_trie",
+      "dsa_trie_insert_search"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch11_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch11_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch11_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch11_05_trie",
+        "type": "section_note",
+        "path": "sections/05_trie.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_11_trie"
+      ],
+      "unit_ids": [
+        "dsa_trie",
+        "dsa_trie_insert_search"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_11_trie"
+      ],
+      "unit_ids": [
+        "dsa_trie",
+        "dsa_trie_insert_search"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_11_trie"
+      ],
+      "unit_ids": [
+        "dsa_trie",
+        "dsa_trie_insert_search"
+      ]
+    }
+  },
+  "sec_11_rolling_hash_intro": {
+    "title": "11.6 滚动哈希入门",
+    "unit_ids": [
+      "dsa_rolling_hash_intro"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch11_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch11_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch11_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      },
+      {
+        "resource_id": "ch11_06_rolling_hash_intro",
+        "type": "section_note",
+        "path": "sections/06_rolling_hash_intro.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_11_rolling_hash_intro"
+      ],
+      "unit_ids": [
+        "dsa_rolling_hash_intro"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_11_rolling_hash_intro"
+      ],
+      "unit_ids": [
+        "dsa_rolling_hash_intro"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_11_rolling_hash_intro"
+      ],
+      "unit_ids": [
+        "dsa_rolling_hash_intro"
+      ]
+    }
+  }
+}

@@ -1,0 +1,318 @@
+{
+  "sec_01_algorithm_program_input_size": {
+    "title": "1.1 算法、程序与问题规模",
+    "unit_ids": [
+      "dsa_algorithm_intro",
+      "dsa_algorithm_vs_program",
+      "dsa_input_size"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch01_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch01_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch01_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_01_algorithm_program_input_size"
+      ],
+      "unit_ids": [
+        "dsa_algorithm_intro",
+        "dsa_algorithm_vs_program",
+        "dsa_input_size"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_01_algorithm_program_input_size"
+      ],
+      "unit_ids": [
+        "dsa_algorithm_intro",
+        "dsa_algorithm_vs_program",
+        "dsa_input_size"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_01_algorithm_program_input_size"
+      ],
+      "unit_ids": [
+        "dsa_algorithm_intro",
+        "dsa_algorithm_vs_program",
+        "dsa_input_size"
+      ]
+    }
+  },
+  "sec_01_time_complexity_big_o": {
+    "title": "1.2 时间复杂度与大 O 表示法",
+    "unit_ids": [
+      "dsa_time_complexity",
+      "dsa_big_o_notation"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch01_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch01_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch01_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_01_time_complexity_big_o"
+      ],
+      "unit_ids": [
+        "dsa_time_complexity",
+        "dsa_big_o_notation"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_01_time_complexity_big_o"
+      ],
+      "unit_ids": [
+        "dsa_time_complexity",
+        "dsa_big_o_notation"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_01_time_complexity_big_o"
+      ],
+      "unit_ids": [
+        "dsa_time_complexity",
+        "dsa_big_o_notation"
+      ],
+      "video_item_ids": [
+        "ch01_video_big_o_intro"
+      ]
+    }
+  },
+  "sec_01_common_complexities_growth": {
+    "title": "1.3 常见复杂度等级与增长趋势",
+    "unit_ids": [
+      "dsa_common_complexities"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch01_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch01_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch01_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_01_common_complexities_growth"
+      ],
+      "unit_ids": [
+        "dsa_common_complexities"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_01_common_complexities_growth"
+      ],
+      "unit_ids": [
+        "dsa_common_complexities"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_01_common_complexities_growth"
+      ],
+      "unit_ids": [
+        "dsa_common_complexities"
+      ]
+    }
+  },
+  "sec_01_loop_analysis": {
+    "title": "1.4 循环结构复杂度分析",
+    "unit_ids": [
+      "dsa_loop_analysis"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch01_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch01_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch01_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_01_loop_analysis"
+      ],
+      "unit_ids": [
+        "dsa_loop_analysis"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_01_loop_analysis"
+      ],
+      "unit_ids": [
+        "dsa_loop_analysis"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_01_loop_analysis"
+      ],
+      "unit_ids": [
+        "dsa_loop_analysis"
+      ],
+      "video_item_ids": [
+        "ch01_video_loop_analysis"
+      ]
+    }
+  },
+  "sec_01_space_complexity_case_analysis": {
+    "title": "1.5 空间复杂度与情况分析",
+    "unit_ids": [
+      "dsa_space_complexity",
+      "dsa_case_analysis"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch01_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch01_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch01_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_01_space_complexity_case_analysis"
+      ],
+      "unit_ids": [
+        "dsa_space_complexity",
+        "dsa_case_analysis"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_01_space_complexity_case_analysis"
+      ],
+      "unit_ids": [
+        "dsa_space_complexity",
+        "dsa_case_analysis"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_01_space_complexity_case_analysis"
+      ],
+      "unit_ids": [
+        "dsa_space_complexity",
+        "dsa_case_analysis"
+      ]
+    }
+  },
+  "sec_01_search_and_recursion_cases": {
+    "title": "1.6 复杂度分析案例：线性查找、二分查找与递归初步",
+    "unit_ids": [
+      "dsa_linear_search_complexity",
+      "dsa_binary_search_complexity",
+      "dsa_recursion_complexity_intro"
+    ],
+    "base_resources": [
+      {
+        "resource_id": "ch01_chapter_overview",
+        "type": "course_note",
+        "path": "resources/chapter_overview.md"
+      },
+      {
+        "resource_id": "ch01_mind_map",
+        "type": "mind_map",
+        "path": "resources/mind_map.mmd"
+      },
+      {
+        "resource_id": "ch01_reading_video_guide",
+        "type": "reading_pack",
+        "path": "resources/reading_video_guide.md"
+      }
+    ],
+    "exercise_filters": {
+      "section_ids": [
+        "sec_01_search_and_recursion_cases"
+      ],
+      "unit_ids": [
+        "dsa_linear_search_complexity",
+        "dsa_binary_search_complexity",
+        "dsa_recursion_complexity_intro"
+      ]
+    },
+    "code_task_filters": {
+      "section_ids": [
+        "sec_01_search_and_recursion_cases"
+      ],
+      "unit_ids": [
+        "dsa_linear_search_complexity",
+        "dsa_binary_search_complexity",
+        "dsa_recursion_complexity_intro"
+      ],
+      "task_ids": [
+        "ch01_code_linear_search_complexity",
+        "ch01_code_binary_search_complexity"
+      ]
+    },
+    "video_guide_filters": {
+      "section_ids": [
+        "sec_01_search_and_recursion_cases"
+      ],
+      "unit_ids": [
+        "dsa_linear_search_complexity",
+        "dsa_binary_search_complexity",
+        "dsa_recursion_complexity_intro"
+      ]
+    }
+  }
+}

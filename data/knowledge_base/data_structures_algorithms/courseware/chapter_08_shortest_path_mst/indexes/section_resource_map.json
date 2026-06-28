@@ -1,0 +1,108 @@
+{
+  "sec_08_shortest_path_intro": {
+    "unit_ids": [
+      "dsa_weighted_graph",
+      "dsa_shortest_path_problem"
+    ],
+    "base_resources": [
+      "sections/01_shortest_path_intro.md",
+      "resources/chapter_overview.md"
+    ],
+    "exercise_filters": [
+      "ch08_ex01_weighted_path"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch08_video01_dijkstra_intro"
+    ]
+  },
+  "sec_08_dijkstra": {
+    "unit_ids": [
+      "dsa_dijkstra",
+      "dsa_relaxation"
+    ],
+    "base_resources": [
+      "sections/02_dijkstra.md"
+    ],
+    "exercise_filters": [
+      "ch08_ex02_dijkstra_negative_weight",
+      "ch08_ex03_relaxation_explain",
+      "ch08_ex05_dijkstra_code_reading"
+    ],
+    "code_task_filters": [
+      "ch08_code01_dijkstra_reading"
+    ],
+    "video_guide_filters": [
+      "ch08_video01_dijkstra_intro"
+    ]
+  },
+  "sec_08_bellman_ford_floyd_intro": {
+    "unit_ids": [
+      "dsa_bellman_ford_intro",
+      "dsa_floyd_warshall_intro",
+      "dsa_relaxation"
+    ],
+    "base_resources": [
+      "sections/03_bellman_ford_floyd_intro.md"
+    ],
+    "exercise_filters": [
+      "ch08_ex04_bellman_complexity_scope"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch08_video01_dijkstra_intro"
+    ]
+  },
+  "sec_08_mst_intro": {
+    "unit_ids": [
+      "dsa_mst_intro"
+    ],
+    "base_resources": [
+      "sections/04_mst_intro.md"
+    ],
+    "exercise_filters": [
+      "ch08_ex08_mst_application"
+    ],
+    "code_task_filters": [],
+    "video_guide_filters": [
+      "ch08_video02_mst_kruskal_prim"
+    ]
+  },
+  "sec_08_kruskal_prim": {
+    "unit_ids": [
+      "dsa_kruskal",
+      "dsa_prim"
+    ],
+    "base_resources": [
+      "sections/05_kruskal_prim.md"
+    ],
+    "exercise_filters": [
+      "ch08_ex08_mst_application"
+    ],
+    "code_task_filters": [
+      "ch08_code02_union_find_cycle"
+    ],
+    "video_guide_filters": [
+      "ch08_video02_mst_kruskal_prim"
+    ]
+  },
+  "sec_08_union_find_for_mst": {
+    "unit_ids": [
+      "dsa_union_find",
+      "dsa_cycle_detection_union_find"
+    ],
+    "base_resources": [
+      "sections/06_union_find_for_mst.md"
+    ],
+    "exercise_filters": [
+      "ch08_ex06_union_find_reading",
+      "ch08_ex07_union_completion"
+    ],
+    "code_task_filters": [
+      "ch08_code02_union_find_cycle"
+    ],
+    "video_guide_filters": [
+      "ch08_video02_mst_kruskal_prim"
+    ]
+  }
+}
