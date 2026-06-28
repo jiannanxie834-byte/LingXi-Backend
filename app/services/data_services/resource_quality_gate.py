@@ -72,7 +72,7 @@ def _coverage_categories(content: str) -> Dict[str, bool]:
         "定义": ["定义", "是什么", "概念", "含义"],
         "原理": ["原理", "机制", "为什么", "作用", "流程", "推导"],
         "例子": ["例子", "示例", "例题", "案例", "情境"],
-        "练习": ["自测题", "练习", "参考答案", "答案", "解析"],
+        "理解检查": ["小结", "检查清单", "理解", "复述", "边界", "下一步"],
         "公式或代码": ["公式", "符号", "计算过程", "代码", "伪代码", "算法流程"],
         "误区": ["误区", "易错", "常见错误", "混淆"],
         "学习建议": ["下一步", "建议", "检查清单", "复习"],
@@ -168,7 +168,21 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
             fatal=True,
         )
 
-    if not course_map.get("matched"):
+    unit_id = (
+        semantic_result.get("unit_id")
+        or resource.get("unit_id")
+        or course_map.get("unit_id")
+    )
+    has_location_binding = bool(
+        unit_id
+        or semantic_result.get("unit_ids")
+        or resource.get("unit_ids")
+        or semantic_result.get("chapter_id")
+        or resource.get("chapter_id")
+        or semantic_result.get("section_id")
+        or resource.get("section_id")
+    )
+    if not course_map.get("matched") and not (is_dsa and has_location_binding):
         _append_issue(
             result,
             "课程范围不明确：资源未归一到当前课程图谱。",
@@ -176,12 +190,7 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
             fatal=True,
         )
 
-    unit_id = (
-        semantic_result.get("unit_id")
-        or resource.get("unit_id")
-        or course_map.get("unit_id")
-    )
-    if not unit_id:
+    if not unit_id and not (semantic_result.get("unit_ids") or resource.get("unit_ids")):
         _append_issue(
             result,
             "缺少知识单元绑定：资源必须包含 unit_id。",
@@ -317,7 +326,7 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     context_evidence_refs = context.get("evidence_refs") or item.get("evidence_refs") or []
     evidence_refs = context_evidence_refs or re.findall(r"evidence_id\s*[:：=]\s*[\w:\-]+", full_text, re.I)
     examples = _count_markers(content, ["例子", "示例", "例题", "案例", "情境"])
-    exercises = _count_markers(content, ["自测题", "练习", "参考答案", "答案", "解析"])
+    exercises = _count_markers(content, ["练习", "答案", "解析"])
     formula_or_code = _count_markers(content, ["公式", "算法流程", "计算过程", "代码", "伪代码"])
     personalization = _count_markers(full_text, ["基础", "目标", "偏好", "短板", "实践", "适用对象", "学习定位"])
     coverage = _coverage_categories(content)
@@ -332,28 +341,27 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         if content_len < min_chars:
             fatal = True
             issues.append(f"章节主讲义过短，少于 {min_chars} 个中文字符")
-            repair_suggestions.append("补齐学习定位、核心机制、例子、自测、答案和参考来源")
+            repair_suggestions.append("补齐学习定位、核心机制、关键流程、例子、误区、小结和下一步建议")
         min_headings = 5 if is_dsa else 8
         if headings < min_headings:
             fatal = True
             issues.append(f"章节主讲义二级标题少于 {min_headings} 个")
-            repair_suggestions.append("按课程讲解、例子、练习、误区和下一步建议扩展")
+            repair_suggestions.append("按学习定位、核心概念、流程讲解、例子、误区和下一步建议扩展")
         if not is_dsa and "参考来源说明" not in content:
             fatal = True
             issues.append("章节主讲义缺少参考来源说明")
             repair_suggestions.append("在末尾说明公开资料仅作结构参考，不复制原文")
-        if examples < 2:
+        if examples < 1:
             fatal = True
-            issues.append("章节主讲义缺少足够例子，少于 2 个")
-            repair_suggestions.append("补充模型、公式、代码或实验例子")
-        if "自测题" not in content or "参考答案" not in content:
-            fatal = True
-            issues.append("章节主讲义缺少自测题或参考答案")
-            repair_suggestions.append("补充自测题和参考解析")
+            issues.append("章节主讲义缺少具体例子")
+            repair_suggestions.append("补充至少 1 个用于解释概念的具体例子")
+        elif examples < 2:
+            issues.append("具体例子偏少，建议继续补充")
+            repair_suggestions.append("可补充算法输入输出、边界条件或计算例子")
     elif resource_type not in structured_non_long_types and content_len < (700 if is_dsa else 1200):
         fatal = True
         issues.append(f"内容过短，少于 {700 if is_dsa else 1200} 个中文字符")
-        repair_suggestions.append("扩展为完整讲义，补齐概念解释、公式流程、例子、练习和学习建议")
+        repair_suggestions.append("扩展为完整讲义，补齐概念解释、公式流程、例子、误区和学习建议")
 
     if resource_type == artifact_types.MIND_MAP:
         non_empty_lines = [line for line in (content or "").splitlines() if line.strip()]
@@ -413,11 +421,11 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
 
     if resource_type == artifact_types.COURSE_NOTE and len(covered_category_names) < 3:
         fatal = True
-        issues.append("课程讲义教学要素严重不足：定义、原理、例子、练习、公式/代码、误区、学习建议覆盖少于 3 类")
-        repair_suggestions.append("按完整课程讲义重写，至少补齐定义、原理、例子、练习、公式/代码、误区和下一步建议")
+        issues.append("课程讲义教学要素严重不足：定义、原理、例子、流程/公式、误区、学习建议覆盖少于 3 类")
+        repair_suggestions.append("按完整课程讲义重写，至少补齐定义、原理、例子、流程/公式、误区和下一步建议")
     elif resource_type == artifact_types.COURSE_NOTE and len(covered_category_names) < 5:
         issues.append("课程讲义教学要素不够完整")
-        repair_suggestions.append("继续补充定义、原理、例子、练习、公式/代码、误区和学习建议中的缺失部分")
+        repair_suggestions.append("继续补充定义、原理、例子、流程/公式、误区和学习建议中的缺失部分")
 
     if "核心内容" in content and content_len < 1500:
         issues.append("内容停留在摘要层面，没有展开讲解")
@@ -442,10 +450,6 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     if examples < 2 and resource_type == artifact_types.COURSE_NOTE:
         issues.append("具体例子不足，少于 2 个")
         repair_suggestions.append("加入至少 2 个算法输入输出、边界条件或计算例子")
-
-    if exercises < 3 and resource_type == artifact_types.COURSE_NOTE:
-        issues.append("课堂小练习不足，未体现 3 道自测题与答案")
-        repair_suggestions.append("补充 3 道自测题，并附参考答案和解析")
 
     if formula_or_code < 2 and resource_type == artifact_types.COURSE_NOTE:
         issues.append("公式、代码或算法流程说明不足")

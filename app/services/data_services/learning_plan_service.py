@@ -1,9 +1,50 @@
 import json
 import uuid
 import datetime
+import logging
+import re
 from sqlalchemy.orm import Session
 
-from app.models.schemas import LearningPlan, TodoList
+from app.models.schemas import LearningPlan, ResourceArtifact, TodoList
+from app.services.data_services import dsa_course_map_service
+
+logger = logging.getLogger(__name__)
+
+INTERNAL_ID_PATTERN = re.compile(r"\b(?:dsa|sec|chapter)_[a-z0-9_]+\b")
+
+
+def _now_text():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _plan_sort_key(plan: dict):
+    return str(
+        plan.get("updated_at")
+        or plan.get("created_at")
+        or ""
+    )
+
+
+def _sort_plans_newest_first(plans_list: list):
+    indexed = [
+        (index, plan)
+        for index, plan in enumerate(plans_list or [])
+        if isinstance(plan, dict)
+    ]
+    indexed.sort(key=lambda item: (_plan_sort_key(item[1]), -item[0]), reverse=True)
+    return [plan for _, plan in indexed]
+
+
+def _normalize_plan_timestamps(plans_list: list):
+    normalized = []
+    for plan in plans_list or []:
+        if not isinstance(plan, dict):
+            continue
+        item = dict(plan)
+        item.setdefault("created_at", "")
+        item.setdefault("updated_at", item.get("created_at") or "")
+        normalized.append(item)
+    return normalized
 
 
 def _first_list_item(value, default=""):
@@ -18,7 +59,38 @@ def _resource_type_matches(focus_type: str, resource_type: str) -> bool:
     return focus == current or focus in current or current in focus
 
 
-def normalize_plan_resource(item: dict, step: dict, step_index: int = 0, resource_index: int = 0):
+def _humanize_internal_ids(value: str) -> str:
+    text = str(value or "")
+
+    def replace(match):
+        token = match.group(0)
+        unit = dsa_course_map_service.get_unit(token)
+        if unit and unit.get("title"):
+            return unit["title"]
+        return "相关知识点"
+
+    text = INTERNAL_ID_PATTERN.sub(replace, text)
+    text = text.replace("「相关知识点、相关知识点」", "「相关知识点」")
+    text = re.sub(
+        r"先检查「([^」]+)」是否掌握，再进入「([^」]+)」。?",
+        r"先用自己的话说明「\1」的作用、适用场景和常见边界，再进入「\2」的当前主题学习。",
+        text,
+    )
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _artifact_status(db: Session, artifact_id: str, fallback: str = "") -> str:
+    if not db or not artifact_id:
+        return fallback
+    try:
+        row = db.query(ResourceArtifact).filter(ResourceArtifact.artifact_id == artifact_id).first()
+        return row.status if row else fallback
+    except Exception:
+        return fallback
+
+
+def normalize_plan_resource(item: dict, step: dict, step_index: int = 0, resource_index: int = 0, db: Session = None):
     item = item or {}
     artifact = item.get("artifact") if isinstance(item.get("artifact"), dict) else {}
     artifact_id = item.get("artifact_id") or artifact.get("artifact_id") or ""
@@ -37,15 +109,16 @@ def normalize_plan_resource(item: dict, step: dict, step_index: int = 0, resourc
         "id": artifact_id or resource_id or f"res_{step_index + 1}_{resource_index + 1}",
         "artifact_id": artifact_id,
         "resource_id": resource_id,
-        "title": item.get("title") or artifact.get("title") or f"{step.get('title') or '学习步骤'}配套资源",
+        "title": _humanize_internal_ids(item.get("title") or artifact.get("title") or f"{step.get('title') or '学习步骤'}配套资源"),
         "type": resource_type,
         "unit_id": unit_id,
+        "status": _artifact_status(db, artifact_id, item.get("status") or artifact.get("status") or ""),
         "route": "/resource" if artifact_id else "",
         "query": query,
     }
 
 
-def bind_resources_to_step(step: dict, resources: list, step_index: int = 0):
+def bind_resources_to_step(step: dict, resources: list, step_index: int = 0, db: Session = None):
     def _has_resource_title(item):
         artifact = item.get("artifact") if isinstance(item.get("artifact"), dict) else {}
         return bool(item.get("title") or artifact.get("title"))
@@ -78,9 +151,36 @@ def bind_resources_to_step(step: dict, resources: list, step_index: int = 0):
         matched = resource_items
 
     return [
-        normalize_plan_resource(item, step, step_index, r_index)
+        normalize_plan_resource(item, step, step_index, r_index, db=db)
         for r_index, item in enumerate(matched[:3])
     ]
+
+
+def normalize_plan_text(plan: dict) -> dict:
+    if not isinstance(plan, dict):
+        return {}
+    item = dict(plan)
+    item["title"] = _humanize_internal_ids(item.get("title", ""))
+    item["desc"] = _humanize_internal_ids(item.get("desc", ""))
+    tasks = []
+    for task in item.get("tasks", []) or []:
+        if not isinstance(task, dict):
+            continue
+        next_task = dict(task)
+        next_task["title"] = _humanize_internal_ids(next_task.get("title", ""))
+        next_task["desc"] = _humanize_internal_ids(next_task.get("desc", ""))
+        resources = []
+        for resource in next_task.get("resources", []) or []:
+            if isinstance(resource, dict):
+                next_resource = dict(resource)
+                next_resource["title"] = _humanize_internal_ids(next_resource.get("title", ""))
+                resources.append(next_resource)
+            else:
+                resources.append(_humanize_internal_ids(resource))
+        next_task["resources"] = resources
+        tasks.append(next_task)
+    item["tasks"] = tasks
+    return item
 
 
 # =========================
@@ -116,24 +216,27 @@ def _save_user_plans_to_db(db: Session, username: str, plans_list: list):
             record = LearningPlan(username=username)
             db.add(record)
 
-        record.plans_json = json.dumps(plans_list or [], ensure_ascii=False)
-        record.updated_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        normalized_plans = _sort_plans_newest_first(_normalize_plan_timestamps(plans_list or []))
+        record.plans_json = json.dumps(normalized_plans, ensure_ascii=False)
+        record.updated_at = _now_text()
 
         db.commit()
         return True
 
-    except Exception:
+    except Exception as exc:
+        logger.exception("保存学习路线失败 username=%s", username)
         db.rollback()
-        return False
+        raise RuntimeError(f"保存学习路线失败: {exc}") from exc
 
 
 def get_plans_by_username(db: Session, username: str):
     stored = _load_user_plans_from_db(db, username)
-    return stored if stored is not None else []
+    plans = [normalize_plan_text(plan) for plan in (stored if stored is not None else [])]
+    return _sort_plans_newest_first(_normalize_plan_timestamps(plans))
 
 
 def save_user_plans(db: Session, username: str, plans_list: list):
-    return _save_user_plans_to_db(db, username, plans_list or [])
+    return _save_user_plans_to_db(db, username, [normalize_plan_text(plan) for plan in (plans_list or [])])
 
 
 def save_generated_plan(
@@ -144,6 +247,7 @@ def save_generated_plan(
     resources: list
 ):
     plans = get_plans_by_username(db, username)
+    now = _now_text()
 
     def _task_from_step(step, idx):
         if isinstance(step, dict):
@@ -155,7 +259,7 @@ def save_generated_plan(
                 "status": step.get("status") or ("active" if idx == 0 else "pending"),
                 "isCustom": False,
                 "unit_id": unit_id,
-                "resources": bind_resources_to_step(step, resources, idx),
+                "resources": bind_resources_to_step(step, resources, idx, db=db),
                 "resource_focus": step.get("resource_focus") or [],
             }
 
@@ -168,7 +272,7 @@ def save_generated_plan(
             "status": "active" if idx == 0 else "pending",
             "isCustom": False,
             "unit_id": "",
-            "resources": bind_resources_to_step(step_dict, resources, idx),
+            "resources": bind_resources_to_step(step_dict, resources, idx, db=db),
             "resource_focus": [],
         }
 
@@ -178,6 +282,8 @@ def save_generated_plan(
         "desc": f"围绕「{title}」生成的《数据结构与算法》个性化学习路线。",
         "isCollapsed": False,
         "isAiGenerated": True,
+        "created_at": now,
+        "updated_at": now,
         "tasks": [
             _task_from_step(step, idx)
             for idx, step in enumerate(path_steps)
@@ -186,7 +292,9 @@ def save_generated_plan(
 
     filtered = [p for p in plans if p.get("title") != title]
 
-    save_user_plans(db, username, [new_plan] + filtered)
+    ok = save_user_plans(db, username, [new_plan] + filtered)
+    if not ok:
+        raise RuntimeError("学习路线保存失败")
 
     return new_plan
 
@@ -205,8 +313,9 @@ def attach_artifacts_to_plan(db: Session, username: str, plan_title: str, resour
         target = plans[0]
 
     for idx, task in enumerate(target.get("tasks", []) or []):
-        task["resources"] = bind_resources_to_step(task, resources, idx)
+        task["resources"] = bind_resources_to_step(task, resources, idx, db=db)
 
+    target["updated_at"] = _now_text()
     save_user_plans(db, username, plans)
     return target
 

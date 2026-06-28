@@ -35,7 +35,18 @@ def _step(title, objective, resource_focus, status="pending", unit_id=""):
 
 
 def _unit_text(items, fallback="暂无"):
-    return "、".join([str(item) for item in items if item]) or fallback
+    titles = []
+    for item in items or []:
+        if isinstance(item, dict):
+            text = item.get("title") or item.get("name") or item.get("unit_title") or item.get("unit_id") or ""
+        else:
+            text = str(item or "")
+        unit = dsa_course_map_service.get_unit(text)
+        if unit:
+            text = unit.get("title") or text
+        if text and not text.startswith(("dsa_", "sec_", "chapter_")):
+            titles.append(text)
+    return "、".join(list(dict.fromkeys(titles))) or fallback
 
 
 def _project_steps(course_match, topic):
@@ -60,7 +71,7 @@ def _project_steps(course_match, topic):
             "用可运行代码跑通输入样例、核心函数、边界用例、复杂度记录和调试输出。",
             [artifact_types.CODE_LAB, artifact_types.VIDEO_RECOMMENDATION, artifact_types.PERSONALIZED_VIDEO_GUIDE],
             "pending",
-            "dl_pytorch_practice",
+            unit_id,
         ),
         _step(
             "第 4 步：解释模型结构与训练现象",
@@ -147,8 +158,8 @@ def run(profile, semantic_result=None):
 
     steps = [
         _step(
-            "第 1 步：确认前置知识",
-            f"先检查「{_unit_text(prerequisites, '循环、函数、数组和基本调试能力')}」是否掌握，再进入「{chapter}」。",
+            "第 1 步：确认前置基础",
+            f"先用自然语言复述「{_unit_text(prerequisites, '循环、函数、数组和基本调试能力')}」这些前置基础的作用，再进入「{chapter}」的当前主题学习。",
             [artifact_types.COURSE_NOTE, artifact_types.EXERCISE_SET],
             "active",
             unit_id,

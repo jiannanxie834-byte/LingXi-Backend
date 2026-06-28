@@ -175,6 +175,12 @@ def init_schema_migrations():
             if "state_json" in _existing_columns(conn, "chat_sessions"):
                 conn.execute(text("UPDATE chat_sessions SET state_json = '{}' WHERE state_json IS NULL OR state_json = ''"))
 
+        learning_plan_columns = _existing_columns(conn, "learning_plans")
+        if learning_plan_columns and engine.dialect.name == "mysql":
+            conn.execute(text("ALTER TABLE learning_plans MODIFY plans_json LONGTEXT"))
+        if learning_plan_columns:
+            conn.execute(text("UPDATE learning_plans SET plans_json = '[]' WHERE plans_json IS NULL OR plans_json = ''"))
+
         resource_type_columns = _existing_columns(conn, "resource_types")
         for column_name, column_sql in RESOURCE_TYPE_EXTRA_COLUMNS.items():
             if resource_type_columns and column_name not in resource_type_columns:

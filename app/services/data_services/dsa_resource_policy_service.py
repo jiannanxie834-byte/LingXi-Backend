@@ -6,8 +6,14 @@ DEFAULT_DSA_LEARNING_PACKAGE_TYPES = [
     artifact_types.MIND_MAP,
     artifact_types.EXERCISE_SET,
     artifact_types.CODE_LAB,
-    artifact_types.DIAGNOSTIC_REPORT,
     artifact_types.PERSONALIZED_VIDEO_GUIDE,
+]
+
+DSA_POST_EXERCISE_REMEDIATION_TYPES = [
+    artifact_types.COURSE_NOTE,
+    artifact_types.EXERCISE_SET,
+    artifact_types.CODE_LAB,
+    artifact_types.DIAGNOSTIC_REPORT,
 ]
 
 
@@ -22,12 +28,11 @@ DSA_RESOURCE_POLICY_BY_SCOPE = {
         artifact_types.MIND_MAP,
         artifact_types.EXERCISE_SET,
         artifact_types.CODE_LAB,
-        artifact_types.DIAGNOSTIC_REPORT,
         artifact_types.PERSONALIZED_VIDEO_GUIDE,
         artifact_types.PROJECT_BRIEF,
     ],
-    "remediation": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
-    "diagnostic": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
+    "remediation": DSA_POST_EXERCISE_REMEDIATION_TYPES,
+    "diagnostic": DSA_POST_EXERCISE_REMEDIATION_TYPES,
 }
 
 

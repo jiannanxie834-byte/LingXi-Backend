@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List
 
 from app.agents.agent_result_dto import AgentResultDTO
@@ -52,7 +53,14 @@ def _grounding_summary(retrieval: Dict) -> str:
     misconceptions = metadata.get("misconceptions", {}).get("misconceptions") if isinstance(metadata.get("misconceptions"), dict) else []
     exercise_titles = [item.get("title") for item in exercises if isinstance(item, dict)]
     code_titles = [item.get("title") for item in code_tasks if isinstance(item, dict)]
-    video_titles = [item.get("title") for item in videos if isinstance(item, dict)]
+    video_titles = []
+    for item in videos:
+        if not isinstance(item, dict):
+            continue
+        title = item.get("title") or "公开视频"
+        url = item.get("source_url") or ""
+        focus = "、".join(item.get("watch_focus") or [])
+        video_titles.append("｜".join(part for part in [title, url, focus] if part))
     misconception_text = []
     for item in misconceptions or []:
         if isinstance(item, dict):
@@ -84,14 +92,33 @@ def _artifact_instruction(resource_type: str, topic: str) -> str:
     if resource_type == artifact_types.COURSE_NOTE:
         return f"""
 生成一份新的个性化课程讲解文档，不能复制小节正文。
-必须包含二级标题：学习定位、核心概念、一步步理解、例子、常见误区、自测题、参考答案、下一步建议。
+必须包含二级标题：学习定位、核心概念、一步步理解、关键流程、例子、常见误区、小结、下一步建议。
+课程讲解文档只负责把概念讲清楚，不要生成成套练习题，不要设置“自测题/参考答案”章节；练习题由“练习题集”模块单独负责。
 正文不少于 900 个中文字符，围绕「{topic}」和学生当前问题重写讲解。
 """
     if resource_type == artifact_types.MIND_MAP:
         return f"""
 生成新的 Mermaid mindmap，不要返回原始导图。
-必须以 mindmap 开头，围绕「{topic}」展开：前置知识、核心概念、操作流程、易混点、练习方向、下一步。
-至少 12 行，至少 3 层缩进。
+必须以 mindmap 开头，围绕「{topic}」生成“有层级、有逻辑”的知识结构，不要把所有词平铺在 root 下。
+一级分支固定使用这些类别中的 5-6 个：学习定位、前置知识、核心概念、操作流程、典型应用、易错点、练习方向、下一步。
+每个一级分支下面必须有 2-4 个二级节点；必要时再加第三级节点说明关系。
+禁止输出只有 root + 一堆同级关键词的扁平导图。
+示例格式：
+mindmap
+  root(({topic}))
+    前置知识
+      需要先理解的概念
+      相关数据结构
+    核心概念
+      概念 A
+        为什么重要
+      概念 B
+    操作流程
+      第一步
+      第二步
+    易错点
+      容易混淆的概念
+      常见边界情况
 """
     if resource_type == artifact_types.EXERCISE_SET:
         return f"""
@@ -116,9 +143,80 @@ def _artifact_instruction(resource_type: str, topic: str) -> str:
         return f"""
 生成新的个性化视频/阅读学习指南。
 必须包含：观看/阅读前准备、观看/阅读中关注点、暂停思考问题、观看/阅读后任务、关联练习、关联代码实验、版权说明。
-如依据中有公开视频链接，只能给原始链接和观看任务，不得下载、搬运或重新托管。
+如依据中有公开视频链接，必须保留原始 source_url 并为每个链接设计观看任务；不得下载、搬运或重新托管。
 """
     return f"生成一份新的个性化「{resource_type}」，必须结合学生画像和课程依据重写，不能复制资源库原文。"
+
+
+MINDMAP_GROUPS = [
+    ("前置知识", ("前置", "基础", "定义", "概念", "条件", "复杂度", "数组", "链表", "栈", "队列", "树", "图", "递归")),
+    ("核心概念", ("核心", "结构", "性质", "关系", "状态", "指针", "节点", "存储", "顺序", "链式", "最优子结构", "贪心选择")),
+    ("操作流程", ("流程", "步骤", "操作", "插入", "删除", "查找", "遍历", "访问", "push", "pop", "peek", "入队", "出队", "递归调用", "转移", "排序", "匹配")),
+    ("典型应用", ("应用", "场景", "任务", "项目", "括号", "表达式", "调度", "路径", "Huffman", "编码", "Top", "窗口", "播放", "缓存")),
+    ("易错点", ("误区", "错误", "混淆", "忽略", "边界", "反例", "陷阱", "开销", "成本", "不一定", "快慢", "指针")),
+    ("练习方向", ("练习", "题", "证明", "验证", "对比", "复盘", "实验", "代码", "实现", "下一步")),
+]
+
+
+def _group_mindmap_nodes(nodes: List[str]) -> List[tuple]:
+    grouped = [(name, []) for name, _ in MINDMAP_GROUPS]
+    fallback = ("关联概念", [])
+    seen = set()
+    for raw in nodes:
+        item = _clean_text(raw)
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        matched = False
+        for index, (_, keywords) in enumerate(MINDMAP_GROUPS):
+            if any(keyword.lower() in item.lower() for keyword in keywords):
+                grouped[index][1].append(item)
+                matched = True
+                break
+        if not matched:
+            fallback[1].append(item)
+    return [(name, items[:6]) for name, items in [*grouped, fallback] if items]
+
+
+def _rebuild_grouped_mindmap(root: str, nodes: List[str]) -> str:
+    lines = ["mindmap", f"  root(({root}))"]
+    for group_name, items in _group_mindmap_nodes(nodes):
+        lines.append(f"    {group_name}")
+        for item in items:
+            lines.append(f"      {item}")
+    return "\n".join(lines)
+
+
+def _normalize_mindmap_content(content: str, topic: str) -> str:
+    text = _clean_text(content)
+    if not text:
+        return text
+
+    fenced_match = re.search(r"```mermaid\s*(.*?)```", text, re.S | re.I)
+    diagram = fenced_match.group(1).strip() if fenced_match else text
+    if not diagram.lower().startswith("mindmap"):
+        return text
+
+    bare_match = re.match(r"mindmap\s+root(?:\(\((.*?)\)\)|\((.*?)\)|\[(.*?)\]|\{(.*?)\}|([^\s]+))\s*(.*)$", diagram, re.S | re.I)
+    if bare_match:
+        root = next((value for value in bare_match.groups()[:5] if value), None) or topic
+        nodes = [item for item in re.split(r"\s+", bare_match.group(6) or "") if item]
+        if len(nodes) >= 6:
+            return _rebuild_grouped_mindmap(root, nodes)
+
+    lines = [line.rstrip() for line in diagram.splitlines() if line.strip()]
+    root_line = next((line.strip() for line in lines if line.strip().lower().startswith("root")), "")
+    child_lines = [line for line in lines if not line.strip().lower().startswith(("mindmap", "root"))]
+    is_flat = len(child_lines) >= 8 and all((len(line) - len(line.lstrip(" "))) <= 4 for line in child_lines)
+    if not is_flat:
+        return diagram
+
+    root_match = re.match(r"root(?:\(\((.*?)\)\)|\((.*?)\)|\[(.*?)\]|\{(.*?)\}|(.*))", root_line, re.I)
+    root = topic
+    if root_match:
+        root = next((value for value in root_match.groups() if _clean_text(value)), None) or topic
+    nodes = [line.strip() for line in child_lines]
+    return _rebuild_grouped_mindmap(root, nodes)
 
 
 def _fallback_content(resource_type: str, topic: str, student_question: str, profile: Dict, retrieval: Dict) -> Dict:
@@ -248,6 +346,18 @@ python main.py
 实验报告建议包含：题目目标、输入输出定义、核心算法流程、完整代码、运行截图或运行结果、复杂度分析、遇到的错误和修复方式。对当前基础阶段来说，能写清楚“为什么这么更新”比写出更短的代码更重要。
 """
     elif resource_type == artifact_types.PERSONALIZED_VIDEO_GUIDE:
+        videos = retrieval.get("video_items") or []
+        video_lines = []
+        for video in videos[:4]:
+            if not isinstance(video, dict):
+                continue
+            title = video.get("title") or "公开视频"
+            url = video.get("source_url") or ""
+            focus = "、".join(video.get("watch_focus") or [])
+            before = "；".join(video.get("before_watch") or [])
+            after = "；".join(video.get("after_watch_tasks") or [])
+            if url:
+                video_lines.append(f"- [{title}]({url})：观看重点：{focus or topic}；观看前：{before or '先写下当前疑问'}；观看后：{after or '完成一次复述和一道练习'}。")
         content = f"""# {topic} 个性化视频与阅读学习指南
 
 ## 观看/阅读前准备
@@ -263,6 +373,9 @@ python main.py
 
 ## 观看/阅读后任务
 用 5 句话复述核心流程，并完成 2 道基础题。
+
+## 推荐视频链接
+{chr(10).join(video_lines) if video_lines else "- 当前匹配小节暂未配置公开视频链接，先使用课程讲解、导图、练习题和代码实验完成学习。"}
 
 ## 关联练习
 优先做概念辨析题和过程手推题，再进入代码补全。
@@ -333,20 +446,11 @@ python main.py
 - 把相似概念混在一起，例如把“能访问”误认为“复杂度一定低”，或者把“模板能套”误认为“状态定义已经正确”。
 - 写代码时先写循环，再回头猜变量含义，导致调试时不知道错误发生在哪一步。
 
-## 自测题
-1. 用自己的话解释「{topic}」解决什么问题。
-2. 写出一个最小输入，手推关键步骤。
-3. 说明这个方法的时间复杂度和空间复杂度。
-4. 给出一个容易出错的边界输入。
-
-## 参考答案
-1. 答案应包含定义、适用场景、关键步骤和边界提醒。
-2. 手推过程要写出每一步中变量或数据结构的变化。
-3. 复杂度说明要指出输入规模记作什么，以及循环、递归或数据结构操作贡献了多少代价。
-4. 边界输入可以从空输入、单元素、重复元素、极端规模或不满足条件的输入中选择。
+## 小结
+学习「{topic}」时，最重要的是把定义、适用条件、关键流程和复杂度来源连成一条线。你应该能说清楚它适合解决什么问题、每一步为什么成立、哪些输入会触发边界情况，以及它和相近知识点有什么区别。
 
 ## 下一步建议
-先完成上面的自测题，再做 2 道基础题和 1 道代码补全题。完成后不要只看对错，要记录错因：是定义不清、边界遗漏、复杂度判断错误，还是代码实现时变量更新顺序错了。下一轮系统会根据这些错因继续生成更精确的补弱练习。
+如果你已经能复述本讲解的核心流程，可以进入配套“练习题集”模块做题；如果你还不能解释边界条件，先回到“例子”和“常见误区”两节，把最小样例和边界样例重新手推一遍。
 """
     return {
         "summary": f"根据你的问题「{student_question or topic}」生成的个性化{resource_type}。",
@@ -405,6 +509,8 @@ Artifact 类型：
             data = result.get("data") or {}
             content = _clean_text(data.get("content"))
             if content:
+                if resource_type == artifact_types.MIND_MAP:
+                    content = _normalize_mindmap_content(content, topic)
                 return {
                     "summary": _clean_text(data.get("summary")) or item.get("summary") or "",
                     "content": content,
@@ -417,6 +523,8 @@ Artifact 类型：
         pass
 
     fallback = _fallback_content(resource_type, topic, student_question, profile, retrieval)
+    if resource_type == artifact_types.MIND_MAP:
+        fallback["content"] = _normalize_mindmap_content(fallback.get("content") or "", topic)
     return {
         **fallback,
         "source": "数据结构与算法课程资源库依据生成",

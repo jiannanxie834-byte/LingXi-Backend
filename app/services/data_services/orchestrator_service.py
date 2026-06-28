@@ -373,6 +373,9 @@ def _structured_artifact_content(item, resource_output, profile_result):
             unit_id=unit_id,
             topic=topic,
             profile=profile_result,
+            chapter_id=course_match.get("chapter_id", ""),
+            section_id=course_match.get("section_id", ""),
+            unit_ids=course_match.get("unit_ids") or ([unit_id] if unit_id else []),
             limit=4,
         )
         first_video = videos[0] if videos else {}
@@ -450,6 +453,7 @@ def _dsa_item_context(item: dict):
         "unit_id": unit_id,
         "chapter": chapter,
         "chapter_id": chapter_id,
+        "section_id": item.get("section_id") or course_map.get("section_id") or unit.get("section_id") or "",
         "chapter_title": chapter.get("title") or item.get("chapter_title") or course_map.get("chapter_title") or "",
         "topic": topic,
         "core_concepts": unit.get("core_concepts") or course_map.get("core_topics") or [topic],
@@ -540,13 +544,10 @@ def _dsa_course_note(item, ctx, evidence_info, personalization):
     lines.append(f"例子 2：如果题目要求你实现「{topic}」，先写最小输入、空输入和边界输入，再补普通样例。")
     lines.extend(["", "## 常见误区", ""])
     lines.extend([f"- {item}" for item in misconceptions])
-    lines.extend(["", "## 自测题", ""])
+    lines.extend(["", "## 小结", ""])
     lines.extend([
-        f"1. 用自己的话说明「{topic}」解决的问题，并给出一个最小输入样例。",
-        f"2. 标出「{topic}」中最容易出错的边界条件。",
-        f"3. 写出该主题相关操作的时间复杂度，并解释复杂度从哪一步产生。",
-        "",
-        "参考答案：答案不要求背固定模板，但必须同时包含问题目标、关键操作、边界条件和复杂度来源。",
+        f"学完「{topic}」后，你应该能把它解决的问题、关键操作、边界条件和复杂度来源串成一条完整解释。",
+        "如果还只能背关键词，说明需要回到核心概念和例子部分重新梳理。",
     ])
     lines.extend(["", "## 下一步建议", ""])
     lines.extend([
@@ -742,6 +743,9 @@ def _dsa_video_guide(item, ctx, evidence_info, personalization):
         unit_id=ctx["unit_id"],
         topic=topic,
         profile=item.get("_profile_result") or {},
+        chapter_id=ctx.get("chapter_id", ""),
+        section_id=ctx.get("section_id", ""),
+        unit_ids=[ctx["unit_id"]] if ctx.get("unit_id") else [],
         limit=3,
     )
     lines = [
@@ -956,9 +960,25 @@ def _public_generation_message(success_count: int, failed_count: int) -> str:
 def _build_resource_repair_prompt(item, draft, quality_result, evidence_prompt, teaching_sources_prompt):
     issues = "\n".join(f"- {issue}" for issue in quality_result.get("issues", []))
     suggestions = "\n".join(f"- {item}" for item in quality_result.get("repair_suggestions", []))
+    resource_type = artifact_types.normalize_artifact_type(item.get("type", ""))
+    course_note_requirements = """
+- 课程讲解文档只负责把概念讲清楚，不生成成套练习题。
+- 正文不少于 1200 个中文字符。
+- 至少包含：学习定位、核心概念、关键流程、例子、常见误区、小结、下一步建议。
+- 例子用于解释概念，不要写成“题目/答案/解析”的练习题格式。
+"""
+    generic_requirements = """
+- 正文不少于 1800 个中文字符
+- 至少 8 个二级标题
+- 至少 5 个核心概念解释
+- 至少 2 个具体例子
+- 至少 3 道自测题并附参考答案
+- 必须引用 evidence_id
+"""
+    type_requirements = course_note_requirements if resource_type == artifact_types.COURSE_NOTE else generic_requirements
     return f"""
 以下课程资源教学质量不达标。请根据问题清单重写，不要只小修小补。
-必须补齐缺失章节，扩展知识点解释，增加例子、公式、练习和证据引用。
+必须补齐缺失章节，扩展知识点解释，增加例子、公式/流程和证据引用。
 
 资源主题：{item.get('unit_title') or item.get('topic')}
 资源类型：{item.get('type')}
@@ -987,12 +1007,7 @@ def _build_resource_repair_prompt(item, draft, quality_result, evidence_prompt, 
 输出要求：
 - 只输出 JSON 对象
 - summary、sections、source_notes 字段必须完整
-- 正文不少于 1800 个中文字符
-- 至少 8 个二级标题
-- 至少 5 个核心概念解释
-- 至少 2 个具体例子
-- 至少 3 道自测题并附参考答案
-- 必须引用 evidence_id
+{type_requirements}
 """
 
 

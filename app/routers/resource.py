@@ -162,12 +162,19 @@ async def list_resource_artifacts(
     username: str = "",
     status: str = "",
     limit: int = 50,
+    include_public: bool = True,
     db: Session = Depends(get_db),
 ):
     return {
         "code": 200,
         "message": "ok",
-        "data": resource_artifact_service.list_artifacts(db, username=username, status=status, limit=limit),
+        "data": resource_artifact_service.list_artifacts(
+            db,
+            username=username,
+            status=status,
+            limit=limit,
+            include_public=include_public,
+        ),
     }
 
 

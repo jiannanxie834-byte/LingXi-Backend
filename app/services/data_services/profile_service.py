@@ -6,6 +6,7 @@ from collections import Counter
 from typing import List, Dict, Optional
 
 from app.models.schemas import EvaluationRecord, LearningPlan, TodoList
+from app.services.data_services import diagnosis_engine_service
 from app.services.data_services.knowledge_tag_service import (
     extract_knowledge_tags_from_text,
     normalize_knowledge_tag,
@@ -371,222 +372,20 @@ def build_profile(
     semantic_result: Optional[Dict] = None
 ) -> Dict:
     """
-    构建学习画像（核心函数）
+    构建动态学习画像。
+
+    画像不再只看标签或固定文案，而是统一复用 diagnosis_engine_service
+    聚合的评价、练习、规划、资源反馈和对话行为证据。
     """
-
-    old_tags = split_tags(user.tags if user else "")
-    hours = user.hours if user else 0
-    username = user.username if user else ""
-    evidence = _load_profile_evidence(db, username)
-    semantic_result = semantic_result or {}
-    subject_category = semantic_result.get("subject_category", "unknown")
-    course_id = semantic_result.get("course_id") or "data_structures_algorithms"
-    chapter_id = semantic_result.get("chapter_id") or ""
-    section_id = semantic_result.get("section_id") or ""
-    unit_ids = semantic_result.get("unit_ids") or []
-    topic_title = semantic_result.get("topic_title") or knowledge_topic
-    topic_level = semantic_result.get("level") or "未确认"
-    level_source = semantic_result.get("level_source") or "none"
-    level_evidence = semantic_result.get("level_evidence") or ""
-    needs_level_diagnosis = semantic_result.get("needs_level_diagnosis", True)
-
-    # 学习意图影响
-    intent_boost_map = {
-        "概念讲解": 5,
-        "实操训练": 10,
-        "路径规划": 7,
-        "练习巩固": 8,
-        "综合学习": 6
-    }
-
-    intent_boost = intent_boost_map.get(intent, 5)
-
-    # 参与度
-    engagement = calculate_engagement(len(message))
-
-    # 综合评分（画像基础值）
-    base_score = 50
-    recent_avg_score = evidence.get("recent_avg_score")
-    history_score = recent_avg_score if recent_avg_score is not None else (score or 70)
-
-    final_score = round(
-        min(
-            100,
-            base_score + intent_boost + engagement + history_score * 0.18
-        )
+    return diagnosis_engine_service.build_behavior_profile(
+        db=db,
+        user=user,
+        message=message,
+        intent=intent,
+        knowledge_topic=knowledge_topic,
+        score=score,
+        semantic_result=semantic_result or {},
     )
-
-    intensity = calculate_learning_intensity(hours)
-    knowledge_base_score = {
-        "零基础": 35,
-        "入门": 45,
-        "基础": 60,
-        "进阶": 75,
-        "高级": 88,
-        "重点补救": 40,
-        "需要巩固": 52,
-        "基本掌握": 68,
-        "掌握较好": 82,
-    }.get(topic_level, 50)
-
-    topic_candidates = (
-        [knowledge_topic]
-        + extract_knowledge_tags_from_text(message)
-        + evidence.get("evaluated_topics", [])
-        + old_tags
-    )
-    normalized_topic_candidates = [
-        normalized
-        for normalized in (normalize_knowledge_tag(item) for item in topic_candidates)
-        if normalized
-    ]
-    high_frequency_topics = [
-        item for item, _ in Counter(normalized_topic_candidates).most_common(3)
-    ]
-    weak_points = evidence.get("weak_points") or ["需要进一步强化核心概念理解"]
-    plan_rate = evidence.get("plan_completion_rate")
-    todo_rate = evidence.get("todo_completion_rate")
-    dimension_evidence = [
-        {
-            "dimension": "知识基础",
-            "value": topic_level,
-            "source": level_source,
-            "evidence": level_evidence or "本轮首次提出该主题，尚无同主题评价记录",
-        },
-        {
-            "dimension": "知识短板",
-            "value": "；".join(weak_points[:3]),
-            "source": "evaluation_records" if evidence.get("evaluation_count") else "default_prompt",
-            "evidence": "来自最近学习评价记录" if evidence.get("evaluation_count") else "暂无评价记录，仅提示后续需通过练习或评价确认",
-        },
-        {
-            "dimension": "计划完成率",
-            "value": f"{plan_rate}%" if plan_rate is not None else "暂无计划完成记录",
-            "source": "learning_plan",
-            "evidence": f"已完成 {evidence.get('plan_completed_tasks', 0)}/{evidence.get('plan_total_tasks', 0)} 个学习任务",
-        },
-    ]
-    plan_score = plan_rate if plan_rate is not None else min(80, 45 + evidence.get("plan_count", 0) * 12)
-    todo_score = todo_rate if todo_rate is not None else min(75, 45 + evidence.get("todo_done", 0) * 8)
-    execution_score = _clamp(plan_score * 0.6 + todo_score * 0.4)
-
-    self_drive_score = _clamp(
-        45
-        + engagement * 3
-        + min(20, evidence.get("plan_count", 0) * 5)
-        + min(20, evidence.get("todo_done", 0) * 4)
-    )
-    practice_score = _clamp(
-        (85 if intent == "实操训练" else 55)
-        + (plan_rate or 0) * 0.18
-        + (todo_rate or 0) * 0.12
-    )
-    weak_fix_score = _clamp(
-        (recent_avg_score if recent_avg_score is not None else 65)
-        + min(10, evidence.get("evaluation_count", 0) * 2)
-    )
-    cognitive_match_score = _clamp(
-        62
-        + min(18, len(high_frequency_topics) * 6)
-        + (10 if knowledge_topic in old_tags else 0)
-    )
-    focus_score = _clamp(engagement * 5 + min(25, hours // 2))
-    tags = summarize_knowledge_tags(topic_candidates)
-    goal_clarity_score = _clamp(55 + intent_boost * 3 + min(12, len(message) // 30))
-    stage_score = _clamp({
-        "零基础": 35,
-        "入门": 45,
-        "基础": 60,
-        "进阶": 75,
-        "高级": 88,
-    }.get(topic_level, 50))
-    weak_awareness_score = _clamp(
-        50
-        + min(20, len(weak_points) * 6)
-        + (15 if evidence.get("evaluation_count") else 0)
-    )
-    media_preference_score = _clamp(
-        58
-        + (18 if semantic_result.get("requires_multimodal") else 0)
-        + (10 if any(word in message for word in ["图解", "导图", "代码", "示例", "可视化"]) else 0)
-    )
-    interest_focus_score = _clamp(
-        55
-        + min(24, len(high_frequency_topics) * 8)
-        + (10 if tags else 0)
-    )
-    error_pattern_score = _clamp(
-        weak_fix_score
-        if evidence.get("evaluation_count")
-        else (60 if any(word in message for word in ["错", "不会", "不懂", "卡住"]) else 48)
-    )
-
-    style = "问题修复型" if evidence.get("evaluation_count") else "探索理解型"
-    if intent == "路径规划":
-        style = "规划执行型"
-    elif intent == "实操训练":
-        style = "实践应用型"
-    elif intent == "练习巩固":
-        style = "练习复盘型"
-
-    return {
-        "tags": tags,
-        "knowledge_tags": tags,
-        "updated_at": datetime.datetime.now().isoformat(timespec="seconds"),
-        "dimensions": {
-            "知识基础": knowledge_base_score,
-            "学习目标": intent,
-            "学习阶段": topic_level,
-            "认知风格": style,
-            "知识短板": "；".join(weak_points[:3]),
-            "媒介偏好": "图解/思维导图/代码示例优先" if semantic_result.get("requires_multimodal") else "文字讲解 + 练习巩固",
-            "实践能力": practice_score,
-            "学习节奏": f"计划 {plan_rate}%" if plan_rate is not None else f"学习强度：{intensity}",
-            "易错模式": "；".join(weak_points[:2]) if evidence.get("evaluation_count") else "待练习数据确认",
-            "兴趣方向": "、".join(high_frequency_topics) if high_frequency_topics else (tags[0] if tags else knowledge_topic),
-        },
-        "radar": {
-            "知识基础": _clamp(knowledge_base_score),
-            "学习目标": goal_clarity_score,
-            "学习阶段": stage_score,
-            "知识短板": weak_awareness_score,
-            "认知风格": cognitive_match_score,
-            "媒介偏好": media_preference_score,
-            "实践能力": practice_score,
-            "学习节奏": execution_score,
-            "易错模式": error_pattern_score,
-            "兴趣方向": interest_focus_score,
-        },
-        "evidence": {
-            "evaluation_count": evidence.get("evaluation_count", 0),
-            "recent_avg_score": recent_avg_score,
-            "weak_points": weak_points[:3],
-            "plan_count": evidence.get("plan_count", 0),
-            "plan_completion_rate": plan_rate,
-            "todo_completion_rate": todo_rate,
-            "high_frequency_topics": high_frequency_topics,
-            "knowledge_tags": tags,
-            "course_id": course_id,
-            "chapter_id": chapter_id,
-            "section_id": section_id,
-            "unit_ids": unit_ids,
-            "topic_title": topic_title,
-            "topic_level": topic_level,
-            "level_source": level_source,
-            "level_evidence": level_evidence,
-            "needs_level_diagnosis": needs_level_diagnosis,
-            "subject_category": subject_category,
-            "dimension_evidence": dimension_evidence,
-            "internal_metrics": {
-                "self_drive_score": self_drive_score,
-                "focus_score": focus_score,
-                "plan_completion_rate": plan_rate,
-                "todo_completion_rate": todo_rate,
-                "recent_avg_score": recent_avg_score,
-                "profile_basis": "同主题证据、本轮交互、平台活跃度；全局学习时长不作为当前学科水平依据",
-            },
-        }
-    }
 
 
 # =========================

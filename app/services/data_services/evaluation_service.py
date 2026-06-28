@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.schemas import EvaluationRecord, ExerciseAttempt, LearningPlan, ResourceArtifact
 from app.services.data_services import (
+    diagnosis_engine_service,
     dsa_topic_resolver,
     generation_job_service,
     profile_event_service,
@@ -20,7 +21,7 @@ from app.services.data_services import (
 
 COURSE_ID = dsa_topic_resolver.COURSE_ID
 COURSE_TITLE = dsa_topic_resolver.COURSE_TITLE
-LEGACY_TERMS = []
+LEGACY_TERMS = diagnosis_engine_service.LEGACY_EVALUATION_TERMS
 
 
 def _json_dump(value) -> str:
@@ -77,6 +78,26 @@ def _evaluation_to_dict(record: EvaluationRecord) -> Dict:
     unit_ids = _safe_json_load(getattr(record, "unit_ids_json", ""), [])
     evidence_refs = _safe_json_load(getattr(record, "evidence_refs_json", ""), [])
     titles = _record_titles(record)
+    resolved = {
+        "topic": record.topic or "",
+        "chapter_id": getattr(record, "chapter_id", "") or "",
+        "section_id": getattr(record, "section_id", "") or "",
+        "unit_ids": unit_ids,
+        "chapter_title": titles["chapter_title"],
+        "section_title": titles["section_title"],
+        "unit_titles": titles["unit_titles"],
+    }
+    source_text = " ".join([record.topic or "", titles["chapter_title"], titles["section_title"], " ".join(titles["unit_titles"])])
+    weak_points = diagnosis_engine_service.filter_relevant_items(
+        _safe_json_load(record.weak_points, []),
+        resolved=resolved,
+        source_text=source_text,
+    )
+    suggestions = diagnosis_engine_service.filter_relevant_items(
+        _safe_json_load(record.suggestions, []),
+        resolved=resolved,
+        source_text=source_text,
+    )
     return {
         "id": record.id,
         "username": record.username,
@@ -93,8 +114,8 @@ def _evaluation_to_dict(record: EvaluationRecord) -> Dict:
         "topic": record.topic,
         "score": record.score,
         "level": record.level,
-        "weak_points": _safe_json_load(record.weak_points, []),
-        "suggestions": _safe_json_load(record.suggestions, []),
+        "weak_points": weak_points,
+        "suggestions": suggestions,
         "wrong_notes": record.wrong_notes or "",
         "answers": _safe_json_load(record.answers_json, {}),
         "generated_resource_id": record.generated_resource_id or "",
@@ -107,10 +128,26 @@ def _contains_legacy_terms(*values) -> bool:
     return any(term in text for term in LEGACY_TERMS)
 
 
-def _build_report_content(resolved: Dict, notes: str, score: int, level: str, weak_points: List[str], suggestions: List[str]) -> str:
+def _build_report_content(
+    resolved: Dict,
+    notes: str,
+    score: int,
+    level: str,
+    weak_points: List[str],
+    suggestions: List[str],
+    score_breakdown: List[Dict] = None,
+    evidence_summary: Dict = None,
+) -> str:
     weak_lines = "\n".join([f"- {item}" for item in weak_points])
     suggestion_lines = "\n".join([f"{idx}. {item}" for idx, item in enumerate(suggestions, 1)])
     unit_titles = "、".join(resolved.get("unit_titles") or ["待定位"])
+    breakdown_lines = "\n".join(
+        [
+            f"- {item.get('name')}：{item.get('value')} 分，权重 {round(float(item.get('weight') or 0) * 100)}%"
+            for item in (score_breakdown or [])
+        ]
+    ) or "- 本次诊断依据较少，建议通过练习和评价继续补充证据。"
+    evidence_summary = evidence_summary or {}
     return f"""# {resolved['topic']} 诊断与补弱报告
 
 ## 课程
@@ -124,6 +161,15 @@ def _build_report_content(resolved: Dict, notes: str, score: int, level: str, we
 ## 得分与等级
 - 得分：{score}
 - 等级：{level}
+
+## 诊断依据
+{breakdown_lines}
+
+## 行为证据概览
+- 历史评价：{len(evidence_summary.get('evaluation_records') or [])} 条
+- 练习记录：{len(evidence_summary.get('exercise_attempts') or [])} 条
+- 学习计划/待办完成率：{evidence_summary.get('execution_rate') if evidence_summary.get('execution_rate') is not None else '暂无'}
+- 近期综合均分：{evidence_summary.get('recent_avg_score') if evidence_summary.get('recent_avg_score') is not None else '暂无'}
 
 ## 学生反馈
 {notes or "本次未填写详细错题说明，系统根据平台学习记录生成阶段性诊断。"}
@@ -364,11 +410,28 @@ def handle_learning_evaluation(
         unit_ids=unit_ids or [],
         fallback_topic=topic or "数据结构与算法学习诊断",
     )
-    score = _score_evaluation(merged_text, confidence, resolved)
-    level = _level_from_score(score)
-    weak_points = resolved.get("weak_points") or ["需要补充具体错题证据"]
-    suggestions = resolved.get("suggestions") or ["先完成一个小节练习，再提交错因说明。"]
-    report_content = _build_report_content(resolved, wrong_notes or answer_summary, score, level, weak_points, suggestions)
+    diagnosis = diagnosis_engine_service.calculate_diagnosis(
+        db=db,
+        username=username,
+        resolved=resolved,
+        current_text=merged_text,
+        confidence=confidence,
+    )
+    score = diagnosis["score"]
+    level = diagnosis["level"]
+    weak_points = diagnosis["weak_points"]
+    suggestions = diagnosis["suggestions"]
+    resolved["diagnosis_type"] = "manual_multi_factor"
+    report_content = _build_report_content(
+        resolved,
+        wrong_notes or answer_summary,
+        score,
+        level,
+        weak_points,
+        suggestions,
+        diagnosis.get("score_breakdown") or [],
+        diagnosis.get("evidence") or {},
+    )
     report = _make_artifact(
         db,
         username,
@@ -410,6 +473,14 @@ def handle_learning_evaluation(
         "unit_titles": record.get("unit_titles", ["待定位"]),
         "weak_points": weak_points,
         "suggestions": suggestions,
+        "score_breakdown": diagnosis.get("score_breakdown") or [],
+        "diagnosis_evidence": {
+            "recent_avg_score": (diagnosis.get("evidence") or {}).get("recent_avg_score"),
+            "topic_avg_score": (diagnosis.get("evidence") or {}).get("topic_avg_score"),
+            "exercise_avg_score": (diagnosis.get("evidence") or {}).get("exercise_avg_score"),
+            "execution_rate": (diagnosis.get("evidence") or {}).get("execution_rate"),
+            "evidence_count": (diagnosis.get("evidence") or {}).get("evidence_count"),
+        },
         "generated_resource": report,
         "profile": profile,
     }
@@ -471,20 +542,32 @@ def handle_auto_evaluation(db: Session, username: str) -> Dict:
     if not source_text.strip() and user:
         source_text = f"{user.tags or ''} {user.bio or ''}"
     resolved = dsa_topic_resolver.resolve_topic(source_text, fallback_topic="数据结构与算法学习诊断")
-    history = get_evaluation_records(db, username)
-    recent_scores = [item.get("score", 0) for item in history[:3] if item.get("score")]
-    base_score = round(sum(recent_scores) / len(recent_scores)) if recent_scores else 68
-    if not resolved.get("matched"):
-        base_score = min(base_score, 70)
-    score = max(42, min(95, base_score))
-    level = _level_from_score(score)
-    weak_points = resolved.get("weak_points") or ["需要通过一次具体练习定位薄弱知识单元"]
-    suggestions = resolved.get("suggestions") or ["选择一个 DSA 小节完成诊断练习。"]
+    diagnosis = diagnosis_engine_service.calculate_diagnosis(
+        db=db,
+        username=username,
+        resolved=resolved,
+        current_text=source_text,
+        confidence=60,
+    )
+    score = diagnosis["score"]
+    level = diagnosis["level"]
+    weak_points = diagnosis["weak_points"]
+    suggestions = diagnosis["suggestions"]
+    resolved["diagnosis_type"] = "auto_multi_factor"
     auto_notes = (
         f"系统基于历史评价、练习记录、学习计划和已生成资源进行自动诊断；"
         f"当前定位主题为「{resolved.get('topic')}」。"
     )
-    report_content = _build_report_content(resolved, auto_notes, score, level, weak_points, suggestions)
+    report_content = _build_report_content(
+        resolved,
+        auto_notes,
+        score,
+        level,
+        weak_points,
+        suggestions,
+        diagnosis.get("score_breakdown") or [],
+        diagnosis.get("evidence") or {},
+    )
     report = _make_artifact(
         db,
         username,
@@ -519,6 +602,14 @@ def handle_auto_evaluation(db: Session, username: str) -> Dict:
         "unit_titles": record.get("unit_titles", ["待定位"]),
         "weak_points": weak_points,
         "suggestions": suggestions,
+        "score_breakdown": diagnosis.get("score_breakdown") or [],
+        "diagnosis_evidence": {
+            "recent_avg_score": (diagnosis.get("evidence") or {}).get("recent_avg_score"),
+            "topic_avg_score": (diagnosis.get("evidence") or {}).get("topic_avg_score"),
+            "exercise_avg_score": (diagnosis.get("evidence") or {}).get("exercise_avg_score"),
+            "execution_rate": (diagnosis.get("evidence") or {}).get("execution_rate"),
+            "evidence_count": (diagnosis.get("evidence") or {}).get("evidence_count"),
+        },
         "generated_resource": report,
         "profile": profile,
         "auto_summary": auto_notes,

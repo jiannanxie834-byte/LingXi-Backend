@@ -249,7 +249,13 @@ def create_artifact(
     return to_dict(artifact)
 
 
-def list_artifacts(db: Session, username: str = "", status: str = "", limit: int = 50) -> List[Dict]:
+def list_artifacts(
+    db: Session,
+    username: str = "",
+    status: str = "",
+    limit: int = 50,
+    include_public: bool = True,
+) -> List[Dict]:
     query = db.query(ResourceArtifact)
     if status == "published":
         query = (
@@ -258,8 +264,9 @@ def list_artifacts(db: Session, username: str = "", status: str = "", limit: int
             .filter(or_(ResourceArtifact.status == "published", Resource.status == "已通过"))
         )
     if username:
-        query = query.filter(ResourceArtifact.student_id.in_([username, ""]))
-    if status:
+        allowed_students = [username, ""] if include_public else [username]
+        query = query.filter(ResourceArtifact.student_id.in_(allowed_students))
+    if status and status != "published":
         query = query.filter(ResourceArtifact.status == status)
     rows = (
         query.order_by(ResourceArtifact.updated_at.desc())
