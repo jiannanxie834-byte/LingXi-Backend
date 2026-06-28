@@ -59,15 +59,13 @@ BROAD_CHAPTER_TOPICS = [
 ]
 
 OUT_OF_COURSE_MARKERS = [
-    "cnn",
-    "rnnlstmgru",
-    "lstm",
-    "transformer",
     "数据库",
     "操作系统",
     "计算机网络",
     "英语",
     "高数",
+    "高等数学",
+    "法语",
     "金融",
 ]
 
@@ -353,7 +351,8 @@ def _base_result(scope_level: str, display_topic: str = "", primary_unit: Dict =
 def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
     text = str(message or "").strip()
     fallback_topic = course_scope_service.extract_requested_topic(text, eval_topic)
-    if _contains_any(text, OUT_OF_COURSE_MARKERS):
+    direct_course_match = dsa_course_map_service.match_dsa_topic(fallback_topic, text)
+    if _contains_any(text, OUT_OF_COURSE_MARKERS) and not direct_course_match.get("matched"):
         return {
             "scope_level": SCOPE_OUT_OF_COURSE,
             "primary_topic": fallback_topic or "这个主题",
@@ -450,7 +449,7 @@ def resolve_topic_scope(message: str, eval_topic: str = "") -> Dict:
         result["should_generate_full_chapter"] = False
         return result
 
-    course_match = dsa_course_map_service.match_dsa_topic(fallback_topic, text)
+    course_match = direct_course_match
     if course_match.get("matched"):
         unit = course_match.get("unit") or dsa_course_map_service.get_unit(course_match.get("unit_id", "")) or {}
         display_topic = unit.get("title") or (fallback_topic if fallback_topic not in {"未确认主题", "当前主题"} else course_match.get("normalized_topic", ""))

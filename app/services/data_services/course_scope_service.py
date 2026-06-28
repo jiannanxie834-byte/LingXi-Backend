@@ -76,6 +76,12 @@ def extract_requested_topic(message: str, fallback: str = "") -> str:
 
 def is_supported_learning_scope(semantic_result: dict) -> bool:
     semantic_result = semantic_result or {}
+    if semantic_result.get("subject_category") == "computer_science":
+        return True
+    if semantic_result.get("course_id") == dsa_course_map_service.COURSE_ID:
+        return True
+    if (semantic_result.get("ai_course_map") or {}).get("course_id") == dsa_course_map_service.COURSE_ID:
+        return True
     topic = normalize_course_topic(semantic_result.get("topic") or "")
     message = semantic_result.get("message") or semantic_result.get("raw_message") or ""
     return bool(dsa_course_map_service.match_dsa_topic(topic, message).get("matched"))

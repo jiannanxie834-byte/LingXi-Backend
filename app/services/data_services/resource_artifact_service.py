@@ -92,7 +92,13 @@ def upsert_from_resource(
     plan_item = plan_item or {}
     semantic_result = semantic_result or {}
     unit_id = plan_item.get("unit_id") or semantic_result.get("unit_id") or ""
-    evidence_refs = plan_item.get("evidence_refs") or []
+    unit_ids = (
+        plan_item.get("unit_ids")
+        or semantic_result.get("unit_ids")
+        or ([unit_id] if unit_id else [])
+    )
+    unit_ids = [item for item in unit_ids if item]
+    evidence_refs = plan_item.get("evidence_refs") or unit_ids
     if not evidence_refs and unit_id:
         evidence_refs = [unit_id]
     review_bundle = _review_bundle_from_notes(resource.agent_notes or "", evidence_refs)
@@ -116,7 +122,7 @@ def upsert_from_resource(
     artifact.course_id = plan_item.get("course_id") or semantic_result.get("course_id") or "data_structures_algorithms"
     artifact.chapter_id = plan_item.get("chapter_id") or semantic_result.get("chapter_id") or ""
     artifact.section_id = plan_item.get("section_id") or semantic_result.get("section_id") or ""
-    artifact.unit_ids_json = _json_dump([unit_id] if unit_id else [])
+    artifact.unit_ids_json = _json_dump(unit_ids)
     artifact.student_id = resource.applicant_username or ""
     artifact.type = artifact_types.normalize_artifact_type(resource.type)
     artifact.title = resource.title

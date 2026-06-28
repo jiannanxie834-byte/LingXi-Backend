@@ -510,7 +510,7 @@ def _source_note_lines(evidence_info):
     lines = ["## 来源与个性化依据", ""]
     lines.append("- 来源：数据结构与算法课程资源库、章节知识单元和已接入公开视频目录。")
     if refs:
-        lines.append(f"- 证据引用：{'; '.join(f'evidence_id={ref}' for ref in refs[:5])}")
+        lines.append("- 课程依据：已根据当前主题匹配课程知识单元，内部证据已记录。")
     lines.append("- 个性化方式：优先匹配本轮主题，再结合画像中的薄弱点、媒介偏好和实践需求调整学习顺序。")
     return lines
 
@@ -531,7 +531,7 @@ def _dsa_course_note(item, ctx, evidence_info, personalization):
     ]
     for concept in concepts:
         lines.append(f"- **{concept}**：先说明它解决什么问题，再观察输入输出、操作步骤和复杂度来源。")
-    lines.extend(["", "## 资源库匹配内容", ""])
+    lines.extend(["", "## 课程依据摘要", ""])
     lines.extend([f"- {bullet}" for bullet in evidence_info["bullets"][:5]])
     lines.extend(["", "## 直观理解", ""])
     lines.append(f"学习「{topic}」时，不要把它当成孤立定义。更稳的方式是把它放回问题规模、数据组织方式和操作代价中观察：输入是什么、允许做哪些操作、每一步会访问多少元素、是否需要额外空间。")
@@ -1209,8 +1209,10 @@ def _generate_dsa_package_outputs(resource_plan, profile_result, intent):
         item["chapter_id"] = location.get("chapter_id") or item.get("chapter_id") or ""
         item["section_id"] = location.get("section_id") or item.get("section_id") or ""
         item["unit_id"] = item.get("unit_id") or primary_unit_id
+        item["unit_ids"] = unit_ids or item.get("unit_ids") or ([primary_unit_id] if primary_unit_id else [])
         item["evidence_refs"] = location.get("evidence_refs") or unit_ids
-        item["agent_name"] = "PackageAgent"
+        item["student_question"] = semantic_result.get("message") or generation_context.get("message") or item.get("student_question") or ""
+        item["agent_name"] = "PersonalizedGenerationAgent"
 
     resource_plan["agent_results"] = [
         intent_result,
@@ -1285,8 +1287,8 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 db,
                 job_id,
                 event="agent_started",
-                agent="ResourceRetrievalAgent / PackageAgent",
-                message="正在匹配课程库预制内容并组装 6 类个性化学习包",
+                agent="ResourceGroundingAgent / PersonalizedGenerationAgent",
+                message="正在读取课程库依据并逐类生成个性化 ResourceArtifact",
                 progress=45,
             )
 
@@ -1998,12 +2000,12 @@ JSON 字段：
             topic=topic,
             unit_id=semantic_result.get("unit_id", ""),
             course_id=semantic_result.get("course_id", dsa_course_map_service.COURSE_ID),
-            message="已创建 Artifact 生成任务，资源会在审核通过后进入资源工厂",
+            message="已创建 Artifact 生成任务，完成后会通过系统消息通知",
         )
         resource_status = {
             "status": "pending_review",
             "count": len(resources),
-            "message": "配套 Artifact 已生成，正在进行教师审核。审核通过后会进入资源工厂。",
+            "message": "已创建 Artifact 生成任务，系统会基于课程依据和你的学习画像生成个性化学习包，完成后通过系统消息通知。",
             "items": resources,
             "job_id": job_data.get("job_id"),
         }

@@ -38,4 +38,4 @@ def reply_continue_without_topic() -> str:
 
 
 def reply_out_of_scope() -> str:
-    return "本系统聚焦《数据结构与算法》课程，「这个主题」暂未纳入课程图谱，请期待后续资源完善哦。"
+    return "我还没能稳定定位到课程资源。你是想学习数组、链表、栈，还是队列？也可以直接输入二分查找、动态规划、BFS、KMP 等具体知识点。"

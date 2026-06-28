@@ -178,7 +178,9 @@ def _llm_result_is_grounded(message: str, data: Dict) -> bool:
     if subject_category == "unknown":
         return True
     if subject_category == "computer_science":
-        return dsa_course_map_service.match_dsa_topic(topic, message).get("matched")
+        if not topic or topic in {"未确认主题", "当前主题"}:
+            return False
+        return not _looks_explicitly_out_of_course(message, topic)
     if subject_category == "out_of_course":
         return bool(topic and topic not in {"未确认主题", "当前主题"}) and _topic_grounded_in_message(topic, message)
     if _topic_grounded_in_message(topic, message):
@@ -186,15 +188,29 @@ def _llm_result_is_grounded(message: str, data: Dict) -> bool:
     return False
 
 
+def _looks_explicitly_out_of_course(message: str, topic: str = "") -> bool:
+    compact = _compact("\n".join([message or "", topic or ""]))
+    for aliases in course_scope_service.OUT_OF_COURSE_ALIASES.values():
+        if any(_compact(alias) in compact for alias in aliases):
+            return True
+    return False
+
+
 def _infer_by_llm(message: str, eval_topic: str) -> Dict:
     if not is_enabled():
         return {}
 
+    taxonomy = dsa_course_map_service.taxonomy_prompt()
     prompt = f"""
-你是《数据结构与算法》课程学习平台的语义接地模块。请判断学生输入是否属于本课程范围、真实主题、请求类型和是否需要代码内容。
+你是《数据结构与算法》课程学习平台的语义接地 Agent。请先理解学生自然语言，再判断是否属于本课程范围、归一化主题、请求类型和是否需要代码内容。
 不要生成学习建议。
 不要猜测用户水平。如果用户没有明确说明水平，level 必须返回“未确认”。
-只有命中《数据结构与算法》课程图谱的主题才能返回 computer_science；数据库、操作系统、计算机网络、外语、高数、金融等课程外主题返回 out_of_course；主题不明确返回 unknown。
+默认课程范围是《数据结构与算法》。学生说法可能是口语、同义词、缩写或中英文混合，请保留大模型语义理解能力进行归一。
+资源库没有完全同名材料时，也不要把数据结构与算法主题判成 unknown。
+数据库、操作系统、计算机网络、外语、高数、金融等明确课程外主题返回 out_of_course；主题完全不明确返回 unknown。
+
+课程知识体系摘要，用于语义归一，不是关键词表：
+{taxonomy}
 
 学生输入：{message}
 初步主题：{eval_topic}
@@ -241,22 +257,19 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
     from app.services.data_services import profile_service
 
     eval_topic = (eval_result or {}).get("topic") or ""
-    rule_result = _detect_subject_by_rule(message, eval_topic)
+    rule_result = {}
 
     ambiguous_language_topic = _compact(eval_topic) in {"语法", "grammar", "语言"}
-    if (
-        rule_result.get("subject_category") == "unknown"
-        and rule_result.get("confidence", 0) < 60
-        and not ambiguous_language_topic
-    ):
+    if not ambiguous_language_topic:
         llm_result = _infer_by_llm(message, eval_topic)
         if llm_result:
             rule_result = {
-                **rule_result,
                 **llm_result,
-                "topic": llm_result.get("topic") or rule_result.get("topic") or "未确认主题",
+                "topic": llm_result.get("topic") or "未确认主题",
                 "topic_source": "llm",
             }
+    if not rule_result:
+        rule_result = _detect_subject_by_rule(message, eval_topic)
 
     requested_action = ACTION_MAP.get((eval_result or {}).get("intent") or "", "unknown")
     if rule_result.get("requested_action"):
@@ -280,6 +293,48 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         or topic_scope.get("course_match")
         or dsa_course_map_service.match_dsa_topic(normalized_topic, message)
     )
+    if (
+        not ai_course_match.get("matched")
+        and rule_result.get("subject_category") == "computer_science"
+        and normalized_topic not in {"", "未确认主题", "当前主题"}
+    ):
+        ai_course_match = dsa_course_map_service.build_semantic_course_match(
+            normalized_topic,
+            message,
+            learning_need_type={
+                "concept_explain": "concept_explanation",
+                "path_plan": "path_planning",
+                "resource_generation": "resource_generation",
+                "exercise": "practice",
+                "practice": "code_lab",
+            }.get(requested_action, ""),
+            confidence=float(rule_result.get("confidence") or 62) / 100,
+        )
+        topic_scope = {
+            **topic_scope,
+            "scope_level": topic_scope.get("scope_level") if topic_scope.get("scope_level") != "out_of_course" else "concept",
+            "display_topic": normalized_topic,
+            "primary_topic": normalized_topic,
+            "primary_unit_id": ai_course_match.get("primary_unit_id", ""),
+            "chapter_id": ai_course_match.get("chapter_id", ""),
+            "chapter_title": ai_course_match.get("chapter_title", ""),
+            "unit_ids": ai_course_match.get("unit_ids", []),
+        }
+    if (
+        ai_course_match.get("matched")
+        and rule_result.get("subject_category") == "computer_science"
+        and topic_scope.get("scope_level") == "out_of_course"
+    ):
+        topic_scope = {
+            **topic_scope,
+            "scope_level": "concept",
+            "display_topic": normalized_topic,
+            "primary_topic": normalized_topic,
+            "primary_unit_id": ai_course_match.get("primary_unit_id", ""),
+            "chapter_id": ai_course_match.get("chapter_id", ""),
+            "chapter_title": ai_course_match.get("chapter_title", ""),
+            "unit_ids": ai_course_match.get("unit_ids", []),
+        }
     if topic_scope.get("scope_level") != "out_of_course" and topic_scope.get("display_topic"):
         normalized_topic = course_scope_service.normalize_course_topic(topic_scope.get("display_topic"))
         rule_result["topic"] = normalized_topic
@@ -331,19 +386,27 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         "resource_generation",
         "exercise",
         "practice",
+        "concept_explain",
         }
     )
+    action_need_type = {
+        "concept_explain": "concept_explanation",
+        "path_plan": "path_planning",
+        "resource_generation": "resource_generation",
+        "exercise": "practice",
+        "practice": "code_lab" if is_programming_related else "practice",
+    }.get(requested_action)
     learning_need_type = (
-        ai_course_match.get("learning_need_type")
+        action_need_type
+        or ai_course_match.get("learning_need_type")
         or SCOPE_NEED_TYPE_MAP.get(topic_scope.get("scope_level"))
-        or {
-            "concept_explain": "concept_explanation",
-            "path_plan": "path_planning",
-            "resource_generation": "resource_generation",
-            "exercise": "practice",
-            "practice": "code_lab" if is_programming_related else "practice",
-        }.get(requested_action, "concept_explanation")
+        or "concept_explanation"
     )
+    if ai_course_match.get("matched"):
+        ai_course_match = {
+            **ai_course_match,
+            "learning_need_type": learning_need_type,
+        }
     confidence = int(rule_result.get("confidence") or 50)
     if ai_course_match.get("matched"):
         confidence = max(confidence, int(float(ai_course_match.get("confidence", 0.6)) * 100))
@@ -362,12 +425,14 @@ def analyze_learning_request(db, username: str, message: str, eval_result: Dict)
         "chapter_id": ai_course_match.get("chapter_id", ""),
         "chapter": ai_course_match.get("chapter", ""),
         "chapter_title": topic_scope.get("chapter_title") or ai_course_match.get("chapter", ""),
+        "section_id": ai_course_match.get("section_id", ""),
         "prerequisite_units": topic_scope.get("prerequisite_units", []),
         "related_units": topic_scope.get("related_units", []),
         "compare_units": topic_scope.get("compare_units", []),
         "expansion_policy": topic_scope.get("expansion_policy", ""),
         "should_generate_full_chapter": bool(topic_scope.get("should_generate_full_chapter", False)),
         "unit_id": ai_course_match.get("unit_id", ""),
+        "unit_ids": ai_course_match.get("unit_ids", []) or ([ai_course_match.get("unit_id")] if ai_course_match.get("unit_id") else []),
         "learning_need_type": learning_need_type,
         "scope_type": ai_course_match.get("scope_type", "in_course" if is_supported_scope else "out_of_course"),
         "difficulty": ai_course_match.get("difficulty", "beginner"),

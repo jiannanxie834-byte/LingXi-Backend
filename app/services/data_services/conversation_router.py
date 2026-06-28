@@ -5,6 +5,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.schemas import ChatMessage, ChatSession, TurnRoute
+from app.services.data_services import dsa_course_map_service
 from app.services.data_services import student_reply_templates as replies
 
 
@@ -107,8 +108,10 @@ RESOURCE_ACTION_MARKERS = (
     "路线",
     "计划",
     "练习",
+    "习题",
     "题",
     "错题",
+    "刷题",
     "资源",
     "资料",
     "课件",
@@ -117,6 +120,13 @@ RESOURCE_ACTION_MARKERS = (
     "实操",
     "项目",
     "生成",
+    "推荐",
+    "模板",
+    "怎么做",
+    "怎么写",
+    "怎么用",
+    "区别",
+    "对比",
 )
 
 LEARNING_START_PATTERNS = (
@@ -134,22 +144,51 @@ KNOWN_TOPIC_ALIASES = {
     "数据结构": "数据结构与算法",
     "算法": "数据结构与算法",
     "复杂度": "复杂度分析",
+    "时间复杂度": "时间复杂度",
+    "空间复杂度": "空间复杂度",
     "数组": "数组",
+    "滑动窗口": "双指针入门",
     "链表": "链表",
+    "单链表": "链表",
+    "单链表反转": "链表插入删除",
+    "反转链表": "链表插入删除",
     "栈": "栈",
+    "括号匹配": "栈",
     "队列": "队列",
+    "双端队列": "双端队列",
     "递归": "递归",
+    "分治": "分治",
+    "回溯": "回溯",
     "二分": "二分查找",
+    "二分查找": "二分查找",
     "排序": "排序算法",
+    "堆排序": "堆结构基础",
     "哈希": "哈希表",
+    "哈希表": "哈希表",
     "堆": "堆与优先队列",
+    "优先队列": "优先队列",
+    "topk": "Top-K 问题",
+    "top k": "Top-K 问题",
     "树": "树与二叉树",
+    "二叉树": "二叉树",
     "图": "图搜索",
     "bfs": "广度优先搜索",
     "dfs": "深度优先搜索",
+    "最短路": "Dijkstra 算法",
+    "最短路径": "Dijkstra 算法",
+    "并查集": "并查集",
+    "最小生成树": "最小生成树",
+    "贪心": "贪心算法",
     "动态规划": "动态规划",
     "dp": "动态规划",
+    "状态转移": "状态转移方程",
+    "状态转移方程": "状态转移方程",
     "kmp": "KMP 字符串匹配",
+    "next数组": "KMP next 数组",
+    "next 数组": "KMP next 数组",
+    "trie": "Trie 字典树",
+    "字典树": "Trie 字典树",
+    "迷宫寻路": "迷宫寻路与路径规划",
 }
 
 
@@ -242,6 +281,26 @@ def _extract_known_topic(text: str) -> str:
         if alias in compact:
             return topic
     return ""
+
+
+def _match_dsa_topic(text: str, topic: str = "") -> dict:
+    return dsa_course_map_service.match_dsa_topic(topic or _extract_known_topic(text), text)
+
+
+def _route_dsa_learning_request(text: str, last_topic: str = "") -> Optional[TurnRoute]:
+    match = _match_dsa_topic(text, last_topic)
+    if not match.get("matched"):
+        return None
+    return TurnRoute(
+        route_type="learning_request",
+        should_run_full_agents=True,
+        should_run_intent_agent=True,
+        should_run_retrieval=True,
+        should_run_planner=True,
+        should_generate_resources=True,
+        should_update_profile=True,
+        topic=match.get("display_topic") or match.get("normalized_topic") or match.get("topic") or last_topic,
+    )
 
 
 def _extract_topic_by_patterns(text: str, patterns, allow_known_fallback: bool = True) -> str:
@@ -400,7 +459,12 @@ def route_turn(db: Session, username: str, session_id: str, text: str) -> TurnRo
         )
 
     return TurnRoute(
-        route_type="out_of_scope",
+        route_type="learning_request",
+        should_run_full_agents=True,
+        should_run_intent_agent=True,
+        should_run_retrieval=True,
+        should_run_planner=True,
+        should_generate_resources=True,
+        should_update_profile=True,
         topic=last_topic,
-        student_reply=replies.reply_out_of_scope(),
     )

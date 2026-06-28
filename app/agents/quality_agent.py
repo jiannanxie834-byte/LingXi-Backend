@@ -46,6 +46,8 @@ def run(outputs: List[Dict]) -> dict:
             **item,
             "content": _sanitize_content(content),
         })
+    if len(cleaned) < 5:
+        warnings.append("个性化学习包少于 5 类资源")
 
     dto = AgentResultDTO(
         agent_name="QualityAgent",
@@ -53,6 +55,7 @@ def run(outputs: List[Dict]) -> dict:
         output={
             "checked_resources": len(cleaned),
             "cleaned_resources": len(warnings),
+            "minimum_resource_count_met": len(cleaned) >= 5,
             "student_visible": True,
         },
         quality_score=1.0 if not warnings else 0.85,

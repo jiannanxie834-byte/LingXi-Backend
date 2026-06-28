@@ -170,14 +170,14 @@ def _build_cards(path_result=None, resource_result=None, resource_status=None):
         unit_id = next((item.get("unit_id") for item in resource_items if item.get("unit_id")), "")
         cards.append({
             "type": "resource_review",
-            "title": "配套资源正在教师审核",
+            "title": "配套资源任务已创建",
             "status": "pending_review",
-            "summary": resource_state.get("message") or "配套 Artifact 已生成，正在进行教师审核。审核通过后会进入资源工厂。",
+            "summary": resource_state.get("message") or "系统会基于课程依据和你的学习画像生成个性化学习包，完成后通过系统消息通知。",
             "items": resource_items,
             "unit_id": unit_id,
             "job_id": resource_state.get("job_id") or "",
-            "action_text": "审核通过后查看资源工厂",
-            "action_route": "/resource",
+            "action_text": "",
+            "action_route": "",
         })
         return _strip_internal_fields(cards)
 

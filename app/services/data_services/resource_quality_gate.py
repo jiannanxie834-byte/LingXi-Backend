@@ -314,7 +314,8 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     required_terms = []
     covered_terms = [term for term in required_terms if _term_covered(term, full_text)]
     evidence_chunks = context.get("evidence_chunks") or item.get("evidence_chunks") or []
-    evidence_refs = re.findall(r"evidence_id\s*[:：=]\s*[\w:\-]+", full_text, re.I)
+    context_evidence_refs = context.get("evidence_refs") or item.get("evidence_refs") or []
+    evidence_refs = context_evidence_refs or re.findall(r"evidence_id\s*[:：=]\s*[\w:\-]+", full_text, re.I)
     examples = _count_markers(content, ["例子", "示例", "例题", "案例", "情境"])
     exercises = _count_markers(content, ["自测题", "练习", "参考答案", "答案", "解析"])
     formula_or_code = _count_markers(content, ["公式", "算法流程", "计算过程", "代码", "伪代码"])

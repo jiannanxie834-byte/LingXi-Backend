@@ -46,6 +46,7 @@ def run(semantic_result: dict = None, generation_context: dict = None) -> AgentR
     output = {
         "course": "数据结构与算法",
         "topic": resolved.get("topic") or topic or "数据结构与算法学习主题",
+        "student_question": semantic_result.get("message") or generation_context.get("message") or "",
         "chapter_title": resolved.get("chapter_title") or "待定位",
         "section_title": resolved.get("section_title") or "待定位",
         "unit_titles": resolved.get("unit_titles") or [],

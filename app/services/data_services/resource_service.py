@@ -783,6 +783,12 @@ def save_ai_generated_resources(
     for index, plan_item in enumerate(resource_plan.get("resources", [])):
         llm_item = llm_outputs[index] if index < len(llm_outputs) else {}
         title = plan_item.get("title") or plan_item.get("topic") or "未命名资源"
+        unit_id = plan_item.get("unit_id") or semantic_result.get("unit_id", "")
+        unit_ids = (
+            plan_item.get("unit_ids")
+            or semantic_result.get("unit_ids")
+            or ([unit_id] if unit_id else [])
+        )
         item = {
             "title": title,
             "type": artifact_types.normalize_artifact_type(plan_item.get("type", artifact_types.COURSE_NOTE)),
@@ -790,13 +796,19 @@ def save_ai_generated_resources(
             "content": llm_item.get("content") or plan_item.get("content", ""),
             "source": llm_item.get("source") or plan_item.get("source", ""),
             "agent_notes": plan_item.get("agent_notes", ""),
+            "agent_name": plan_item.get("agent_name", ""),
+            "agent_trace_id": plan_item.get("agent_trace_id", ""),
+            "personalization_reason": llm_item.get("personalization_reason") or plan_item.get("personalization_reason", ""),
             "subject_category": plan_item.get("subject_category") or semantic_result.get("subject_category", "unknown"),
             "level": plan_item.get("level") or semantic_result.get("level", "未确认"),
             "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
             "allow_code_content": plan_item.get("allow_code_content", False),
-            "unit_id": plan_item.get("unit_id") or semantic_result.get("unit_id", ""),
+            "unit_id": unit_id,
+            "unit_ids": [item for item in unit_ids if item],
             "chapter_id": plan_item.get("chapter_id") or semantic_result.get("chapter_id", ""),
+            "section_id": plan_item.get("section_id") or semantic_result.get("section_id", ""),
             "course_id": plan_item.get("course_id") or semantic_result.get("course_id", ""),
+            "evidence_refs": plan_item.get("evidence_refs") or semantic_result.get("evidence_refs") or [item for item in unit_ids if item],
             "dsa_course_map": plan_item.get("dsa_course_map") or semantic_result.get("dsa_course_map") or {},
             "ai_course_map": plan_item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
@@ -828,8 +840,11 @@ def save_ai_generated_resources(
             "level_source": item.get("level_source"),
             "should_generate_code_content": item.get("allow_code_content", False),
             "unit_id": item.get("unit_id", ""),
+            "unit_ids": item.get("unit_ids", []),
             "chapter_id": item.get("chapter_id", ""),
+            "section_id": item.get("section_id", ""),
             "course_id": item.get("course_id", ""),
+            "evidence_refs": item.get("evidence_refs", []),
             "evidence_chunks": plan_item.get("evidence_chunks", []),
             "dsa_course_map": item.get("dsa_course_map") or semantic_result.get("dsa_course_map") or item.get("ai_course_map") or {},
             "ai_course_map": item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
@@ -898,7 +913,12 @@ def insert_generated_resources(
             if not title or not r_type or _is_deprecated_resource_type(r_type):
                 continue
 
-            existing = (
+            is_personalized_artifact = (
+                item.get("agent_name") == "PersonalizedGenerationAgent"
+                or item.get("course_id") == "data_structures_algorithms"
+                and bool(item.get("personalization_reason"))
+            )
+            existing = None if is_personalized_artifact else (
                 db.query(Resource)
                 .filter(Resource.title == title, Resource.type == r_type)
                 .first()

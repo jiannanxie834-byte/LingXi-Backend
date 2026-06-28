@@ -55,10 +55,10 @@ def run(location: dict) -> dict:
         ] if not value
     ]
     dto = AgentResultDTO(
-        agent_name="ResourceRetrievalAgent",
+        agent_name="ResourceGroundingAgent",
         input_summary=location.get("topic") or "数据结构与算法学习主题",
         output={
-            "matched": {
+            "grounding": {
                 "course_note": bool(retrieval["section_content"]),
                 "mind_map": bool(retrieval["mind_map"]),
                 "exercise_set": len(retrieval["exercises"]),
@@ -66,6 +66,7 @@ def run(location: dict) -> dict:
                 "video_guide": bool(retrieval["reading_video_guide"] or retrieval["video_items"]),
                 "remediation_metadata": bool(retrieval["metadata"]),
             },
+            "grounding_policy": "仅作为个性化生成依据，不直接作为学生端最终内容",
             "source_paths": [
                 item for item in [
                     retrieval.get("section_path"),

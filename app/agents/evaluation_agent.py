@@ -1,5 +1,5 @@
 from app.services.llm_provider import chat_json
-from app.services.data_services import course_scope_service
+from app.services.data_services import course_scope_service, dsa_course_map_service
 
 
 INTENTS = {
@@ -47,6 +47,9 @@ def _compact(text: str):
 
 
 def _infer_topic_by_rule(message: str):
+    course_match = dsa_course_map_service.match_dsa_topic("", message)
+    if course_match.get("matched"):
+        return course_match.get("display_topic") or course_match.get("normalized_topic") or ""
     compact = _compact(message)
     for topic, aliases in TOPIC_KEYWORDS:
         if any(_compact(alias) in compact for alias in aliases):
@@ -56,16 +59,16 @@ def _infer_topic_by_rule(message: str):
 
 def _infer_intent_by_rule(message: str):
     compact = _compact(message)
-    if any(word in compact for word in ["练习", "刷题", "题目", "测试", "错题"]):
+    if any(word in compact for word in ["练习", "习题", "刷题", "题目", "题库", "做题", "出题", "测试", "错题", "推荐题"]):
         return "练习巩固"
-    if any(word in compact for word in ["资源", "资料", "课件", "ppt", "导图"]):
+    if any(word in compact for word in ["资源", "资料", "课件", "ppt", "导图", "学习包", "推荐"]):
         return "生成资源"
-    if any(word in compact for word in ["代码", "项目", "实验", "实操", "实践"]):
+    if any(word in compact for word in ["代码", "项目", "实验", "实操", "实践", "模板", "怎么写"]):
         return "实操训练"
-    if any(word in compact for word in ["规划", "路线", "计划", "学习一下", "想学习", "我要学习", "想学", "入门"]):
-        return "路径规划"
-    if any(word in compact for word in ["是什么", "什么意思", "解释", "介绍", "原理"]):
+    if any(word in compact for word in ["是什么", "什么意思", "解释", "介绍", "原理", "不懂", "不会", "怎么做", "怎么用", "区别", "对比"]):
         return "概念讲解"
+    if any(word in compact for word in ["学习规划", "路径规划", "规划路线", "学习路线", "路线", "计划", "学习一下", "想学习", "我要学习", "想学", "复习", "入门"]):
+        return "路径规划"
     return ""
 
 
@@ -76,8 +79,9 @@ def _normalize_intent(intent: str):
 
 
 def _infer_by_llm(message: str):
+    taxonomy = dsa_course_map_service.taxonomy_prompt()
     prompt = f"""
-你是《数据结构与算法》课程学习平台内部的意图识别工具。请根据学生输入判断学习意图和课程主题。
+你是《数据结构与算法》课程学习平台内部的语义理解 Agent。请先理解学生自然语言，再判断学习意图、归一化学习主题和学习需求。
 
 输出边界：
 - 只输出 JSON 对象
@@ -85,6 +89,11 @@ def _infer_by_llm(message: str):
 - 不输出思考过程
 - 不面向学生说话
 - 不输出 Markdown 代码块
+
+课程边界：
+系统默认课程是《数据结构与算法》。学生表达模糊时，优先在本课程范围内理解，不要因为资源库没有精确词条就返回未确认。
+下面是课程知识体系摘要，用于语义归一，不是关键词表：
+{taxonomy}
 
 学生输入：
 {message}
@@ -98,8 +107,10 @@ def _infer_by_llm(message: str):
 - 综合学习
 
 主题要求：
-- 如果能识别具体课程知识点，返回简短主题，例如“动态规划”“Dijkstra”“BFS”“二分查找”“哈希表”。
+- 如果能识别具体课程知识点，返回简短规范主题，例如“链表”“栈与队列”“二叉树遍历”“最短路径”“排序算法”“复杂度分析”。
 - 当输入是“我要学习/我想学/想了解/准备学 + 数据结构与算法知识点”时，必须把后面的知识点作为 topic。
+- 如果学生的表达是口语、同义说法或中英文混合，要归一到数据结构与算法课程主题。
+- 如果属于数据结构与算法但本地课程库可能没有完全同名词条，也要返回合理主题，不要返回“未确认主题”。
 - 如果完全无法判断，topic 返回“未确认主题”，confidence 不超过 50。
 - 不得把未知主题默认成任何具体课程主题。
 
@@ -111,15 +122,10 @@ def _infer_by_llm(message: str):
 - 当学生要求项目、实验、代码、实践任务时，intent 选择“实操训练”。
 - 只有在没有明确动作，只是泛泛聊天时，才选择“综合学习”。
 
-示例：
-- 输入“我要学习动态规划”，返回 {{"intent":"路径规划","topic":"动态规划","confidence":90}}
-- 输入“我不懂状态转移方程”，返回 {{"intent":"概念讲解","topic":"状态转移方程","confidence":90}}
-- 输入“帮我生成 BFS 和 DFS 的对比练习”，返回 {{"intent":"生成资源","topic":"BFS 与 DFS","confidence":90}}
-
 JSON 字段：
 {{
   "intent": "路径规划",
-  "topic": "计算机网络",
+  "topic": "链表",
   "confidence": 80
 }}
 """
@@ -154,26 +160,43 @@ JSON 字段：
 
 
 def run(message: str):
+    try:
+        llm_result = _infer_by_llm(message)
+        topic = course_scope_service.normalize_course_topic(llm_result["topic"] or "未确认主题")
+        if topic == course_scope_service.PRIMARY_COURSE_DISPLAY_NAME and not _infer_topic_by_rule(message):
+            topic = "未确认主题"
+        return {
+            "intent": llm_result["intent"],
+            "topic": topic,
+            "score": llm_result["score"] if topic != "未确认主题" else min(llm_result["score"], 50),
+            "intent_source": "llm",
+            "topic_source": "llm" if topic != "未确认主题" else "unknown",
+        }
+    except Exception:
+        pass
+
     topic_by_rule = _infer_topic_by_rule(message)
     intent_by_rule = _infer_intent_by_rule(message)
     if topic_by_rule and intent_by_rule:
         return {
             "intent": intent_by_rule,
             "topic": topic_by_rule,
-            "score": 90,
-            "intent_source": "rule",
-            "topic_source": "rule",
+            "score": 78,
+            "intent_source": "course_map_fallback",
+            "topic_source": "course_map_fallback",
         }
-
-    llm_result = _infer_by_llm(message)
-    topic = course_scope_service.normalize_course_topic(llm_result["topic"] or "未确认主题")
-    if topic == course_scope_service.PRIMARY_COURSE_DISPLAY_NAME and not _infer_topic_by_rule(message):
-        topic = "未确认主题"
-
+    if topic_by_rule and not intent_by_rule:
+        return {
+            "intent": "综合学习",
+            "topic": topic_by_rule,
+            "score": 72,
+            "intent_source": "course_map_fallback",
+            "topic_source": "course_map_fallback",
+        }
     return {
-        "intent": llm_result["intent"],
-        "topic": topic,
-        "score": llm_result["score"] if topic != "未确认主题" else min(llm_result["score"], 50),
-        "intent_source": "llm",
-        "topic_source": "llm" if topic != "未确认主题" else "unknown",
+        "intent": intent_by_rule or "综合学习",
+        "topic": topic_by_rule or "未确认主题",
+        "score": 50 if not topic_by_rule else 70,
+        "intent_source": "rule_fallback" if intent_by_rule else "fallback",
+        "topic_source": "course_map_fallback" if topic_by_rule else "unknown",
     }
