@@ -19,13 +19,13 @@ class User(Base):
     tags = Column(Text, default="", comment="学情画像标签，多标签用逗号隔开，如 Python,后端")
 
 
-# ================= 2. 深度学习资源 Artifact 模型 =================
+# ================= 2. 资源模型 =================
 class Resource(Base):
     __tablename__ = "resources"
     
     id = Column(String(64), primary_key=True, index=True, comment="资源唯一编码")
     title = Column(String(255), nullable=False, comment="资源名称")
-    type = Column(String(128), nullable=False, comment="资源 Artifact 类型: 课程讲解文档、练习题集、PyTorch 实操案例等")
+    type = Column(String(128), nullable=False, comment="资源 Artifact 类型: 课程讲解文档、练习题集、代码实验等")
     status = Column(String(32), default="待审核", comment="审核状态: 待审核、已通过、未通过")
     uploader = Column(String(64), default="system", comment="上传者或生成的智能体角色")
     applicant_username = Column(String(64), default="", comment="资源提交学生账号，系统生成资源可为空")
@@ -98,6 +98,12 @@ class EvaluationRecord(Base):
 
     id = Column(String(64), primary_key=True, index=True, comment="评价记录编码")
     username = Column(String(64), nullable=False, index=True, comment="学生账号")
+    course_id = Column(String(64), default="data_structures_algorithms", index=True, comment="课程编码")
+    chapter_id = Column(String(64), default="", index=True, comment="章节编码")
+    section_id = Column(String(64), default="", index=True, comment="小节编码")
+    unit_ids_json = Column(Text, default="[]", comment="知识单元 ID JSON")
+    evidence_refs_json = Column(Text, default="[]", comment="证据引用 JSON")
+    diagnosis_type = Column(String(64), default="manual", comment="诊断类型")
     topic = Column(String(255), nullable=False, comment="评价主题")
     score = Column(Integer, default=0, comment="诊断得分")
     level = Column(String(64), default="", comment="掌握等级")
@@ -179,7 +185,7 @@ class ProfileEvent(Base):
 
     event_id = Column(String(64), primary_key=True, index=True, comment="画像事件编码")
     student_id = Column(String(64), nullable=False, index=True, comment="学生账号")
-    course_id = Column(String(64), default="deep_learning_v2", index=True, comment="课程编码")
+    course_id = Column(String(64), default="data_structures_algorithms", index=True, comment="课程编码")
     source_type = Column(String(64), default="chat", comment="来源类型")
     source_id = Column(String(64), default="", comment="来源编码")
     extracted_features_json = Column(Text, default="{}", comment="抽取特征 JSON")
@@ -194,7 +200,9 @@ class ResourceArtifact(Base):
 
     artifact_id = Column(String(64), primary_key=True, index=True, comment="Artifact 编码")
     resource_id = Column(String(64), default="", index=True, comment="兼容旧 resources 表编码")
-    course_id = Column(String(64), default="deep_learning_v2", index=True, comment="课程编码")
+    course_id = Column(String(64), default="data_structures_algorithms", index=True, comment="课程编码")
+    chapter_id = Column(String(64), default="", index=True, comment="章节编码")
+    section_id = Column(String(64), default="", index=True, comment="小节编码")
     unit_ids_json = Column(Text, default="[]", comment="知识单元 ID JSON")
     student_id = Column(String(64), default="", index=True, comment="学生账号")
     type = Column(String(64), nullable=False, index=True, comment="Artifact 类型编码或名称")
@@ -221,7 +229,7 @@ class GenerationJob(Base):
 
     job_id = Column(String(64), primary_key=True, index=True, comment="生成任务编码")
     username = Column(String(64), nullable=False, index=True, comment="学生账号")
-    course_id = Column(String(64), default="deep_learning_v2", index=True, comment="课程编码")
+    course_id = Column(String(64), default="data_structures_algorithms", index=True, comment="课程编码")
     topic = Column(String(255), default="", comment="主题")
     unit_id = Column(String(64), default="", index=True, comment="知识单元")
     status = Column(String(32), default="queued", index=True, comment="queued/running/completed/failed")
@@ -249,7 +257,7 @@ class VideoResource(Base):
     __tablename__ = "video_resources"
 
     video_id = Column(String(64), primary_key=True, index=True, comment="视频编码")
-    course_id = Column(String(64), default="deep_learning_v2", index=True)
+    course_id = Column(String(64), default="data_structures_algorithms", index=True)
     unit_ids_json = Column(Text, default="[]")
     title = Column(String(255), nullable=False)
     platform = Column(String(128), default="")
@@ -268,7 +276,7 @@ class ExerciseAttempt(Base):
 
     attempt_id = Column(String(64), primary_key=True, index=True)
     username = Column(String(64), nullable=False, index=True)
-    course_id = Column(String(64), default="deep_learning_v2", index=True)
+    course_id = Column(String(64), default="data_structures_algorithms", index=True)
     unit_id = Column(String(64), default="", index=True)
     artifact_id = Column(String(64), default="", index=True)
     answers_json = Column(Text, default="{}")

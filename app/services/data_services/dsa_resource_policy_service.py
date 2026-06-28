@@ -1,47 +1,33 @@
 from app.services.data_services import resource_artifact_type_service as artifact_types
 
 
+DEFAULT_DSA_LEARNING_PACKAGE_TYPES = [
+    artifact_types.COURSE_NOTE,
+    artifact_types.MIND_MAP,
+    artifact_types.EXERCISE_SET,
+    artifact_types.CODE_LAB,
+    artifact_types.DIAGNOSTIC_REPORT,
+    artifact_types.PERSONALIZED_VIDEO_GUIDE,
+]
+
+
 DSA_RESOURCE_POLICY_BY_SCOPE = {
-    "course": [
-        artifact_types.COURSE_NOTE,
-        artifact_types.EXERCISE_SET,
-        artifact_types.MIND_MAP,
-    ],
-    "chapter": [
-        artifact_types.COURSE_NOTE,
-        artifact_types.MIND_MAP,
-        artifact_types.EXERCISE_SET,
-    ],
-    "unit": [
-        artifact_types.COURSE_NOTE,
-        artifact_types.MIND_MAP,
-        artifact_types.EXERCISE_SET,
-        artifact_types.CODE_LAB,
-    ],
-    "concept": [
-        artifact_types.COURSE_NOTE,
-        artifact_types.MIND_MAP,
-        artifact_types.EXERCISE_SET,
-    ],
-    "comparison": [
-        artifact_types.COURSE_NOTE,
-        artifact_types.MIND_MAP,
-        artifact_types.EXERCISE_SET,
-    ],
+    "course": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
+    "chapter": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
+    "unit": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
+    "concept": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
+    "comparison": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
     "project": [
-        artifact_types.PROJECT_BRIEF,
-        artifact_types.CODE_LAB,
-        artifact_types.EXERCISE_SET,
-        artifact_types.PPT_OUTLINE,
-    ],
-    "remediation": [
-        artifact_types.DIAGNOSTIC_REPORT,
-        artifact_types.EXERCISE_SET,
         artifact_types.COURSE_NOTE,
-    ],
-    "diagnostic": [
+        artifact_types.MIND_MAP,
         artifact_types.EXERCISE_SET,
+        artifact_types.CODE_LAB,
+        artifact_types.DIAGNOSTIC_REPORT,
+        artifact_types.PERSONALIZED_VIDEO_GUIDE,
+        artifact_types.PROJECT_BRIEF,
     ],
+    "remediation": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
+    "diagnostic": DEFAULT_DSA_LEARNING_PACKAGE_TYPES,
 }
 
 

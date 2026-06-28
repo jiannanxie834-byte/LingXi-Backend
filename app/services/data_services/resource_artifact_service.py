@@ -3,6 +3,7 @@ import json
 import uuid
 from typing import Dict, List
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.schemas import Resource, ResourceArtifact
@@ -113,6 +114,8 @@ def upsert_from_resource(
         db.add(artifact)
 
     artifact.course_id = plan_item.get("course_id") or semantic_result.get("course_id") or "data_structures_algorithms"
+    artifact.chapter_id = plan_item.get("chapter_id") or semantic_result.get("chapter_id") or ""
+    artifact.section_id = plan_item.get("section_id") or semantic_result.get("section_id") or ""
     artifact.unit_ids_json = _json_dump([unit_id] if unit_id else [])
     artifact.student_id = resource.applicant_username or ""
     artifact.type = artifact_types.normalize_artifact_type(resource.type)
@@ -163,6 +166,8 @@ def to_dict(row: ResourceArtifact) -> Dict:
         "artifact_id": row.artifact_id,
         "resource_id": row.resource_id,
         "course_id": row.course_id,
+        "chapter_id": getattr(row, "chapter_id", "") or "",
+        "section_id": getattr(row, "section_id", "") or "",
         "unit_ids": _json_load(row.unit_ids_json, []),
         "student_id": row.student_id,
         "type": row.type,
@@ -187,13 +192,64 @@ def to_dict(row: ResourceArtifact) -> Dict:
     }
 
 
+def create_artifact(
+    db: Session,
+    *,
+    username: str,
+    course_id: str,
+    chapter_id: str = "",
+    section_id: str = "",
+    unit_ids: List[str] = None,
+    artifact_type: str,
+    title: str,
+    summary: str,
+    content: str,
+    content_format: str = "markdown",
+    evidence_refs: List[str] = None,
+    personalization_reason: str = "",
+    source: str = "",
+    status: str = "published",
+    agent_name: str = "EvaluationRemediationAgent",
+    agent_trace_id: str = "",
+) -> Dict:
+    now = datetime.datetime.now()
+    artifact = ResourceArtifact(
+        artifact_id=f"artifact_{uuid.uuid4().hex[:16]}",
+        resource_id="",
+        course_id=course_id or "data_structures_algorithms",
+        chapter_id=chapter_id or "",
+        section_id=section_id or "",
+        unit_ids_json=_json_dump(unit_ids or []),
+        student_id=username or "",
+        type=artifact_type,
+        title=title,
+        summary=summary or "",
+        content_format=content_format or _format_from_type(artifact_type),
+        content=content or "",
+        assets_json="[]",
+        personalization_reason=personalization_reason or "根据学习评价记录与知识单元定位生成。",
+        evidence_refs_json=_json_dump(evidence_refs or []),
+        quality_score=88.0,
+        risk_level="低",
+        status=status,
+        agent_name=agent_name,
+        agent_trace_id=agent_trace_id or "",
+        source=source or "",
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(artifact)
+    db.flush()
+    return to_dict(artifact)
+
+
 def list_artifacts(db: Session, username: str = "", status: str = "", limit: int = 50) -> List[Dict]:
     query = db.query(ResourceArtifact)
     if status == "published":
         query = (
             query
-            .join(Resource, ResourceArtifact.resource_id == Resource.id)
-            .filter(Resource.status == "已通过")
+            .outerjoin(Resource, ResourceArtifact.resource_id == Resource.id)
+            .filter(or_(ResourceArtifact.status == "published", Resource.status == "已通过"))
         )
     if username:
         query = query.filter(ResourceArtifact.student_id.in_([username, ""]))

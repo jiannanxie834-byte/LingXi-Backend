@@ -1,5 +1,6 @@
 from typing import List, Optional
 import json
+import logging
 import time
 import uuid
 
@@ -20,6 +21,8 @@ router = APIRouter(
     prefix="/chat",
     tags=["多智能体学习助手"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 # =========================
@@ -224,10 +227,11 @@ def send_message(
             "data": student_response
         }
 
-    except Exception as e:
+    except Exception:
+        logger.exception("Chat generation failed for username=%s", data.username or "student")
         return {
             "code": 500,
-            "message": f"AI生成失败: {str(e)}"
+            "message": "学习包生成失败，请稍后重试，或尝试输入更具体的问题，例如“我不懂动态规划状态转移”。"
         }
 
 

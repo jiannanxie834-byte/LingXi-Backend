@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.database import SessionLocal
@@ -21,19 +22,24 @@ from app.services.data_services import (
     semantic_analysis_service,
     resource_policy_service,
     resource_quality_gate,
-    deep_learning_resource_blueprint,
+    agent_trace_service,
     course_scope_service,
-    deep_learning_course_map_service,
+    dsa_course_map_service,
     resource_artifact_type_service as artifact_types,
     video_catalog_service,
 )
 
+from app.agents.agent_result_dto import AgentResultDTO
 from app.agents.evaluation_agent import run as eval_run
 from app.agents.profile_agent import run as profile_run
 from app.agents.planner_agent import run as planner_run
 from app.agents.resource_agent import run as resource_run
 from app.agents.interactive_animation_agent import run as interactive_animation_run
 from app.agents.animation_storyboard_agent import run as animation_storyboard_run
+from app.agents.course_locator_agent import run as course_locator_run
+from app.agents.resource_retrieval_agent import run as resource_retrieval_run
+from app.agents.package_agent import run as package_agent_run
+from app.agents.quality_agent import run as quality_agent_run
 
 
 logger = logging.getLogger(__name__)
@@ -52,16 +58,23 @@ PUBLIC_PROFILE_DIMENSIONS = {
 }
 
 KNOWN_TOPIC_ALIASES = {
-    "rnn": "RNN",
-    "lstm": "LSTM",
-    "transformer": "Transformer",
-    "深度学习": "深度学习",
-    "神经网络": "神经网络",
-    "cnn": "卷积神经网络",
-    "卷积神经网络": "卷积神经网络",
-    "反向传播": "反向传播",
-    "pytorch": "PyTorch 深度学习工程实践",
-    "attention": "自注意力机制",
+    "数据结构": "数据结构与算法",
+    "算法": "数据结构与算法",
+    "复杂度": "复杂度分析",
+    "数组": "数组",
+    "链表": "链表",
+    "栈": "栈",
+    "队列": "队列",
+    "递归": "递归",
+    "排序": "排序算法",
+    "二分": "二分查找",
+    "哈希": "哈希表",
+    "堆": "堆与优先队列",
+    "树": "树与二叉树",
+    "图": "图搜索",
+    "动态规划": "动态规划",
+    "dp": "动态规划",
+    "字符串": "字符串匹配",
 }
 
 
@@ -260,6 +273,30 @@ def _validate_tutor_result(data):
     }
 
 
+def _fallback_tutor_result(topic: str, message: str = ""):
+    topic = str(topic or message or "当前主题").strip()
+    return {
+        "summary": f"我先围绕「{topic}」帮你整理学习入口，并把配套资料按你的学习情况组织起来。",
+        "key_points": [
+            {
+                "title": "先定位核心概念",
+                "detail": "先确认定义、输入输出、适用场景和常见边界条件，避免直接背模板。",
+            },
+            {
+                "title": "再配合题目和代码",
+                "detail": "概念看懂后，用小题和最小代码实验验证自己是否真的能迁移使用。",
+            },
+        ],
+        "next_actions": [
+            {
+                "title": "查看个性化学习包",
+                "detail": "系统会优先从课程资源库中匹配讲解、导图、练习、代码实验、补弱报告和视频指南。",
+            }
+        ],
+        "caveats": [],
+    }
+
+
 def _validate_resource_output(data, resource_type: str = ""):
     if not isinstance(data, dict):
         raise RuntimeError("资源内容结构化结果必须是对象")
@@ -294,7 +331,7 @@ def _validate_resource_output(data, resource_type: str = ""):
 
 def _render_resource_content(summary, sections, resource_type: str = ""):
     lines = [f"# {summary}", ""]
-    is_course_note = deep_learning_resource_blueprint.is_course_note(resource_type)
+    is_course_note = artifact_types.normalize_artifact_type(resource_type) == artifact_types.COURSE_NOTE
 
     for section in sections:
         heading = section["heading"]
@@ -326,10 +363,10 @@ def _json_artifact_content(payload: dict) -> str:
 
 def _structured_artifact_content(item, resource_output, profile_result):
     resource_type = artifact_types.normalize_artifact_type(item.get("type", ""))
-    course_match = item.get("deep_learning_course_map") or item.get("ai_course_map") or {}
-    topic = course_match.get("normalized_topic") or item.get("unit_title") or item.get("topic") or "深度学习知识点"
+    course_match = item.get("dsa_course_map") or item.get("ai_course_map") or {}
+    topic = course_match.get("normalized_topic") or item.get("unit_title") or item.get("topic") or "数据结构与算法知识点"
     unit_id = course_match.get("unit_id") or item.get("unit_id") or ""
-    personalization_reason = item.get("personalization_reason") or "根据本轮深度学习主题、学生画像和学习目标生成。"
+    personalization_reason = item.get("personalization_reason") or "根据本轮数据结构与算法主题、学生画像和学习目标生成。"
 
     if resource_type == artifact_types.VIDEO_RECOMMENDATION:
         videos = video_catalog_service.search_videos(
@@ -384,38 +421,411 @@ def _structured_artifact_content(item, resource_output, profile_result):
     return resource_output["content"]
 
 
-def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
-    if deep_learning_resource_blueprint.is_course_note(item.get("type", "")):
-        evidence_chunks = item.get("evidence_chunks") or []
-        return deep_learning_resource_blueprint.build_course_note_prompt(
-            plan_item=item,
-            profile=profile_result or {},
-            intent=intent,
-            evidence_chunks=evidence_chunks,
-            teaching_sources_prompt=teaching_sources_prompt,
-        )
+def _is_dsa_plan_item(item: dict) -> bool:
+    course_map = item.get("dsa_course_map") or item.get("ai_course_map") or {}
+    return (
+        item.get("course_id") == dsa_course_map_service.COURSE_ID
+        or course_map.get("course_id") == dsa_course_map_service.COURSE_ID
+    )
 
+
+def _dsa_item_context(item: dict):
+    course_map = item.get("dsa_course_map") or item.get("ai_course_map") or {}
+    unit_id = item.get("unit_id") or course_map.get("unit_id") or course_map.get("primary_unit_id") or ""
+    unit = dsa_course_map_service.get_unit(unit_id) or course_map.get("unit") or {}
+    chapter_id = item.get("chapter_id") or course_map.get("chapter_id") or unit.get("chapter_id") or ""
+    chapter = dsa_course_map_service.CHAPTER_BY_ID.get(chapter_id, {})
+    topic = (
+        item.get("display_topic")
+        or item.get("unit_title")
+        or course_map.get("display_topic")
+        or course_map.get("normalized_topic")
+        or unit.get("title")
+        or item.get("topic")
+        or "数据结构与算法学习主题"
+    )
+    return {
+        "course_map": course_map,
+        "unit": unit,
+        "unit_id": unit_id,
+        "chapter": chapter,
+        "chapter_id": chapter_id,
+        "chapter_title": chapter.get("title") or item.get("chapter_title") or course_map.get("chapter_title") or "",
+        "topic": topic,
+        "core_concepts": unit.get("core_concepts") or course_map.get("core_topics") or [topic],
+        "prerequisites": unit.get("prerequisites") or item.get("prerequisite_units") or course_map.get("prerequisites") or [],
+        "related_units": unit.get("related_units") or item.get("related_units") or course_map.get("related_units") or [],
+        "common_misconceptions": unit.get("common_misconceptions") or unit.get("pitfalls") or [],
+    }
+
+
+def _profile_focus(profile_result: dict, item: dict):
+    profile_result = profile_result or {}
+    reason = item.get("personalization_reason") or "依据本轮学习主题和课程知识单元生成。"
+    fragments = [reason]
+    level = profile_result.get("level") or item.get("level")
+    if level and level != "未确认":
+        fragments.append(f"按「{level}」水平安排学习顺序")
+    dimensions = profile_result.get("dimensions") if isinstance(profile_result.get("dimensions"), dict) else {}
+    media = dimensions.get("媒介偏好") or profile_result.get("media_preference")
+    if media:
+        fragments.append(f"媒介偏好：{media}")
+    weak = dimensions.get("知识短板") or profile_result.get("weakness") or profile_result.get("weak_points")
+    if weak:
+        fragments.append(f"重点补弱：{weak}")
+    if item.get("type") == artifact_types.CODE_LAB or item.get("allow_code_content"):
+        fragments.append("增加代码实验和边界样例检查")
+    return "；".join(str(part) for part in fragments if str(part or "").strip())
+
+
+def _evidence_summary(item: dict):
+    chunks = item.get("evidence_chunks") or []
+    if not chunks:
+        return {
+            "titles": ["数据结构与算法课程知识库"],
+            "bullets": ["本资源依据课程图谱中的章节、小节和知识单元进行个性化组装。"],
+            "refs": [],
+        }
+    titles = []
+    bullets = []
+    refs = []
+    for chunk in chunks[:5]:
+        title = str(chunk.get("title") or "课程资料").strip()
+        excerpt = str(chunk.get("content_excerpt") or "").strip()
+        ref = str(chunk.get("evidence_id") or "").strip()
+        titles.append(title)
+        if excerpt:
+            bullets.append(f"{title}：{excerpt[:220]}")
+        if ref:
+            refs.append(ref)
+    return {
+        "titles": list(dict.fromkeys(titles)) or ["数据结构与算法课程知识库"],
+        "bullets": bullets or ["已匹配课程知识库中的同主题资料。"],
+        "refs": list(dict.fromkeys(refs)),
+    }
+
+
+def _source_note_lines(evidence_info):
+    refs = evidence_info.get("refs") or []
+    lines = ["## 来源与个性化依据", ""]
+    lines.append("- 来源：数据结构与算法课程资源库、章节知识单元和已接入公开视频目录。")
+    if refs:
+        lines.append(f"- 证据引用：{'; '.join(f'evidence_id={ref}' for ref in refs[:5])}")
+    lines.append("- 个性化方式：优先匹配本轮主题，再结合画像中的薄弱点、媒介偏好和实践需求调整学习顺序。")
+    return lines
+
+
+def _dsa_course_note(item, ctx, evidence_info, personalization):
+    topic = ctx["topic"]
+    concepts = ctx["core_concepts"][:6]
+    misconceptions = ctx["common_misconceptions"][:4] or ["只记结论，不说明适用条件", "忽略边界输入和复杂度来源"]
+    lines = [
+        f"# {topic} 个性化课程讲解",
+        "",
+        "## 学习定位",
+        "",
+        f"这份讲解从资源库中匹配「{topic}」相关资料，并按你的当前问题整理为先理解、再验证、最后练习的顺序。{personalization}",
+        "",
+        "## 核心概念",
+        "",
+    ]
+    for concept in concepts:
+        lines.append(f"- **{concept}**：先说明它解决什么问题，再观察输入输出、操作步骤和复杂度来源。")
+    lines.extend(["", "## 资源库匹配内容", ""])
+    lines.extend([f"- {bullet}" for bullet in evidence_info["bullets"][:5]])
+    lines.extend(["", "## 直观理解", ""])
+    lines.append(f"学习「{topic}」时，不要把它当成孤立定义。更稳的方式是把它放回问题规模、数据组织方式和操作代价中观察：输入是什么、允许做哪些操作、每一步会访问多少元素、是否需要额外空间。")
+    lines.extend(["", "## 例子", ""])
+    lines.append(f"例子 1：如果题目要求你说明「{topic}」的效率，不要只写 O(1) 或 O(n)，还要指出是哪一个操作、在哪一种数据组织方式下成立。")
+    lines.append(f"例子 2：如果题目要求你实现「{topic}」，先写最小输入、空输入和边界输入，再补普通样例。")
+    lines.extend(["", "## 常见误区", ""])
+    lines.extend([f"- {item}" for item in misconceptions])
+    lines.extend(["", "## 自测题", ""])
+    lines.extend([
+        f"1. 用自己的话说明「{topic}」解决的问题，并给出一个最小输入样例。",
+        f"2. 标出「{topic}」中最容易出错的边界条件。",
+        f"3. 写出该主题相关操作的时间复杂度，并解释复杂度从哪一步产生。",
+        "",
+        "参考答案：答案不要求背固定模板，但必须同时包含问题目标、关键操作、边界条件和复杂度来源。",
+    ])
+    lines.extend(["", "## 下一步建议", ""])
+    lines.extend([
+        "- 先看本包的思维导图，确认概念关系。",
+        "- 再做练习题集，重点检查边界条件和复杂度解释。",
+        "- 如果涉及实现，完成代码实验中的最小函数和测试样例。",
+    ])
+    lines.extend(["", *_source_note_lines(evidence_info)])
+    return "\n".join(lines)
+
+
+def _dsa_mind_map(item, ctx, evidence_info, personalization):
+    topic = ctx["topic"]
+    concepts = ctx["core_concepts"][:5] or [topic]
+    prerequisites = ctx["prerequisites"][:3] or ["问题规模", "基本操作", "复杂度分析"]
+    related = ctx["related_units"][:3] or ["题型迁移", "边界条件", "代码验证"]
+    mistakes = ctx["common_misconceptions"][:3] or ["混淆定义与实现", "忽略边界条件", "只背复杂度结论"]
+    lines = [
+        "mindmap",
+        f"  root(({topic}))",
+        "    学习定位",
+        f"      {ctx['chapter_title'] or '数据结构与算法'}",
+        "      个性化资源库匹配",
+        "    前置知识",
+        *[f"      {item}" for item in prerequisites],
+        "    核心概念",
+        *[f"      {item}" for item in concepts],
+        "    易错点",
+        *[f"      {item}" for item in mistakes],
+        "    练习路径",
+        "      概念题",
+        "      边界样例",
+        "      代码实验",
+        "    拓展关联",
+        *[f"      {item}" for item in related],
+    ]
+    return "\n".join(lines)
+
+
+def _dsa_exercise_set(item, ctx, evidence_info, personalization):
+    topic = ctx["topic"]
+    concepts = ctx["core_concepts"][:4] or [topic]
+    lines = [
+        f"# {topic} 个性化练习题集",
+        "",
+        f"适用对象：{personalization}",
+        "",
+    ]
+    question_specs = [
+        ("选择题", f"关于「{topic}」的适用场景，下列哪一项最能体现它要解决的核心问题？", "选择能同时说明输入、输出和操作代价的选项。"),
+        ("判断题", f"只要记住「{topic}」的结论，就可以跳过边界样例验证。", "错误。算法学习必须用边界样例检验理解。"),
+        ("简答题", f"用 3 句话解释「{topic}」的核心思想。", "应包含问题目标、关键操作和复杂度来源。"),
+        ("计算题", f"给定一个规模为 n 的输入，分析「{topic}」相关操作的时间复杂度。", "先数循环或递归层数，再说明每层成本。"),
+        ("代码理解题", f"阅读一段实现「{topic}」的伪代码，指出终止条件或边界判断。", "重点检查空输入、单元素和左右边界。"),
+        ("实验分析题", f"设计 3 组测试样例验证「{topic}」的正确性。", "至少包含普通样例、边界样例和异常/极端样例。"),
+    ]
+    for index, (q_type, question, answer) in enumerate(question_specs, start=1):
+        concept = concepts[(index - 1) % len(concepts)]
+        lines.extend([
+            f"### 题目 {index}：{q_type}",
+            "",
+            f"题干：{question}",
+            "",
+            f"知识点：{concept}",
+            "",
+            f"答案：{answer}",
+            "",
+            "解析：不要只给结论，要能说明每一步为什么成立，以及它和输入规模、数据组织方式之间的关系。",
+            "",
+            "常见错误：忽略边界条件，或者把某一种实现方式误认为该概念的全部。",
+            "",
+        ])
+    lines.extend(_source_note_lines(evidence_info))
+    return "\n".join(lines)
+
+
+def _dsa_code_lab(item, ctx, evidence_info, personalization):
+    topic = ctx["topic"]
+    safe_name = re.sub(r"[^a-zA-Z0-9_]+", "_", ctx["unit_id"] or "dsa_task").strip("_") or "dsa_task"
+    return "\n".join([
+        f"# {topic} 代码实验",
+        "",
+        f"实验目标：用最小可运行程序验证「{topic}」的输入、输出、边界条件和复杂度表现。",
+        "",
+        "## 学习定位",
+        "",
+        f"这不是让你直接复制答案，而是把「{topic}」拆成可观察的程序行为：先确认输入规模，再写出核心操作，最后用边界样例证明实现没有遗漏。完成实验后，你应该能解释每一行关键代码和复杂度之间的关系。",
+        "",
+        "## 环境依赖",
+        "",
+        "- Python 3.10+",
+        "- 无第三方依赖，方便在本地或在线评测环境运行。",
+        "",
+        "## 算法流程",
+        "",
+        f"1. 明确「{topic}」对应的问题输入和期望输出。",
+        "2. 写出最小可行逻辑，再逐步补充边界处理。",
+        "3. 用普通样例、空输入样例、单元素样例和极端规模样例验证。",
+        "4. 记录每一步访问了多少元素，从而得到时间复杂度和空间复杂度。",
+        "",
+        "## 完整代码",
+        "",
+        "```python",
+        f"def solve_{safe_name}(data):",
+        "    \"\"\"根据本节主题补全核心逻辑，并保留边界样例。\"\"\"",
+        "    if data is None:",
+        "        return None",
+        "    # TODO: 根据课程讲解补全算法步骤",
+        "    return data",
+        "",
+        "def run_tests():",
+        "    cases = [",
+        "        [],",
+        "        [1],",
+        "        [3, 1, 2],",
+        "    ]",
+        "    for case in cases:",
+        f"        print(case, '->', solve_{safe_name}(case))",
+        "",
+        "if __name__ == '__main__':",
+        "    run_tests()",
+        "```",
+        "",
+        "## 运行命令",
+        "",
+        "```bash",
+        f"python {safe_name}.py",
+        "```",
+        "",
+        "## 学生任务",
+        "",
+        f"- 任务 1：补全 `solve_{safe_name}` 的核心逻辑。",
+        "- 任务 2：新增 3 个边界样例，并说明预期输出。",
+        "- 任务 3：记录最坏情况下的时间复杂度和空间复杂度。",
+        "- 任务 4：写一段 100 字以内的反思，说明你最容易漏掉哪个边界条件。",
+        "",
+        "## 复杂度记录",
+        "",
+        "- 时间复杂度：先根据循环、递归层数或数据访问次数写出推导过程，再写结论。",
+        "- 空间复杂度：记录是否使用额外数组、栈、队列、哈希表或递归调用栈。",
+        "- 边界条件：空输入、单元素、重复元素、极端有序或极端无序输入都要单独验证。",
+        "",
+        "## 常见报错",
+        "",
+        "- 空输入没有提前处理，导致下标越界。",
+        "- 循环边界多一位或少一位。",
+        "- 只验证普通样例，没有验证极端规模。",
+        "",
+        "## 实验报告",
+        "",
+        f"- 写明你对「{topic}」的理解、关键代码、测试样例、复杂度分析和仍然不确定的问题。",
+        "",
+        *_source_note_lines(evidence_info),
+    ])
+
+
+def _dsa_remediation_report(item, ctx, evidence_info, personalization):
+    topic = ctx["topic"]
+    weak_points = ctx["common_misconceptions"][:4] or [
+        "概念定义与应用场景没有对应起来",
+        "边界条件检查不足",
+        "复杂度分析只背结论，没有解释来源",
+    ]
+    lines = [
+        f"# {topic} 诊断与补弱报告",
+        "",
+        f"个性化依据：{personalization}",
+        "",
+        "## 薄弱点",
+        "",
+        *[f"- {point}" for point in weak_points],
+        "",
+        "## 修复建议",
+        "",
+        "- 用一张图整理定义、输入输出、操作流程和复杂度。",
+        "- 做 3 道不同边界条件的题，写出错误原因。",
+        "- 用代码实验验证最小样例、边界样例和极端样例。",
+        "",
+        "## 下一步学习任务",
+        "",
+        f"1. 阅读「{topic}」课程讲解文档。",
+        "2. 完成练习题集中前 4 题，并核对解析。",
+        "3. 若仍然不稳定，先补前置知识，再回到本主题。",
+        "",
+        *_source_note_lines(evidence_info),
+    ]
+    return "\n".join(lines)
+
+
+def _dsa_video_guide(item, ctx, evidence_info, personalization):
+    topic = ctx["topic"]
+    videos = video_catalog_service.search_videos(
+        unit_id=ctx["unit_id"],
+        topic=topic,
+        profile=item.get("_profile_result") or {},
+        limit=3,
+    )
+    lines = [
+        f"# {topic} 个性化视频观看指南",
+        "",
+        f"个性化依据：{personalization}",
+        "",
+        "## 观看/阅读前准备",
+        "",
+        f"- 先浏览本包的思维导图，确认「{topic}」和前置知识的关系。",
+        "- 准备记录 3 个问题：概念是什么、为什么这样做、边界在哪里。",
+        "",
+        "## 观看/阅读中关注点",
+        "",
+        "- 重点看输入输出如何变化。",
+        "- 暂停记录关键步骤，不要只跟着视频抄代码。",
+        "- 遇到公式或复杂度时，写出它来自哪一层循环或递归。",
+        "",
+        "## 推荐公开视频入口",
+        "",
+    ]
+    if videos:
+        for video in videos:
+            lines.append(f"- {video.get('title', '公开视频')}｜{video.get('platform', 'Bilibili')}｜{video.get('source_url', '')}")
+    else:
+        lines.append("- 当前小节暂无精确匹配视频，只保留课程资源库讲解、导图、练习和代码实验。")
+    lines.extend([
+        "",
+        "## 观看/阅读后任务",
+        "",
+        "- 合上视频后复述核心流程。",
+        "- 做练习题集中的 2 道题，检查是否能独立完成。",
+        "- 若涉及代码，运行代码实验并记录边界样例。",
+        "",
+        "## 版权说明",
+        "",
+        "- 本系统只提供公开视频原始链接和学习建议，不复制、不下载、不重新分发视频内容。",
+        "",
+        *_source_note_lines(evidence_info),
+    ])
+    return "\n".join(lines)
+
+
+def _generate_dsa_resource_from_library(item, profile_result, intent):
+    resource_type = artifact_types.normalize_artifact_type(item.get("type", ""))
+    ctx = _dsa_item_context(item)
+    evidence_info = _evidence_summary(item)
+    personalization = _profile_focus(profile_result, item)
+    builders = {
+        artifact_types.COURSE_NOTE: _dsa_course_note,
+        artifact_types.MIND_MAP: _dsa_mind_map,
+        artifact_types.EXERCISE_SET: _dsa_exercise_set,
+        artifact_types.CODE_LAB: _dsa_code_lab,
+        artifact_types.DIAGNOSTIC_REPORT: _dsa_remediation_report,
+        artifact_types.PERSONALIZED_VIDEO_GUIDE: _dsa_video_guide,
+    }
+    builder = builders.get(resource_type, _dsa_course_note)
+    item = {**item, "_profile_result": profile_result or {}}
+    content = builder(item, ctx, evidence_info, personalization)
+    summary = item.get("summary") or f"从课程资源库匹配「{ctx['topic']}」并结合画像生成的{resource_type}。"
+    source_titles = evidence_info.get("titles") or ["数据结构与算法课程资源库"]
+    return {
+        "summary": summary,
+        "content": content,
+        "source": "；".join(source_titles[:3]),
+    }
+
+
+def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
     subject_category = item.get("subject_category", "unknown")
     level = item.get("level") or profile_result.get("level") or "未确认"
     level_source = item.get("level_source") or profile_result.get("level_source") or "none"
     allow_code = bool(item.get("allow_code_content"))
     quality_constraints = "\n".join([f"- {rule}" for rule in item.get("quality_constraints", [])])
     forbidden_terms = "、".join(item.get("forbidden_terms", [])) or "无"
-    feedback_sources = item.get("feedback_evidence_sources") or []
-    course_map_prompt = deep_learning_course_map_service.format_course_map_for_prompt(
-        item.get("deep_learning_course_map") or item.get("ai_course_map") or {}
-    )
-    feedback_rules = ""
-    if item.get("type") == resource_policy_service.FEEDBACK_RESOURCE_TYPE:
-        feedback_rules = f"""
-诊断与补弱报告额外规则：
-- 只能依据以下真实反馈来源生成：{'；'.join(feedback_sources) or '无'}。
-- 必须在正文中写明诊断依据来自评价记录、错题描述、测验结果或本轮反馈。
-- 不得用“可能薄弱点”“推测错因”伪装真实诊断。
-- 如果没有真实反馈来源，应返回空的 sections 并在 source_notes 说明不能生成该报告。
-"""
+    course_map = item.get("dsa_course_map") or item.get("ai_course_map") or {}
+    course_map_prompt = json.dumps({
+        "course": dsa_course_map_service.COURSE_DISPLAY_NAME,
+        "chapter": course_map.get("chapter_title") or course_map.get("chapter") or item.get("chapter_title"),
+        "unit": course_map.get("display_topic") or course_map.get("normalized_topic") or item.get("unit_title"),
+        "unit_id": course_map.get("unit_id") or item.get("unit_id"),
+    }, ensure_ascii=False)
     return f"""
-你是高校《深度学习》课程学习资源生成助手，请严格根据课程图谱和 Artifact 类型生成内容。
+你是高校《数据结构与算法》课程学习资源生成助手，请严格根据课程图谱和 Artifact 类型生成内容。
 
 输出边界：
 - 只输出 JSON 对象
@@ -426,7 +836,7 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 - sections 必须是对象数组，items 必须是字符串数组
 - items 中不要出现英文双引号、反引号或多行字符串；需要强调时使用中文括号或单引号
 
-课程范围：{deep_learning_course_map_service.COURSE_DISPLAY_NAME}
+课程范围：{dsa_course_map_service.COURSE_DISPLAY_NAME}
 语义类别：{subject_category}
 主题：{item.get('topic')}
 学生水平：{level}
@@ -435,7 +845,7 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 是否允许代码内容：{"true" if allow_code else "false"}
 学习目标：{intent}
 资源规格：{'、'.join(item.get('requirements') or [])}
-《深度学习》课程图谱：
+《数据结构与算法》课程图谱：
 {course_map_prompt}
 禁止词/禁用方向：{forbidden_terms}
 质量约束：
@@ -448,19 +858,19 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 {teaching_sources_prompt}
 
 要求：
-- 内容必须适合高校《深度学习》课程学习场景
-- 如果主题没有命中《深度学习》课程图谱，不得生成资源正文。
-- 如果已匹配《深度学习》课程图谱，正文必须出现对应课程章节、知识单元 ID 或至少 2 个核心知识点，避免泛泛而谈。
+- 内容必须适合高校《数据结构与算法》课程学习场景
+- 如果主题没有命中《数据结构与算法》课程图谱，不得生成资源正文。
+- 如果已匹配《数据结构与算法》课程图谱，正文必须出现对应课程章节、知识单元 ID 或至少 2 个核心知识点，避免泛泛而谈。
 - 课程讲解文档必须解释学习目标、前置知识、核心概念、公式/流程、例子、易错点和下一步建议。
 - 思维导图必须体现章节关系、前置知识和核心概念连接。
 - 练习题集必须覆盖选择题、判断题、简答题、计算题、代码补全题、实验分析题或项目任务题，并给出答案、解析、知识点、难度和常见错误。
 - 拓展阅读包必须给出教材章节建议、公开课入口、官方文档、阅读顺序和阅读目标。
-- PyTorch 实操案例必须写清实验目标、环境依赖、数据集说明、模型结构、完整代码、运行方式、调参任务和实验报告模板。
+- 代码实验必须写清实验目标、环境依赖、输入输出样例、完整代码、运行方式、复杂度记录、调试任务和实验报告模板。
 - 视频推荐和观看指南只提供公开视频原始链接、推荐片段、观看重点和任务，不下载、不搬运、不重托管视频。
 - 交互动画规格只输出前端可渲染的结构化规格或分镜，不要求生成 MP4。
 - 课程实践项目任务书必须写清项目背景、目标、数据集建议、技术路线、任务拆解、验收标准、提交物和评分 Rubric。
 - 如果学生水平为“未确认”，不得写“进阶学习者”“高阶学习者”“B1/B2/C1/C2”“已经具备”等具体水平。
-- 如果 Artifact 类型不是 PyTorch 实操案例、课程实践项目任务书，且是否允许代码内容为 false，不得生成代码、伪代码、函数、编程框架、算法实现。
+- 如果 Artifact 类型不是代码实验、算法项目任务书，且是否允许代码内容为 false，不得生成代码、伪代码、函数或算法实现。
 - 练习题必须考查主题本身，不得考查“如何规划学习路径”。
 - 不得虚构已引用教材、MOOC、官方链接或外部资料。
 - 无依据内容可在来源说明中标注“需管理员复核”，但正文仍要保持学生可读。
@@ -469,9 +879,8 @@ def _build_resource_prompt(item, profile_result, intent, evidence_prompt, teachi
 - 教材正文、课件包、视频内容只能引用公开入口或授权内容，不得虚构“已节选”的正文
 - 避免绝对化和不可验证结论
 - 多模态效果由同一主题下的讲解、导图、题集、阅读、代码实验、视频推荐、交互动画和项目任务组合呈现，最终由主题学习包聚合展示，不得再生成平级的总包型资源正文。
-- 需要代码时只能放在“PyTorch 实操案例”“课程实践项目任务书”或课程讲解中的短代码示例；其他 Artifact 不要硬塞代码。
+- 需要代码时只能放在“代码实验”“算法项目任务书”或课程讲解中的短代码示例；其他 Artifact 不要硬塞代码。
 - Mermaid 和代码示例如确有必要，也必须作为普通 JSON 字符串逐条放入 items，不要使用 Markdown 围栏。
-{feedback_rules}
 
 JSON 字段：
 {{
@@ -482,7 +891,7 @@ JSON 字段：
       "items": ["每一项是一句完整、可直接展示的内容，避免使用英文双引号"]
     }}
   ],
-  "source_notes": ["课程资料或外部教学入口说明"]
+  "source_notes": ["数据结构与算法课程资料或外部教学入口说明"]
 }}
 """
 
@@ -518,13 +927,13 @@ JSON 形状示例：
   "sections": [
     {section_examples}
   ],
-  "source_notes": ["《深度学习》课程图谱", "系统自构建课程知识库"]
+  "source_notes": ["《数据结构与算法》课程图谱", "系统自构建课程知识库"]
 }}
 """
 
 
 def _request_resource_output(prompt, item):
-    max_tokens = 7200 if deep_learning_resource_blueprint.is_course_note(item.get("type", "")) else 3600
+    max_tokens = 7200 if artifact_types.normalize_artifact_type(item.get("type", "")) == artifact_types.COURSE_NOTE else 3600
     res = chat_json(
         [{"role": "user", "content": prompt}],
         required_fields=["summary", "sections", "source_notes"],
@@ -534,6 +943,14 @@ def _request_resource_output(prompt, item):
     if not res.get("ok"):
         raise RuntimeError(f"{item.get('type', '资源')} 内容结构化输出失败：{res.get('error', '未知错误')}")
     return _validate_resource_output(res.get("data") or {}, resource_type=item.get("type", ""))
+
+
+def _public_generation_message(success_count: int, failed_count: int) -> str:
+    if success_count > 0 and failed_count <= 0:
+        return f"已为你生成 {success_count} 类个性化学习资源。"
+    if success_count > 0:
+        return f"已为你生成 {success_count} 类个性化学习资源，另外 {failed_count} 类生成失败，可稍后重试。"
+    return "学习包生成失败，请稍后重试，或尝试输入更具体的问题，例如“我不懂动态规划状态转移”。"
 
 
 def _build_resource_repair_prompt(item, draft, quality_result, evidence_prompt, teaching_sources_prompt):
@@ -553,7 +970,7 @@ def _build_resource_repair_prompt(item, draft, quality_result, evidence_prompt, 
 {issues or '- 结构和内容深度不足'}
 
 修订建议：
-{suggestions or '- 按深度学习讲义蓝图重写'}
+{suggestions or '- 按数据结构与算法讲义结构重写'}
 
 原摘要：
 {draft.get('summary', '')}
@@ -591,6 +1008,9 @@ def repair_resource_content_with_feedback(plan_item, draft, quality_result, evid
 
 
 def _generate_one_resource_output(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
+    if _is_dsa_plan_item(item):
+        return _generate_dsa_resource_from_library(item, profile_result, intent)
+
     resource_type = artifact_types.normalize_artifact_type(item.get("type", ""))
     structured_only_types = {
         artifact_types.VIDEO_RECOMMENDATION,
@@ -599,11 +1019,11 @@ def _generate_one_resource_output(item, profile_result, intent, evidence_prompt,
         artifact_types.ANIMATION_STORYBOARD,
     }
     if resource_type in structured_only_types:
-        summary = item.get("summary") or f"{item.get('topic', '深度学习主题')} · {resource_type}"
+        summary = item.get("summary") or f"{item.get('topic', '数据结构与算法主题')} · {resource_type}"
         resource_output = {
             "summary": summary,
             "content": "",
-            "source_notes": ["《深度学习》课程图谱", "公开视频目录" if "视频" in resource_type or "观看" in resource_type else "前端交互动画规格"],
+            "source_notes": ["《数据结构与算法》课程图谱", "公开视频目录" if "视频" in resource_type or "观看" in resource_type else "前端交互动画规格"],
         }
         return {
             "summary": summary,
@@ -612,8 +1032,10 @@ def _generate_one_resource_output(item, profile_result, intent, evidence_prompt,
         }
 
     item_evidence = item.get("evidence_chunks") or []
-    if not item_evidence and item.get("course_id") == deep_learning_course_map_service.COURSE_ID:
+    if not item_evidence and item.get("course_id") == dsa_course_map_service.COURSE_ID:
         raise RuntimeError("当前知识库中该知识点证据不足，已生成知识库补充任务。")
+    if item.get("course_id") and item.get("course_id") != dsa_course_map_service.COURSE_ID:
+        raise RuntimeError("当前系统主线仅支持《数据结构与算法》课程资源生成。")
     item_evidence_prompt = knowledge_evidence_service.format_evidence_chunks_for_prompt(item_evidence) if item_evidence else evidence_prompt
     prompt = _build_resource_prompt(
         item=item,
@@ -635,7 +1057,7 @@ def _generate_one_resource_output(item, profile_result, intent, evidence_prompt,
             "unit_id": item.get("unit_id", ""),
             "resource_type": item.get("type", ""),
             "evidence_chunks": item_evidence,
-            "deep_learning_course_map": item.get("deep_learning_course_map") or {},
+            "dsa_course_map": item.get("dsa_course_map") or item.get("ai_course_map") or {},
         },
     )
     score = teaching_quality.get("teaching_quality_score", 0)
@@ -656,7 +1078,7 @@ def _generate_one_resource_output(item, profile_result, intent, evidence_prompt,
 
 def _attach_evidence_to_resource_plan(db, resource_plan, fallback_query):
     semantic_result = resource_plan.get("semantic_result") or {}
-    course_id = semantic_result.get("course_id") or deep_learning_course_map_service.COURSE_ID
+    course_id = semantic_result.get("course_id") or dsa_course_map_service.COURSE_ID
     for item in resource_plan.get("resources", []):
         unit_id = item.get("unit_id") or semantic_result.get("unit_id", "")
         evidence_chunks = []
@@ -688,6 +1110,9 @@ def _generate_resource_outputs(resource_plan, profile_result, intent, evidence_p
     items = resource_plan.get("resources", [])
     if not items:
         return []
+
+    if all(_is_dsa_plan_item(item) for item in items):
+        return _generate_dsa_package_outputs(resource_plan, profile_result, intent)
 
     llm_outputs = [None] * len(items)
     failures = []
@@ -729,6 +1154,77 @@ def _generate_resource_outputs(resource_plan, profile_result, intent, evidence_p
     return kept_outputs
 
 
+def _profile_agent_trace(profile_result: dict, intent: str) -> AgentResultDTO:
+    profile_result = profile_result or {}
+    dimensions = profile_result.get("dimensions") if isinstance(profile_result.get("dimensions"), dict) else {}
+    return AgentResultDTO(
+        agent_name="ProfileAgent",
+        input_summary=profile_result.get("knowledge_topic") or profile_result.get("topic") or "当前学生画像",
+        output={
+            "level": profile_result.get("level") or "未确认",
+            "intent": intent or profile_result.get("intent") or "",
+            "preference": dimensions.get("媒介偏好") or profile_result.get("media_preference") or "未确认",
+            "weakness": dimensions.get("知识短板") or profile_result.get("weakness") or "待进一步诊断",
+        },
+        quality_score=1.0,
+    )
+
+
+def _intent_agent_trace(resource_plan: dict, intent: str) -> AgentResultDTO:
+    semantic_result = resource_plan.get("semantic_result") or {}
+    return AgentResultDTO(
+        agent_name="IntentAgent",
+        input_summary=semantic_result.get("topic") or semantic_result.get("display_topic") or "学习需求",
+        output={
+            "intent": intent or semantic_result.get("learning_need_type") or "综合学习",
+            "topic": semantic_result.get("display_topic") or semantic_result.get("topic") or "",
+            "resource_goal": "生成 6 类个性化学习包",
+        },
+        quality_score=1.0,
+    )
+
+
+def _generate_dsa_package_outputs(resource_plan, profile_result, intent):
+    items = resource_plan.get("resources", [])
+    semantic_result = resource_plan.get("semantic_result") or {}
+    generation_context = resource_plan.get("generation_context") or {}
+
+    intent_result = _intent_agent_trace(resource_plan, intent)
+    locator_result = course_locator_run(semantic_result, generation_context)
+    location = locator_result.output or {}
+    profile_result_dto = _profile_agent_trace(profile_result, intent)
+    retrieval_result = resource_retrieval_run(location)
+    package_result = package_agent_run(
+        resources=items,
+        location=location,
+        profile=profile_result or {},
+        retrieval=retrieval_result.get("retrieval") or {},
+    )
+    quality_result = quality_agent_run(package_result.get("outputs") or [])
+
+    unit_ids = location.get("unit_ids") or []
+    primary_unit_id = unit_ids[0] if unit_ids else ""
+    for item in items:
+        item["course_id"] = dsa_course_map_service.COURSE_ID
+        item["chapter_id"] = location.get("chapter_id") or item.get("chapter_id") or ""
+        item["section_id"] = location.get("section_id") or item.get("section_id") or ""
+        item["unit_id"] = item.get("unit_id") or primary_unit_id
+        item["evidence_refs"] = location.get("evidence_refs") or unit_ids
+        item["agent_name"] = "PackageAgent"
+
+    resource_plan["agent_results"] = [
+        intent_result,
+        locator_result,
+        profile_result_dto,
+        retrieval_result["dto"],
+        package_result["dto"],
+        quality_result["dto"],
+    ]
+    resource_plan["resources"] = items
+    resource_plan["generation_failures"] = []
+    return quality_result.get("outputs") or []
+
+
 def _preview_resource_plan(resource_plan):
     preview = []
     for item in resource_plan.get("resources", []):
@@ -740,7 +1236,6 @@ def _preview_resource_plan(resource_plan):
                 "type": r_type,
                 "summary": str(item.get("summary") or "").strip(),
                 "status": "待审核",
-                "unit_id": item.get("unit_id") or "",
             })
     return preview
 
@@ -790,8 +1285,8 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 db,
                 job_id,
                 event="agent_started",
-                agent="ArtifactGenerationAgents",
-                message="正在生成讲解、题集、代码实验、视频指南、动画规格和项目任务",
+                agent="ResourceRetrievalAgent / PackageAgent",
+                message="正在匹配课程库预制内容并组装 6 类个性化学习包",
                 progress=45,
             )
 
@@ -802,13 +1297,24 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
             evidence_prompt=evidence_prompt,
             teaching_sources_prompt=teaching_sources_prompt,
         )
+        trace_id = job_id or f"resource_trace_{uuid.uuid4().hex[:16]}"
+        agent_results = resource_plan.get("agent_results") or []
+        if agent_results:
+            for plan_item in resource_plan.get("resources", []):
+                plan_item["agent_trace_id"] = trace_id
+            agent_trace_service.save_agent_results(
+                db,
+                trace_id=trace_id,
+                username=username,
+                results=agent_results,
+            )
         if job_id:
             generation_job_service.add_event(
                 db,
                 job_id,
                 event="agent_started",
-                agent="QualityGuardAgent",
-                message="正在执行课程范围、证据、版权和内容安全门禁",
+                agent="QualityAgent",
+                message="正在执行可读性、资源缺失和学生端字段检查",
                 progress=75,
             )
         save_result = resource_service.save_ai_generated_resources(
@@ -833,6 +1339,8 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
             if item.get("artifact", {}).get("artifact_id")
         ]
         count = len(resources)
+        failed_count = len(skipped_resources)
+        public_message = _public_generation_message(count, failed_count)
         if count:
             learning_plan_service.attach_artifacts_to_plan(
                 db=db,
@@ -841,28 +1349,28 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 resources=resources,
             )
             if job_id:
+                job_status = "partial_success" if failed_count else "completed"
                 generation_job_service.update_job(
                     db,
                     job_id,
-                    status="completed",
+                    status=job_status,
                     progress=100,
-                    message=f"已生成 {count} 份 Artifact，等待教师审核",
+                    message=public_message,
                     artifact_ids=artifact_ids,
                 )
                 generation_job_service.add_event(
                     db,
                     job_id,
-                    event="job_completed",
+                    event="job_partial_success" if failed_count else "job_completed",
                     agent="RecommendationAgent",
-                    message=f"已完成 {count} 份 Artifact 推荐排序，等待教师审核",
+                    message=public_message,
                     progress=100,
                 )
-            skipped_text = f"；{len(skipped_resources)} 份资源因语义门禁未入库" if skipped_resources else ""
             _notify_resource_generation(
                 db,
                 username,
                 "配套资料已进入审核队列",
-                f"本轮学习需求的 {count} 份配套 Artifact 已整理完成，正在等待管理员审核；审核通过后会进入资源工厂{skipped_text}。",
+                f"{public_message} 已整理完成的资源正在等待管理员审核；审核通过后会进入资源工厂。",
             )
         else:
             if job_id:
@@ -871,14 +1379,14 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                     job_id,
                     status="failed",
                     progress=100,
-                    message="未生成可提交审核的 Artifact",
+                    message=public_message,
                     artifact_ids=[],
                 )
             _notify_resource_generation(
                 db,
                 username,
                 "配套资料整理未完成",
-                "本轮学习需求暂未生成可提交审核的配套资料，请稍后补充学习主题后再试。",
+                public_message,
             )
     except Exception as exc:
         logger.exception("Resource generation job failed for user=%s", username)
@@ -889,21 +1397,21 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 job_id,
                 status="failed",
                 progress=100,
-                message=f"Artifact 生成失败：{str(exc)[:120]}",
+                message=_public_generation_message(0, 1),
             )
             generation_job_service.add_event(
                 db,
                 job_id,
                 event="job_failed",
                 agent="QualityGuardAgent",
-                message=f"Artifact 生成失败：{str(exc)[:120]}",
+                message=_public_generation_message(0, 1),
                 progress=100,
             )
         _notify_resource_generation(
             db,
             username,
             "配套资料整理失败",
-            f"本轮配套资料整理失败，原因：{str(exc)[:120]}。你可以稍后重新发起学习需求。",
+            _public_generation_message(0, 1),
         )
     finally:
         db.close()
@@ -1022,8 +1530,14 @@ JSON 字段：
         max_tokens=1000,
     )
     if not reply_res.get("ok"):
-        raise RuntimeError(f"承接回复结构化输出失败：{reply_res.get('error', '未知错误')}")
-    return _route_result(route, tutor_result=_validate_tutor_result(reply_res.get("data") or {}))
+        logger.warning("Continue-topic JSON failed: %s", reply_res.get("error"))
+        return _route_result(route, tutor_result=_fallback_tutor_result(route.topic, message))
+    try:
+        tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+    except Exception as exc:
+        logger.warning("Continue-topic validation failed: %s", exc)
+        tutor_result = _fallback_tutor_result(route.topic, message)
+    return _route_result(route, tutor_result=tutor_result)
 
 
 def _run_concept_question(username: str, message: str, db, route, session_id: str = ""):
@@ -1130,9 +1644,14 @@ JSON 字段：
         max_tokens=1200,
     )
     if not reply_res.get("ok"):
-        raise RuntimeError(f"概念讲解结构化输出失败：{reply_res.get('error', '未知错误')}")
-
-    tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+        logger.warning("Concept answer JSON failed: %s", reply_res.get("error"))
+        tutor_result = _fallback_tutor_result(topic, message)
+    else:
+        try:
+            tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+        except Exception as exc:
+            logger.warning("Concept answer validation failed: %s", exc)
+            tutor_result = _fallback_tutor_result(topic, message)
     updated_user = user_service.update_user_learning_profile(
         db,
         username,
@@ -1346,8 +1865,8 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
 - 知识水平：{semantic_result.get("level", "未确认")}
 - 水平证据：{semantic_result.get("level_source", "none")}
 
-《深度学习》课程图谱：
-{deep_learning_course_map_service.format_course_map_for_prompt(semantic_result.get("deep_learning_course_map") or semantic_result.get("ai_course_map") or {})}
+《数据结构与算法》课程图谱：
+{json.dumps(semantic_result.get("dsa_course_map") or semantic_result.get("ai_course_map") or {}, ensure_ascii=False)}
 
 要求：
 - 优先依据课程资料回答，并把无法确定的内容放入 caveats
@@ -1380,9 +1899,14 @@ JSON 字段：
         max_tokens=1200
     )
     if not reply_res.get("ok"):
-        raise RuntimeError(f"学习辅导结构化输出失败：{reply_res.get('error', '未知错误')}")
-
-    tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+        logger.warning("Learning tutor JSON failed: %s", reply_res.get("error"))
+        tutor_result = _fallback_tutor_result(topic, message)
+    else:
+        try:
+            tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+        except Exception as exc:
+            logger.warning("Learning tutor validation failed: %s", exc)
+            tutor_result = _fallback_tutor_result(topic, message)
     pipeline_steps.append(_pipeline_step(
         "answer",
         "生成个性化辅导回复",
@@ -1473,7 +1997,7 @@ JSON 字段：
             username=username,
             topic=topic,
             unit_id=semantic_result.get("unit_id", ""),
-            course_id=semantic_result.get("course_id", "deep_learning_v2"),
+            course_id=semantic_result.get("course_id", dsa_course_map_service.COURSE_ID),
             message="已创建 Artifact 生成任务，资源会在审核通过后进入资源工厂",
         )
         resource_status = {

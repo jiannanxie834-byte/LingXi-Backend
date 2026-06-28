@@ -18,7 +18,7 @@ def create_job(
     username: str,
     topic: str = "",
     unit_id: str = "",
-    course_id: str = "deep_learning_v2",
+    course_id: str = "data_structures_algorithms",
     message: str = "已创建资源生成任务",
 ) -> Dict:
     now = datetime.datetime.now()

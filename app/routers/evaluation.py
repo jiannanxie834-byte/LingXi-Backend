@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -15,6 +15,10 @@ router = APIRouter(
 
 class EvaluationRequest(BaseModel):
     username: Optional[str] = "student"
+    course_id: str = Field(default="data_structures_algorithms")
+    chapter_id: str = Field(default="")
+    section_id: str = Field(default="")
+    unit_ids: List[str] = Field(default_factory=list)
     topic: str = Field(default="")
     wrong_notes: str = Field(default="")
     answer_summary: str = Field(default="")
@@ -23,6 +27,17 @@ class EvaluationRequest(BaseModel):
 
 class AutoEvaluationRequest(BaseModel):
     username: Optional[str] = "student"
+
+
+class RemediationRequest(BaseModel):
+    username: Optional[str] = "student"
+    record_id: str = Field(default="")
+    topic: str = Field(default="")
+    wrong_notes: str = Field(default="")
+    answer_summary: str = Field(default="")
+    chapter_id: str = Field(default="")
+    section_id: str = Field(default="")
+    unit_ids: List[str] = Field(default_factory=list)
 
 
 # =========================
@@ -68,6 +83,10 @@ async def submit_evaluation(
         wrong_notes=data.wrong_notes.strip(),
         answer_summary=data.answer_summary.strip(),
         confidence=data.confidence,
+        course_id=data.course_id or "data_structures_algorithms",
+        chapter_id=data.chapter_id,
+        section_id=data.section_id,
+        unit_ids=data.unit_ids,
     )
 
     return {
@@ -102,4 +121,22 @@ async def list_history(
     return {
         "code": 200,
         "data": data
+    }
+
+
+@router.post("/remediation-package")
+async def generate_remediation_package(
+    data: RemediationRequest,
+    db: Session = Depends(get_db),
+):
+    result = evaluation_service.generate_remediation_package(
+        db=db,
+        username=data.username or "student",
+        record_id=data.record_id,
+        payload=data.dict(),
+    )
+    return {
+        "code": 200,
+        "message": "补弱学习包已生成",
+        "data": result,
     }

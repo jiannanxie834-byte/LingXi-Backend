@@ -175,7 +175,7 @@ def save_generated_plan(
     new_plan = {
         "id": f"route_{uuid.uuid4().hex[:8]}",
         "title": title,
-        "desc": f"围绕「{title}」生成的《深度学习》个性化学习路线。",
+        "desc": f"围绕「{title}」生成的《数据结构与算法》个性化学习路线。",
         "isCollapsed": False,
         "isAiGenerated": True,
         "tasks": [
@@ -288,8 +288,8 @@ def get_todos_by_username(db: Session, username: str):
         return stored
 
     default_todos = [
-        {"id": 1, "content": "完成 CNN 卷积与池化基础练习", "done": True},
-        {"id": 2, "content": "复习反向传播链式法则推导", "done": False},
+        {"id": 1, "content": "完成复杂度分析基础练习", "done": True},
+        {"id": 2, "content": "复习二分查找边界条件", "done": False},
     ]
 
     _save_user_todos_to_db(db, username, default_todos)

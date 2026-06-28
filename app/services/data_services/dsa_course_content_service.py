@@ -119,6 +119,15 @@ def _load_banks(chapter_id: str) -> Dict[str, List[Dict[str, Any]]]:
     }
 
 
+def _load_metadata(chapter_id: str) -> Dict[str, Any]:
+    metadata_dir = _chapter_dir(chapter_id) / "metadata"
+    return {
+        "objectives": _read_json(metadata_dir / "chapter_objectives.json", {}),
+        "assessment": _read_json(metadata_dir / "chapter_assessment.json", {}),
+        "misconceptions": _read_json(metadata_dir / "chapter_misconceptions.json", {}),
+    }
+
+
 def _match_items(items: List[Dict[str, Any]], section_id: str, unit_ids: List[str]) -> List[Dict[str, Any]]:
     unit_set = set(unit_ids or [])
     matched = []
@@ -199,6 +208,7 @@ def get_chapter_detail(chapter_id: str) -> Dict[str, Any]:
     data = {
         **chapter,
         "manifest": manifest,
+        "metadata": _load_metadata(chapter_id),
         "overview": resources.get("resources/chapter_overview.md", {}).get("content", ""),
         "mind_map": resources.get("resources/mind_map.mmd", {}).get("content", ""),
         "reading_video_guide": resources.get("resources/reading_video_guide.md", {}).get("content", ""),

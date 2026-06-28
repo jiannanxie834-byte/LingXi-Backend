@@ -8,7 +8,7 @@ def run(resources: list, profile: dict = None, plan: dict = None) -> AgentResult
     def score(item):
         value = 50
         text = " ".join([item.get("title", ""), item.get("type", ""), item.get("summary", "")])
-        if "代码" in text or "PyTorch" in text:
+        if "代码" in text:
             value += 15 if "实践" in str(profile) or "代码" in str(profile) else 5
         if "练习" in text:
             value += 10 if "薄弱" in str(profile) or "错" in plan_text else 3

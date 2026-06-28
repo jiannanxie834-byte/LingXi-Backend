@@ -2,7 +2,6 @@ from typing import Dict, List
 
 from app.services.data_services import (
     dsa_resource_blueprint,
-    deep_learning_resource_blueprint,
     resource_artifact_type_service as artifact_types,
 )
 
@@ -13,7 +12,6 @@ DEPRECATED_RESOURCE_TYPES = artifact_types.DEPRECATED_ARTIFACT_TYPES
 
 PROGRAMMING_FORBIDDEN = [
     "Python",
-    "PyTorch",
     "TensorFlow",
     "代码",
     "函数",
@@ -60,10 +58,6 @@ def get_resource_spec(subject_category: str, resource_type: str, topic: str, sem
     deep_spec = {}
     if dsa_resource_blueprint.is_dsa_context(subject_category, semantic_result):
         deep_spec = dsa_resource_blueprint.get_dsa_spec(normalized_type)
-        if deep_spec.get("requirements"):
-            requirements = deep_spec["requirements"]
-    elif deep_learning_resource_blueprint.is_deep_learning_context(subject_category, semantic_result):
-        deep_spec = deep_learning_resource_blueprint.get_deep_learning_spec(normalized_type)
         if deep_spec.get("requirements"):
             requirements = deep_spec["requirements"]
 

@@ -78,6 +78,38 @@ RESOURCE_TYPE_EXTRA_COLUMNS = {
     },
 }
 
+EVALUATION_RECORD_EXTRA_COLUMNS = {
+    "course_id": {
+        "default": "VARCHAR(64) DEFAULT 'data_structures_algorithms'",
+    },
+    "chapter_id": {
+        "default": "VARCHAR(64) DEFAULT ''",
+    },
+    "section_id": {
+        "default": "VARCHAR(64) DEFAULT ''",
+    },
+    "unit_ids_json": {
+        "default": "TEXT",
+        "sqlite": "TEXT DEFAULT '[]'",
+    },
+    "evidence_refs_json": {
+        "default": "TEXT",
+        "sqlite": "TEXT DEFAULT '[]'",
+    },
+    "diagnosis_type": {
+        "default": "VARCHAR(64) DEFAULT 'manual'",
+    },
+}
+
+RESOURCE_ARTIFACT_EXTRA_COLUMNS = {
+    "chapter_id": {
+        "default": "VARCHAR(64) DEFAULT ''",
+    },
+    "section_id": {
+        "default": "VARCHAR(64) DEFAULT ''",
+    },
+}
+
 
 def _existing_columns(conn, table_name: str):
     inspector = inspect(conn)
@@ -117,6 +149,14 @@ def init_schema_migrations():
         if "nickname" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN nickname VARCHAR(64) DEFAULT ''"))
         conn.execute(text("UPDATE users SET nickname = username WHERE nickname IS NULL OR nickname = ''"))
+        if {"bio", "tags"}.issubset(_existing_columns(conn, "users")):
+            conn.execute(text(
+                "UPDATE users SET "
+                "bio = '正在学习《数据结构与算法》课程，重点关注复杂度分析、二分边界与动态规划', "
+                "tags = '数据结构与算法,复杂度分析,二分查找,动态规划' "
+                "WHERE username IN ('student', 'demo_basic') "
+                "AND 1 = 0"
+            ))
 
         chat_message_columns = _existing_columns(conn, "chat_messages")
         if chat_message_columns and "metadata_json" not in chat_message_columns:
@@ -147,6 +187,43 @@ def init_schema_migrations():
                 conn.execute(text(
                     f"UPDATE resource_types SET {column_name} = '' WHERE {column_name} IS NULL"
                 ))
+
+        evaluation_columns = _existing_columns(conn, "evaluation_records")
+        for column_name, column_sql in EVALUATION_RECORD_EXTRA_COLUMNS.items():
+            if evaluation_columns and column_name not in evaluation_columns:
+                conn.execute(text(
+                    f"ALTER TABLE evaluation_records ADD COLUMN {column_name} {_dialect_column_sql(column_sql)}"
+                ))
+        if evaluation_columns:
+            if "course_id" in _existing_columns(conn, "evaluation_records"):
+                conn.execute(text(
+                    "UPDATE evaluation_records SET course_id = 'data_structures_algorithms' "
+                    "WHERE course_id IS NULL OR course_id = ''"
+                ))
+            for column_name in ["chapter_id", "section_id"]:
+                if column_name in _existing_columns(conn, "evaluation_records"):
+                    conn.execute(text(f"UPDATE evaluation_records SET {column_name} = '' WHERE {column_name} IS NULL"))
+            for column_name in ["unit_ids_json", "evidence_refs_json"]:
+                if column_name in _existing_columns(conn, "evaluation_records"):
+                    conn.execute(text(f"UPDATE evaluation_records SET {column_name} = '[]' WHERE {column_name} IS NULL OR {column_name} = ''"))
+            if "diagnosis_type" in _existing_columns(conn, "evaluation_records"):
+                conn.execute(text("UPDATE evaluation_records SET diagnosis_type = 'manual' WHERE diagnosis_type IS NULL OR diagnosis_type = ''"))
+
+        artifact_columns = _existing_columns(conn, "resource_artifacts")
+        for column_name, column_sql in RESOURCE_ARTIFACT_EXTRA_COLUMNS.items():
+            if artifact_columns and column_name not in artifact_columns:
+                conn.execute(text(
+                    f"ALTER TABLE resource_artifacts ADD COLUMN {column_name} {_dialect_column_sql(column_sql)}"
+                ))
+        if artifact_columns:
+            if "course_id" in _existing_columns(conn, "resource_artifacts"):
+                conn.execute(text(
+                    "UPDATE resource_artifacts SET course_id = 'data_structures_algorithms' "
+                    "WHERE course_id IS NULL OR course_id = ''"
+                ))
+            for column_name in ["chapter_id", "section_id"]:
+                if column_name in _existing_columns(conn, "resource_artifacts"):
+                    conn.execute(text(f"UPDATE resource_artifacts SET {column_name} = '' WHERE {column_name} IS NULL"))
 
 def get_db():
     """FastAPI 专属依赖项：每次请求自动创建数据库连接，用完自动关闭防止死锁"""
@@ -183,9 +260,9 @@ def init_seeding_data():
                 password="123456",
                 role="student",
                 avatar="",
-                bio="正在学习《深度学习》课程，重点关注 CNN、Transformer 与 PyTorch 实践",
+                bio="正在学习《数据结构与算法》课程，重点关注复杂度分析、二分边界与动态规划",
                 hours=15,
-                tags="深度学习,CNN,Transformer,PyTorch"
+                tags="数据结构与算法,复杂度分析,二分查找,动态规划"
             )
             
             db.add(admin_user)

@@ -59,7 +59,6 @@ BROAD_CHAPTER_TOPICS = [
 ]
 
 OUT_OF_COURSE_MARKERS = [
-    "深度学习",
     "cnn",
     "rnnlstmgru",
     "lstm",

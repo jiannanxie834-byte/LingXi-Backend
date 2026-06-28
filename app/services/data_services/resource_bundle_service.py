@@ -15,7 +15,7 @@ def _clean_topic(value: str) -> str:
     for resource_type in BUNDLE_RESOURCE_TYPES:
         topic = topic.replace(resource_type, "")
     topic = topic.strip(" -_·|｜:：/\\")
-    return topic or "深度学习主题"
+    return topic or "数据结构与算法主题"
 
 
 def infer_topic_from_resource(item: dict) -> str:

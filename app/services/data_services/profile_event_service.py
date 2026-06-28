@@ -61,7 +61,7 @@ def record_profile_event(
     source_id: str = "",
     profile: Dict = None,
     reason: str = "",
-    course_id: str = "deep_learning_v2",
+    course_id: str = "data_structures_algorithms",
 ) -> Dict:
     profile = profile or {}
     dimensions = profile.get("dimensions") if isinstance(profile.get("dimensions"), dict) else {}

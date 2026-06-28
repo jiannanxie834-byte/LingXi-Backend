@@ -56,17 +56,6 @@ COURSE_PROFILES = {
             "项目任务书",
         ],
     ),
-    "deep_learning": CourseProfile(
-        course_id="deep_learning",
-        course_name="深度学习",
-        course_display_name="《深度学习》",
-        course_full_name="《深度学习》",
-        course_positioning="旧课程实验分支，当前仅作为 legacy 兼容保留。",
-        default_scope_message="deep_learning 是旧课程实验分支，当前主线已切换为 data_structures_algorithms。",
-        chapters=[],
-        resource_types=[],
-        multimodal_modes=[],
-    ),
 }
 
 

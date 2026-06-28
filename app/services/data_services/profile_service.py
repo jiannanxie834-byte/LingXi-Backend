@@ -13,6 +13,9 @@ from app.services.data_services.knowledge_tag_service import (
 )
 
 
+LEGACY_PROFILE_TERMS = []
+
+
 # =========================
 # 🔹 Tag 处理
 # =========================
@@ -60,6 +63,10 @@ def _compact_text(value: str) -> str:
     return "".join(str(value or "").lower().split())
 
 
+def _contains_legacy_terms(value: str) -> bool:
+    return any(term.lower() in str(value or "").lower() for term in LEGACY_PROFILE_TERMS)
+
+
 def _topic_matches_text(topic: str, subject_category: str, text: str) -> bool:
     compact = _compact_text(text)
     topic_compact = _compact_text(topic)
@@ -67,19 +74,27 @@ def _topic_matches_text(topic: str, subject_category: str, text: str) -> bool:
         return True
 
     subject_aliases = {
-        "computer_science": [
-            "深度学习",
-            "神经网络",
-            "反向传播",
-            "梯度下降",
-            "卷积神经网络",
-            "CNN",
-            "RNN",
-            "LSTM",
-            "Transformer",
-            "自注意力",
-            "PyTorch",
-            "图像分类",
+        "data_structures_algorithms": [
+            "数据结构",
+            "算法",
+            "复杂度",
+            "数组",
+            "链表",
+            "栈",
+            "队列",
+            "递归",
+            "二分查找",
+            "排序",
+            "哈希表",
+            "堆",
+            "树",
+            "图",
+            "bfs",
+            "dfs",
+            "最短路径",
+            "贪心",
+            "动态规划",
+            "字符串匹配",
         ],
     }.get(subject_category, [])
     return any(_compact_text(alias) in compact for alias in subject_aliases)
@@ -244,6 +259,9 @@ def _load_profile_evidence(db, username: str) -> Dict:
         topics = []
 
         for record in records:
+            record_text = " ".join([record.topic or "", record.weak_points or "", record.suggestions or "", record.wrong_notes or ""])
+            if _contains_legacy_terms(record_text):
+                continue
             scores.append(record.score or 0)
             if record.topic:
                 topics.append(record.topic)
@@ -362,6 +380,11 @@ def build_profile(
     evidence = _load_profile_evidence(db, username)
     semantic_result = semantic_result or {}
     subject_category = semantic_result.get("subject_category", "unknown")
+    course_id = semantic_result.get("course_id") or "data_structures_algorithms"
+    chapter_id = semantic_result.get("chapter_id") or ""
+    section_id = semantic_result.get("section_id") or ""
+    unit_ids = semantic_result.get("unit_ids") or []
+    topic_title = semantic_result.get("topic_title") or knowledge_topic
     topic_level = semantic_result.get("level") or "未确认"
     level_source = semantic_result.get("level_source") or "none"
     level_evidence = semantic_result.get("level_evidence") or ""
@@ -485,7 +508,7 @@ def build_profile(
     media_preference_score = _clamp(
         58
         + (18 if semantic_result.get("requires_multimodal") else 0)
-        + (10 if any(word in message for word in ["图解", "视频", "动画", "导图", "可视化"]) else 0)
+        + (10 if any(word in message for word in ["图解", "导图", "代码", "示例", "可视化"]) else 0)
     )
     interest_focus_score = _clamp(
         55
@@ -516,7 +539,7 @@ def build_profile(
             "学习阶段": topic_level,
             "认知风格": style,
             "知识短板": "；".join(weak_points[:3]),
-            "媒介偏好": "图解/视频/动画优先" if semantic_result.get("requires_multimodal") else "文字讲解 + 练习巩固",
+            "媒介偏好": "图解/思维导图/代码示例优先" if semantic_result.get("requires_multimodal") else "文字讲解 + 练习巩固",
             "实践能力": practice_score,
             "学习节奏": f"计划 {plan_rate}%" if plan_rate is not None else f"学习强度：{intensity}",
             "易错模式": "；".join(weak_points[:2]) if evidence.get("evaluation_count") else "待练习数据确认",
@@ -543,6 +566,11 @@ def build_profile(
             "todo_completion_rate": todo_rate,
             "high_frequency_topics": high_frequency_topics,
             "knowledge_tags": tags,
+            "course_id": course_id,
+            "chapter_id": chapter_id,
+            "section_id": section_id,
+            "unit_ids": unit_ids,
+            "topic_title": topic_title,
             "topic_level": topic_level,
             "level_source": level_source,
             "level_evidence": level_evidence,

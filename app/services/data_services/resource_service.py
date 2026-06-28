@@ -797,18 +797,20 @@ def save_ai_generated_resources(
             "unit_id": plan_item.get("unit_id") or semantic_result.get("unit_id", ""),
             "chapter_id": plan_item.get("chapter_id") or semantic_result.get("chapter_id", ""),
             "course_id": plan_item.get("course_id") or semantic_result.get("course_id", ""),
-            "deep_learning_course_map": plan_item.get("deep_learning_course_map") or semantic_result.get("deep_learning_course_map") or {},
+            "dsa_course_map": plan_item.get("dsa_course_map") or semantic_result.get("dsa_course_map") or {},
             "ai_course_map": plan_item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
         if item.get("type") in DEPRECATED_AI_RESOURCE_TYPES:
             skipped.append({
                 "title": item.get("title"),
                 "type": item.get("type"),
-                "issues": ["该资源类型已停用，新系统只生成《深度学习》Artifact 类型。"],
+                "issues": ["该资源类型已停用，新系统只生成当前课程 Artifact 类型。"],
             })
             continue
+        is_dsa_artifact = item.get("course_id") == "data_structures_algorithms"
         if (
             item.get("type") == resource_policy_service.FEEDBACK_RESOURCE_TYPE
+            and not is_dsa_artifact
             and not resource_policy_service.has_feedback_context(generation_context)
         ):
             skipped.append({
@@ -829,7 +831,7 @@ def save_ai_generated_resources(
             "chapter_id": item.get("chapter_id", ""),
             "course_id": item.get("course_id", ""),
             "evidence_chunks": plan_item.get("evidence_chunks", []),
-            "deep_learning_course_map": item.get("deep_learning_course_map") or semantic_result.get("deep_learning_course_map") or {},
+            "dsa_course_map": item.get("dsa_course_map") or semantic_result.get("dsa_course_map") or item.get("ai_course_map") or {},
             "ai_course_map": item.get("ai_course_map") or semantic_result.get("ai_course_map") or {},
         }
         quality = resource_quality_gate.validate_resource_semantics(item, quality_context)
@@ -917,7 +919,7 @@ def insert_generated_resources(
                     db,
                     resource=existing,
                     plan_item=item,
-                    semantic_result=item.get("deep_learning_course_map") or {},
+                    semantic_result=item.get("dsa_course_map") or item.get("ai_course_map") or {},
                 )
                 resource_dict = _resource_to_dict(existing)
                 resource_dict["artifact"] = artifact
@@ -944,7 +946,7 @@ def insert_generated_resources(
                 db,
                 resource=resource,
                 plan_item=item,
-                semantic_result=item.get("deep_learning_course_map") or {},
+                semantic_result=item.get("dsa_course_map") or item.get("ai_course_map") or {},
             )
             resource_dict = _resource_to_dict(resource)
             resource_dict["artifact"] = artifact
@@ -1018,7 +1020,7 @@ def insert_new_resource(
             resource=resource,
             plan_item={
                 "content_format": artifact_types.get_format(artifact_types.normalize_artifact_type(r_type)),
-                "personalization_reason": "学生主动上传或补充的深度学习课程资源。",
+                "personalization_reason": "学生主动上传或补充的课程资源。",
             },
             semantic_result={},
         )

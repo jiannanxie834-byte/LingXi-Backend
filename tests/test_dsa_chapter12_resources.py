@@ -57,10 +57,9 @@ class DsaChapter12ResourcesTest(unittest.TestCase):
         self.assertEqual(len(_jsonl(CHAPTER_DIR / "banks" / "exercises.jsonl")), 6)
         self.assertEqual(len(_jsonl(CHAPTER_DIR / "banks" / "code_tasks.jsonl")), 2)
         videos = _jsonl(CHAPTER_DIR / "banks" / "video_items.jsonl")
-        self.assertEqual(len(videos), 2)
-        self.assertTrue(all(item.get("status") == "pending_curation" for item in videos))
+        self.assertTrue(all(item.get("status") == "ready" for item in videos))
         self.assertTrue(all(item.get("usage_policy") == "link_only" for item in videos))
-        self.assertTrue(all(item.get("source_url") == "" for item in videos))
+        self.assertTrue(all(item.get("source_url") for item in videos))
 
     def test_chapter_12_global_indexes_are_aligned(self):
         manifest = json.loads((CHAPTER_DIR / "chapter_manifest.json").read_text(encoding="utf-8"))

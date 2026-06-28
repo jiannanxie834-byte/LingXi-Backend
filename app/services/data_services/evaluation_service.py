@@ -1,54 +1,30 @@
-import json
 import datetime
+import json
 import uuid
+from collections import Counter
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
-from app.models.schemas import EvaluationRecord
+
+from app.models.schemas import EvaluationRecord, ExerciseAttempt, LearningPlan, ResourceArtifact
 from app.services.data_services import (
-    deep_learning_course_map_service,
-    knowledge_service,
-    learning_plan_service,
+    dsa_topic_resolver,
+    generation_job_service,
+    profile_event_service,
     profile_service,
+    resource_artifact_service,
     resource_artifact_type_service as artifact_types,
-    resource_service,
     user_service,
 )
 
 
-COURSE_KNOWLEDGE = [
-    {
-        "topic": "卷积神经网络中的卷积操作",
-        "keywords": ["cnn", "卷积神经网络", "卷积", "卷积层", "卷积核", "池化", "特征图", "图像分类"],
-        "chapter": "第 7 章 卷积神经网络 CNN",
-        "core": "卷积核、步幅、填充、通道数、感受野和池化共同决定特征图尺寸与图像特征提取能力。",
-        "pitfalls": ["混淆 padding 与 stride 对输出尺寸的影响", "不理解输入通道和输出通道", "把卷积核当成固定滤镜"],
-        "practice": "完成 5 道卷积输出尺寸计算题，并用 PyTorch 打印 Conv2d 输出 shape。",
-    },
-    {
-        "topic": "反向传播与损失函数",
-        "keywords": ["反向传播", "bp", "backprop", "链式法则", "梯度", "损失函数"],
-        "chapter": "第 4 章 前向传播、损失函数与反向传播",
-        "core": "反向传播基于链式法则把损失对参数的梯度逐层传回，是深度网络参数更新的核心机制。",
-        "pitfalls": ["把反向传播理解为模型反向运行", "只记公式不理解局部梯度相乘", "混淆 loss、gradient 和 update"],
-        "practice": "沿一个两层计算图标出局部梯度和最终梯度。",
-    },
-    {
-        "topic": "自注意力机制与 Transformer",
-        "keywords": ["transformer", "attention", "自注意力", "多头注意力", "qkv", "位置编码"],
-        "chapter": "第 9 章 Attention 与 Transformer",
-        "core": "自注意力通过 Query、Key、Value 计算 token 间相关性，多头注意力并行学习不同关系，位置编码补充顺序信息。",
-        "pitfalls": ["把注意力权重当成绝对解释", "忽略缩放因子", "不理解位置编码为何必要"],
-        "practice": "手算一个三 token 的注意力权重，并解释 softmax 后的加权求和。",
-    },
-    {
-        "topic": "PyTorch 深度学习工程实践",
-        "keywords": ["pytorch", "torch", "dataset", "dataloader", "训练循环", "代码实验", "模型训练"],
-        "chapter": "第 11 章 PyTorch 深度学习工程实践",
-        "core": "PyTorch 实战需要组织 Dataset/DataLoader、模型、损失函数、优化器、训练循环、验证流程和实验记录。",
-        "pitfalls": ["复制代码不检查 tensor shape", "训练集和验证集混用", "没有记录超参数和随机种子"],
-        "practice": "完成一个 CNN 图像分类训练脚本，记录 loss 曲线和验证准确率。",
-    },
-]
+COURSE_ID = dsa_topic_resolver.COURSE_ID
+COURSE_TITLE = dsa_topic_resolver.COURSE_TITLE
+LEGACY_TERMS = []
+
+
+def _json_dump(value) -> str:
+    return json.dumps(value, ensure_ascii=False)
 
 
 def _safe_json_load(data, default):
@@ -66,53 +42,7 @@ def _safe_created_at(value):
     return str(value)
 
 
-def _evaluation_to_dict(record: EvaluationRecord):
-    return {
-        "id": record.id,
-        "username": record.username,
-        "topic": record.topic,
-        "score": record.score,
-        "level": record.level,
-        "weak_points": _safe_json_load(record.weak_points, []),
-        "suggestions": _safe_json_load(record.suggestions, []),
-        "wrong_notes": record.wrong_notes or "",
-        "answers": _safe_json_load(record.answers_json, {}),
-        "generated_resource_id": record.generated_resource_id or "",
-        "created_at": _safe_created_at(record.created_at)
-    }
-
-
-def _load_course_knowledge(db: Session):
-    knowledge_rows = knowledge_service.get_course_knowledge(db)
-    return knowledge_rows or COURSE_KNOWLEDGE
-
-
-def _infer_knowledge(text: str, knowledge_base: list = None):
-    lowered = (text or "").lower()
-    items = knowledge_base or COURSE_KNOWLEDGE
-    for item in items:
-        if any(keyword in lowered for keyword in item["keywords"]):
-            return item
-    course_match = deep_learning_course_map_service.match_deep_learning_topic("", text)
-    if course_match.get("matched"):
-        core = "、".join(course_match.get("core_topics") or [])
-        practice = (course_match.get("practice_tasks") or ["完成一次同主题练习并记录错因"])[0]
-        pitfalls = {
-            "Attention 与 Transformer": ["混淆 Q/K/V 的作用", "不理解位置编码为何必要"],
-            "卷积神经网络 CNN": ["混淆 padding 与 stride", "不理解通道数变化"],
-        }.get(course_match.get("chapter"), ["核心概念理解不稳定", "缺少同主题练习和错因复盘"])
-        return {
-            "topic": course_match.get("topic") or course_match.get("chapter"),
-            "keywords": course_match.get("core_topics") or [course_match.get("topic")],
-            "chapter": f"深度学习 / {course_match.get('chapter')}",
-            "core": core or course_match.get("topic") or "深度学习课程核心知识点",
-            "pitfalls": pitfalls,
-            "practice": practice,
-        }
-    return items[0] if items else COURSE_KNOWLEDGE[0]
-
-
-def _level_from_score(score: int):
+def _level_from_score(score: int) -> str:
     if score >= 85:
         return "掌握较好"
     if score >= 70:
@@ -122,135 +52,295 @@ def _level_from_score(score: int):
     return "重点补救"
 
 
-def _score_evaluation(text: str, confidence: int, knowledge: dict):
-    content = (text or "").strip().lower()
-    length_score = min(25, len(content) // 8)
-    keyword_hits = sum(1 for keyword in knowledge["keywords"] if keyword in content)
-    keyword_score = min(20, keyword_hits * 5)
-    confidence_score = max(0, min(25, int(confidence or 0) // 4))
-    reflection_score = 0
-
-    if any(word in text for word in ["因为", "原因", "错因", "理解", "步骤", "复盘"]):
-        reflection_score += 15
-    if any(word in text for word in ["不会", "不懂", "总是错", "混淆", "记不住"]):
-        reflection_score -= 8
-
-    score = max(35, min(96, 35 + length_score + keyword_score + confidence_score + reflection_score))
-    return score, _level_from_score(score)
+def _score_evaluation(text: str, confidence: int, resolved: Dict) -> int:
+    content = (text or "").strip()
+    compact = content.lower()
+    length_score = min(24, len(content) // 10)
+    unit_hits = sum(1 for title in resolved.get("unit_titles") or [] if title and title.lower() in compact)
+    reflection_score = 12 if any(word in content for word in ["因为", "原因", "错因", "边界", "步骤", "复盘", "例子"]) else 0
+    uncertainty_penalty = 10 if any(word in content for word in ["不会", "不懂", "总是错", "混淆", "卡住", "看不懂"]) else 0
+    confidence_score = max(0, min(24, int(confidence or 0) // 4))
+    match_score = 12 if resolved.get("matched") else 2
+    return max(35, min(96, 38 + length_score + unit_hits * 4 + reflection_score + confidence_score + match_score - uncertainty_penalty))
 
 
-def _build_diagnosis_content(knowledge: dict, notes: str, score: int, level: str, weak_points: list, suggestions: list):
+def _record_titles(record: EvaluationRecord) -> Dict:
+    unit_ids = _safe_json_load(getattr(record, "unit_ids_json", ""), [])
+    return {
+        "chapter_title": dsa_topic_resolver.get_chapter_title(getattr(record, "chapter_id", "") or ""),
+        "section_title": dsa_topic_resolver.get_section_title(getattr(record, "section_id", "") or ""),
+        "unit_titles": dsa_topic_resolver.get_unit_titles(unit_ids) or ["待定位"],
+    }
+
+
+def _evaluation_to_dict(record: EvaluationRecord) -> Dict:
+    unit_ids = _safe_json_load(getattr(record, "unit_ids_json", ""), [])
+    evidence_refs = _safe_json_load(getattr(record, "evidence_refs_json", ""), [])
+    titles = _record_titles(record)
+    return {
+        "id": record.id,
+        "username": record.username,
+        "course_id": getattr(record, "course_id", "") or COURSE_ID,
+        "course_title": COURSE_TITLE,
+        "chapter_id": getattr(record, "chapter_id", "") or "",
+        "section_id": getattr(record, "section_id", "") or "",
+        "unit_ids": unit_ids,
+        "chapter_title": titles["chapter_title"],
+        "section_title": titles["section_title"],
+        "unit_titles": titles["unit_titles"],
+        "evidence_refs": evidence_refs,
+        "diagnosis_type": getattr(record, "diagnosis_type", "") or "manual",
+        "topic": record.topic,
+        "score": record.score,
+        "level": record.level,
+        "weak_points": _safe_json_load(record.weak_points, []),
+        "suggestions": _safe_json_load(record.suggestions, []),
+        "wrong_notes": record.wrong_notes or "",
+        "answers": _safe_json_load(record.answers_json, {}),
+        "generated_resource_id": record.generated_resource_id or "",
+        "created_at": _safe_created_at(record.created_at),
+    }
+
+
+def _contains_legacy_terms(*values) -> bool:
+    text = " ".join(str(value or "") for value in values)
+    return any(term in text for term in LEGACY_TERMS)
+
+
+def _build_report_content(resolved: Dict, notes: str, score: int, level: str, weak_points: List[str], suggestions: List[str]) -> str:
     weak_lines = "\n".join([f"- {item}" for item in weak_points])
-    suggestion_lines = "\n".join([f"{index}. {item}" for index, item in enumerate(suggestions, 1)])
+    suggestion_lines = "\n".join([f"{idx}. {item}" for idx, item in enumerate(suggestions, 1)])
+    unit_titles = "、".join(resolved.get("unit_titles") or ["待定位"])
+    return f"""# {resolved['topic']} 诊断与补弱报告
 
-    return f"""# {knowledge['topic']} 诊断与补弱报告
+## 课程
+{COURSE_TITLE}
 
-## 诊断得分
-{score} 分，掌握等级：{level}
+## 定位信息
+- 章节：{resolved.get('chapter_title') or '待定位'}
+- 小节：{resolved.get('section_title') or '待定位'}
+- 知识单元：{unit_titles}
 
-## 学习内容摘要
-{notes or "学生暂未填写详细错题描述，系统仅根据本次评价入口生成基础诊断。"}
+## 得分与等级
+- 得分：{score}
+- 等级：{level}
 
-## 诊断依据
-- 本报告依据学生在评价页提交的错题说明、作答摘要和自评置信度生成。
-- 当前反馈文本：{notes or "暂无详细错题说明"}
-- 未使用平台总学习时长推断本主题掌握水平。
+## 学生反馈
+{notes or "本次未填写详细错题说明，系统根据平台学习记录生成阶段性诊断。"}
 
-## 主要薄弱点
+## 薄弱点
 {weak_lines}
 
 ## 补救建议
 {suggestion_lines}
 
-## 下一轮学习任务
-完成「{knowledge['practice']}」，并记录至少 2 条错因复盘。
+## 下一步学习任务
+{resolved.get('practice') or '完成 3 道基础题、1 道边界题和 1 个代码小实验，并记录错因。'}
 """
 
 
-def _build_diagnosis_resource(knowledge: dict, title: str, notes: str, score: int, level: str, weak_points: list, suggestions: list):
-    return {
-        "type": artifact_types.DIAGNOSTIC_REPORT,
-        "title": title,
-        "summary": f"{level}：识别出 {len(weak_points)} 个薄弱点，并生成补救路线。",
-        "source": f"{knowledge['chapter']} / 学习评价 Agent",
-        "agent_notes": "由学习评价 Agent 根据学生作答、错题描述或本次评价反馈生成；未使用总学习时长推断本主题水平，建议管理员核对诊断建议是否贴合课程要求。",
-        "content": _build_diagnosis_content(knowledge, notes, score, level, weak_points, suggestions),
-    }
+def _build_remediation_content(kind: str, resolved: Dict, weak_points: List[str], suggestions: List[str]) -> Dict:
+    topic = resolved.get("topic") or "数据结构与算法学习诊断"
+    chapter_title = resolved.get("chapter_title") or "待定位"
+    section_title = resolved.get("section_title") or "待定位"
+    unit_titles = resolved.get("unit_titles") or ["待定位"]
+    weak_text = "\n".join(f"- {item}" for item in weak_points)
+    suggestion_text = "\n".join(f"{idx}. {item}" for idx, item in enumerate(suggestions, 1))
+
+    if kind == "course_note":
+        title = f"{topic} 补弱讲解"
+        content = f"""# {title}
+
+## 定位
+- 课程：{COURSE_TITLE}
+- 章节：{chapter_title}
+- 小节：{section_title}
+- 知识单元：{"、".join(unit_titles)}
+
+## 先理解什么
+先把问题拆成“定义、适用条件、边界情况、代码验证”四层。不要只背模板，要能说明每一步为什么能缩小问题规模或保持结果正确。
+
+## 常见薄弱点
+{weak_text}
+
+## 学习顺序
+{suggestion_text}
+"""
+        summary = "按知识单元定位生成的补弱讲解。"
+    elif kind == "exercise_set":
+        title = f"{topic} 补弱练习集"
+        content = f"""# {title}
+
+1. 概念判断：说明「{unit_titles[0]}」的适用前提，并给出一个不适用的反例。
+2. 边界分析：设计一个最小输入、一个空输入或极端输入，判断算法是否仍然正确。
+3. 过程追踪：手写一轮核心变量变化，标出每一步的判断条件。
+4. 综合题：把本题和上一节知识联系起来，说明复杂度来源。
+
+## 答题要求
+每题都写出“为什么”，不要只写结果。
+"""
+        summary = "覆盖概念、边界、过程和综合迁移的补弱题。"
+    elif kind == "code_lab":
+        title = f"{topic} 代码小实验"
+        content = f"""# {title}
+
+## 实验目标
+用一段最小可运行代码验证「{unit_titles[0]}」的关键逻辑。
+
+## 建议步骤
+1. 写出函数签名，明确输入输出。
+2. 准备 3 组样例：正常样例、边界样例、错误高发样例。
+3. 打印关键变量，观察每一步状态变化。
+4. 记录时间复杂度和空间复杂度。
+
+```python
+def solve(data):
+    # TODO: 根据本节知识单元补全核心逻辑
+    return data
+
+cases = [
+    [],          # 边界样例
+    [1],         # 最小非空样例
+    [1, 2, 3],   # 正常样例
+]
+
+for case in cases:
+    print(case, solve(case))
+```
+"""
+        summary = "可直接运行和改写的补弱代码任务。"
+    else:
+        title = f"{topic} 诊断与补弱报告"
+        content = _build_report_content(resolved, "", 0, "待复盘", weak_points, suggestions)
+        summary = "评价记录对应的补弱报告。"
+
+    return {"title": title, "summary": summary, "content": content}
 
 
-def _build_fix_steps(knowledge: dict, level: str, first_weak_point: str):
+def _make_artifact(
+    db: Session,
+    username: str,
+    resolved: Dict,
+    artifact_type: str,
+    title: str,
+    summary: str,
+    content: str,
+    reason: str,
+) -> Dict:
+    return resource_artifact_service.create_artifact(
+        db,
+        username=username,
+        course_id=COURSE_ID,
+        chapter_id=resolved.get("chapter_id") or "",
+        section_id=resolved.get("section_id") or "",
+        unit_ids=resolved.get("unit_ids") or [],
+        artifact_type=artifact_type,
+        title=title,
+        summary=summary,
+        content=content,
+        evidence_refs=resolved.get("evidence_refs") or [],
+        personalization_reason=reason,
+        source=f"{COURSE_TITLE} / {resolved.get('chapter_title') or '待定位'} / 学习评价",
+        status="published",
+        agent_name="EvaluationRemediationAgent",
+    )
+
+
+def save_evaluation_record(
+    db: Session,
+    *,
+    username: str,
+    resolved: Dict,
+    score: int,
+    level: str,
+    weak_points: List[str],
+    suggestions: List[str],
+    wrong_notes: str,
+    answers: Dict,
+    generated_resource_id: str = "",
+) -> Dict:
+    record = EvaluationRecord(
+        id=str(uuid.uuid4()),
+        username=username,
+        course_id=COURSE_ID,
+        chapter_id=resolved.get("chapter_id") or "",
+        section_id=resolved.get("section_id") or "",
+        unit_ids_json=_json_dump(resolved.get("unit_ids") or []),
+        evidence_refs_json=_json_dump(resolved.get("evidence_refs") or []),
+        diagnosis_type=resolved.get("diagnosis_type") or "manual",
+        topic=resolved.get("topic") or "数据结构与算法学习诊断",
+        score=score,
+        level=level,
+        weak_points=_json_dump(weak_points or []),
+        suggestions=_json_dump(suggestions or []),
+        wrong_notes=wrong_notes or "",
+        answers_json=_json_dump(answers or {}),
+        generated_resource_id=generated_resource_id,
+        created_at=datetime.datetime.now(),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return _evaluation_to_dict(record)
+
+
+def get_evaluation_records(db: Session, username: str) -> List[Dict]:
+    rows = (
+        db.query(EvaluationRecord)
+        .filter(EvaluationRecord.username == username)
+        .order_by(EvaluationRecord.created_at.desc())
+        .all()
+    )
     return [
-        f"第 1 步：复盘诊断报告，重点标记「{first_weak_point}」。",
-        f"第 2 步：重读「{knowledge['chapter']}」中的核心内容：{knowledge['core']}。",
-        "第 3 步：完成诊断报告中的补救建议，并记录仍不确定的问题。",
-        f"第 4 步：完成 PyTorch 实操案例或课程实践项目任务：{knowledge['practice']}。",
-        f"第 5 步：重新提交一次学习评价，比较当前等级「{level}」是否提升。",
+        _evaluation_to_dict(row)
+        for row in rows
+        if not _contains_legacy_terms(row.topic, row.weak_points, row.suggestions, row.wrong_notes)
     ]
 
 
-# =========================
-# 保存评价记录（DB由外部传入）
-# =========================
-def save_evaluation_record(
-    db: Session,
-    username: str,
-    topic: str,
-    score: int,
-    level: str,
-    weak_points: list,
-    suggestions: list,
-    wrong_notes: str,
-    answers: dict,
-    generated_resource_id: str = ""
-):
-    try:
-        record = EvaluationRecord(
-            id=str(uuid.uuid4()),
-            username=username,
-            topic=topic,
-            score=score,
-            level=level,
-            weak_points=json.dumps(weak_points or [], ensure_ascii=False),
-            suggestions=json.dumps(suggestions or [], ensure_ascii=False),
-            wrong_notes=wrong_notes or "",
-            answers_json=json.dumps(answers or {}, ensure_ascii=False),
-            generated_resource_id=generated_resource_id,
-            created_at=datetime.datetime.now()
-        )
-
-        db.add(record)
-        db.commit()
-        db.refresh(record)
-
-        return _evaluation_to_dict(record)
-
-    except Exception as e:
-        db.rollback()
-        return {
-            "success": False,
-            "message": f"保存评价记录失败: {str(e)}"
-        }
-
-
-# =========================
-# 查询评价记录
-# =========================
-def get_evaluation_records(db: Session, username: str):
-    try:
-        records = (
-            db.query(EvaluationRecord)
-            .filter(EvaluationRecord.username == username)
-            .order_by(EvaluationRecord.created_at.desc())
-            .all()
-        )
-
-        return [_evaluation_to_dict(r) for r in records]
-
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"获取评价记录失败: {str(e)}"
-        }
+def _update_profile(db: Session, username: str, merged_text: str, resolved: Dict, score: int, level: str) -> Dict:
+    updated_user = user_service.update_user_learning_profile(
+        db,
+        username,
+        [resolved.get("topic") or "数据结构与算法"],
+        hours_delta=1 if score < 75 else 0,
+        replace_tags=True,
+    )
+    profile_user = user_service.get_user_by_username(db, username)
+    profile = profile_service.build_profile(
+        user=profile_user,
+        message=merged_text,
+        intent="练习巩固",
+        knowledge_topic=resolved.get("topic") or "数据结构与算法",
+        score=score,
+        db=db,
+        semantic_result={
+            "course_id": COURSE_ID,
+            "chapter_id": resolved.get("chapter_id") or "",
+            "section_id": resolved.get("section_id") or "",
+            "unit_ids": resolved.get("unit_ids") or [],
+            "topic_title": resolved.get("topic") or "",
+            "subject_category": "data_structures_algorithms",
+            "level": level,
+            "level_source": "current_evaluation",
+            "level_evidence": f"本次学习评价得分 {score}，反馈主题：{resolved.get('topic')}",
+            "needs_level_diagnosis": False,
+        },
+    )
+    if updated_user:
+        profile["tags"] = profile_service.merge_tags(updated_user["tags"], profile.get("tags", []))
+        profile["knowledge_tags"] = profile["tags"]
+        profile["hours"] = updated_user["hours"]
+    profile_event_service.record_profile_event(
+        db,
+        username=username,
+        source_type="evaluation",
+        source_id=resolved.get("topic") or "",
+        profile=profile,
+        reason=f"完成「{resolved.get('topic')}」学习诊断后自动更新画像。",
+        course_id=COURSE_ID,
+    )
+    return profile
 
 
 def handle_learning_evaluation(
@@ -259,63 +349,42 @@ def handle_learning_evaluation(
     topic: str,
     wrong_notes: str,
     answer_summary: str,
-    confidence: int = 60
-):
-    merged_text = f"{topic}\n{wrong_notes}\n{answer_summary}"
-    knowledge = _infer_knowledge(merged_text, _load_course_knowledge(db))
-    score, level = _score_evaluation(merged_text, confidence, knowledge)
-
-    weak_points = [
-        knowledge["pitfalls"][0],
-        knowledge["pitfalls"][1],
-        "缺少实践验证和错因复盘" if score < 75 else "需要继续保持复盘记录",
-    ]
-    suggestions = [
-        f"回看「{knowledge['chapter']}」中关于 {knowledge['core']} 的内容。",
-        "先完成分层练习题中的概念判断题，再做应用题。",
-        f"完成实践任务：{knowledge['practice']}。",
-        "把本次错因写入学习画像，下一轮路径优先补弱。",
-    ]
-
-    diagnosis_resource = _build_diagnosis_resource(
-        knowledge=knowledge,
-        title=f"{knowledge['topic']} 错题诊断报告",
-        notes=wrong_notes or answer_summary,
-        score=score,
-        level=level,
-        weak_points=weak_points,
-        suggestions=suggestions,
+    confidence: int = 60,
+    course_id: str = COURSE_ID,
+    chapter_id: str = "",
+    section_id: str = "",
+    unit_ids: Optional[List[str]] = None,
+) -> Dict:
+    merged_text = "\n".join([topic or "", wrong_notes or "", answer_summary or ""]).strip()
+    resolved = dsa_topic_resolver.resolve_topic(
+        merged_text,
+        course_id=course_id or COURSE_ID,
+        chapter_id=chapter_id or "",
+        section_id=section_id or "",
+        unit_ids=unit_ids or [],
+        fallback_topic=topic or "数据结构与算法学习诊断",
     )
-    saved_resources = resource_service.insert_generated_resources(
-        db,
-        [diagnosis_resource],
-        uploader="学习评价 Agent",
-        applicant_username=username,
-    )
-    generated_resource_id = saved_resources[0]["id"] if saved_resources else ""
-
-    updated_user = user_service.update_user_learning_profile(
+    score = _score_evaluation(merged_text, confidence, resolved)
+    level = _level_from_score(score)
+    weak_points = resolved.get("weak_points") or ["需要补充具体错题证据"]
+    suggestions = resolved.get("suggestions") or ["先完成一个小节练习，再提交错因说明。"]
+    report_content = _build_report_content(resolved, wrong_notes or answer_summary, score, level, weak_points, suggestions)
+    report = _make_artifact(
         db,
         username,
-        [knowledge["topic"]],
-        hours_delta=1 if score < 75 else 0,
-        replace_tags=True,
+        resolved,
+        artifact_types.DIAGNOSTIC_REPORT,
+        f"{resolved['topic']} 诊断与补弱报告",
+        f"{level}：已定位到 {resolved.get('section_title') or '待定位'}。",
+        report_content,
+        "根据本次评价提交内容、章节定位和知识单元证据生成。",
     )
-
-    remedial_plan = None
-    if score < 80:
-        remedial_plan = learning_plan_service.save_generated_plan(
-            db=db,
-            username=username,
-            title=f"{knowledge['topic']} · 错题修复路线",
-            path_steps=_build_fix_steps(knowledge, level, weak_points[0]),
-            resources=[diagnosis_resource],
-        )
+    db.commit()
 
     record = save_evaluation_record(
         db=db,
         username=username,
-        topic=knowledge["topic"],
+        resolved=resolved,
         score=score,
         level=level,
         weak_points=weak_points,
@@ -327,176 +396,212 @@ def handle_learning_evaluation(
             "answer_summary": answer_summary,
             "confidence": confidence,
         },
-        generated_resource_id=generated_resource_id,
+        generated_resource_id=report.get("artifact_id") or "",
     )
-
-    profile_user = user_service.get_user_by_username(db, username)
-    profile = profile_service.build_profile(
-        user=profile_user,
-        message=merged_text,
-        intent="练习巩固",
-        knowledge_topic=knowledge["topic"],
-        score=score,
-        db=db,
-        semantic_result={
-            "topic": knowledge["topic"],
-            "subject_category": "computer_science",
-            "level": level,
-            "level_source": "current_evaluation",
-            "level_evidence": f"本次学习评价得分 {score}，反馈主题：{knowledge['topic']}",
-            "needs_level_diagnosis": False,
-        },
-    )
-    if updated_user:
-        profile["tags"] = profile_service.merge_tags(updated_user["tags"], profile.get("tags", []))
-        profile["knowledge_tags"] = profile["tags"]
-        profile["hours"] = updated_user["hours"]
+    profile = _update_profile(db, username, merged_text, resolved, score, level)
 
     return {
         "record": record,
         "score": score,
         "level": level,
+        "course_title": COURSE_TITLE,
+        "chapter_title": record.get("chapter_title", "待定位"),
+        "section_title": record.get("section_title", "待定位"),
+        "unit_titles": record.get("unit_titles", ["待定位"]),
         "weak_points": weak_points,
         "suggestions": suggestions,
-        "generated_resource": saved_resources[0] if saved_resources else diagnosis_resource,
-        "remedial_plan": remedial_plan,
+        "generated_resource": report,
         "profile": profile,
     }
 
 
-def handle_auto_evaluation(db: Session, username: str):
+def _collect_auto_source_text(db: Session, username: str) -> str:
+    parts = []
+    try:
+        records = (
+            db.query(EvaluationRecord)
+            .filter(EvaluationRecord.username == username)
+            .order_by(EvaluationRecord.created_at.desc())
+            .limit(8)
+            .all()
+        )
+        for row in records:
+            if _contains_legacy_terms(row.topic, row.weak_points, row.suggestions, row.wrong_notes):
+                continue
+            parts.extend([row.topic or "", row.weak_points or "", row.suggestions or "", row.wrong_notes or ""])
+    except Exception:
+        pass
+    try:
+        attempts = (
+            db.query(ExerciseAttempt)
+            .filter(ExerciseAttempt.username == username)
+            .order_by(ExerciseAttempt.created_at.desc())
+            .limit(8)
+            .all()
+        )
+        for row in attempts:
+            parts.extend([row.unit_id or "", row.error_pattern_json or "", row.answers_json or ""])
+    except Exception:
+        pass
+    try:
+        plan = db.query(LearningPlan).filter(LearningPlan.username == username).first()
+        parts.append(plan.plans_json if plan else "")
+    except Exception:
+        pass
+    try:
+        artifacts = (
+            db.query(ResourceArtifact)
+            .filter(ResourceArtifact.student_id.in_([username, ""]))
+            .order_by(ResourceArtifact.updated_at.desc())
+            .limit(12)
+            .all()
+        )
+        for row in artifacts:
+            if _contains_legacy_terms(row.title, row.summary, row.content):
+                continue
+            parts.extend([row.title or "", row.summary or "", row.unit_ids_json or ""])
+    except Exception:
+        pass
+    return " ".join(parts)
+
+
+def handle_auto_evaluation(db: Session, username: str) -> Dict:
     user = user_service.get_user_by_username(db, username)
-    plans = learning_plan_service.get_plans_by_username(db, username)
+    source_text = _collect_auto_source_text(db, username)
+    if not source_text.strip() and user:
+        source_text = f"{user.tags or ''} {user.bio or ''}"
+    resolved = dsa_topic_resolver.resolve_topic(source_text, fallback_topic="数据结构与算法学习诊断")
     history = get_evaluation_records(db, username)
-    resources = resource_service.get_all_resources(db)
-
-    task_status = {"completed": 0, "active": 0, "pending": 0}
-    plan_text = []
-
-    for plan in plans:
-        plan_text.append(plan.get("title", ""))
-        for task in plan.get("tasks", []):
-            status = task.get("status", "pending")
-            if status in task_status:
-                task_status[status] += 1
-            plan_text.extend([task.get("title", ""), task.get("desc", "")])
-
-    total_tasks = sum(task_status.values())
-    completion_rate = round(task_status["completed"] / total_tasks * 100) if total_tasks else 0
-    recent_history = history[:3] if isinstance(history, list) else []
-    recent_avg_score = round(sum(item.get("score", 0) for item in recent_history) / len(recent_history)) if recent_history else None
-    source_text = " ".join([
-        user.tags if user else "",
-        " ".join(plan_text),
-        " ".join([item.get("title", "") for item in resources[:12]]),
-        " ".join([item.get("topic", "") for item in recent_history]),
-    ])
-
-    knowledge = _infer_knowledge(source_text, _load_course_knowledge(db))
-    hours = user.hours if user else 0
-    score = 62 + min(12, hours // 4) + round(completion_rate * 0.18)
-    if recent_avg_score is not None:
-        score = round(score * 0.45 + recent_avg_score * 0.55)
-    if task_status["pending"] > task_status["completed"]:
-        score -= 6
-    score = max(42, min(96, score))
+    recent_scores = [item.get("score", 0) for item in history[:3] if item.get("score")]
+    base_score = round(sum(recent_scores) / len(recent_scores)) if recent_scores else 68
+    if not resolved.get("matched"):
+        base_score = min(base_score, 70)
+    score = max(42, min(95, base_score))
     level = _level_from_score(score)
-
-    weak_points = list(dict.fromkeys([
-        knowledge["pitfalls"][0],
-        "学习路线中仍有较多待完成任务" if task_status["pending"] else "需要持续复盘已完成任务",
-        "平台记录显示需要继续补齐实践验证",
-    ]))[:4]
-    suggestions = [
-        f"优先完成当前规划中的 active 任务，再处理 {task_status['pending']} 个待完成任务。",
-        f"围绕「{knowledge['chapter']}」复习 {knowledge['core']}。",
-        "对最近一次错题诊断报告做二次复盘，比较薄弱点是否减少。",
-        f"完成实践任务：{knowledge['practice']}。",
-    ]
+    weak_points = resolved.get("weak_points") or ["需要通过一次具体练习定位薄弱知识单元"]
+    suggestions = resolved.get("suggestions") or ["选择一个 DSA 小节完成诊断练习。"]
     auto_notes = (
-        f"系统基于平台数据自动诊断：累计学习 {hours} 小时，"
-        f"任务完成率 {completion_rate}%，"
-        f"待完成任务 {task_status['pending']} 个，"
-        f"近三次评价均分 {recent_avg_score if recent_avg_score is not None else '暂无'}。"
+        f"系统基于历史评价、练习记录、学习计划和已生成资源进行自动诊断；"
+        f"当前定位主题为「{resolved.get('topic')}」。"
     )
-
-    diagnosis_resource = _build_diagnosis_resource(
-        knowledge=knowledge,
-        title=f"{knowledge['topic']} 平台自动诊断报告",
-        notes=auto_notes,
-        score=score,
-        level=level,
-        weak_points=weak_points,
-        suggestions=suggestions,
-    )
-    saved_resources = resource_service.insert_generated_resources(
-        db,
-        [diagnosis_resource],
-        uploader="学习评价 Agent",
-        applicant_username=username,
-    )
-    generated_resource_id = saved_resources[0]["id"] if saved_resources else ""
-
-    updated_user = user_service.update_user_learning_profile(
+    report_content = _build_report_content(resolved, auto_notes, score, level, weak_points, suggestions)
+    report = _make_artifact(
         db,
         username,
-        [knowledge["topic"]],
-        hours_delta=0,
-        replace_tags=True,
+        resolved,
+        artifact_types.DIAGNOSTIC_REPORT,
+        f"{resolved['topic']} 诊断与补弱报告",
+        f"{level}：平台自动诊断已完成。",
+        report_content,
+        "根据平台历史学习数据自动生成。",
     )
-
-    remedial_plan = None
-    if score < 82:
-        remedial_plan = learning_plan_service.save_generated_plan(
-            db=db,
-            username=username,
-            title=f"{knowledge['topic']} · 自动补弱路线",
-            path_steps=_build_fix_steps(knowledge, level, weak_points[0]),
-            resources=[diagnosis_resource],
-        )
-
+    db.commit()
     record = save_evaluation_record(
         db=db,
         username=username,
-        topic=knowledge["topic"],
+        resolved=resolved,
         score=score,
         level=level,
         weak_points=weak_points,
         suggestions=suggestions,
         wrong_notes=auto_notes,
-        answers={
-            "mode": "auto",
-            "hours": hours,
-            "task_status": task_status,
-            "completion_rate": completion_rate,
-            "recent_avg_score": recent_avg_score,
-        },
-        generated_resource_id=generated_resource_id,
+        answers={"mode": "auto", "source": "evaluation/exercise/plan/artifact"},
+        generated_resource_id=report.get("artifact_id") or "",
     )
-
-    profile_user = user_service.get_user_by_username(db, username)
-    profile = profile_service.build_profile(
-        user=profile_user,
-        message=auto_notes,
-        intent="练习巩固",
-        knowledge_topic=knowledge["topic"],
-        score=score,
-        db=db,
-    )
-    if updated_user:
-        profile["tags"] = profile_service.merge_tags(updated_user["tags"], profile.get("tags", []))
-        profile["knowledge_tags"] = profile["tags"]
-        profile["hours"] = updated_user["hours"]
-
+    profile = _update_profile(db, username, auto_notes, resolved, score, level)
     return {
         "record": record,
         "score": score,
         "level": level,
+        "course_title": COURSE_TITLE,
+        "chapter_title": record.get("chapter_title", "待定位"),
+        "section_title": record.get("section_title", "待定位"),
+        "unit_titles": record.get("unit_titles", ["待定位"]),
         "weak_points": weak_points,
         "suggestions": suggestions,
-        "generated_resource": saved_resources[0] if saved_resources else diagnosis_resource,
-        "remedial_plan": remedial_plan,
+        "generated_resource": report,
         "profile": profile,
         "auto_summary": auto_notes,
-        "data_sources": ["学习画像", "规划任务状态", "历史评价记录", "Agent 生成资源"],
+        "data_sources": ["历史评价记录", "练习尝试", "学习计划", "个性化资源"],
     }
+
+
+def generate_remediation_package(db: Session, username: str, record_id: str = "", payload: Dict = None) -> Dict:
+    payload = payload or {}
+    record = None
+    if record_id:
+        record = (
+            db.query(EvaluationRecord)
+            .filter(EvaluationRecord.id == record_id, EvaluationRecord.username == username)
+            .first()
+        )
+    if record:
+        record_dict = _evaluation_to_dict(record)
+        resolved = dsa_topic_resolver.resolve_topic(
+            record.topic,
+            chapter_id=record_dict.get("chapter_id") or "",
+            section_id=record_dict.get("section_id") or "",
+            unit_ids=record_dict.get("unit_ids") or [],
+            fallback_topic=record.topic or "数据结构与算法学习诊断",
+        )
+        weak_points = record_dict.get("weak_points") or []
+        suggestions = record_dict.get("suggestions") or []
+    else:
+        resolved = dsa_topic_resolver.resolve_topic(
+            " ".join([payload.get("topic", ""), payload.get("wrong_notes", ""), payload.get("answer_summary", "")]),
+            chapter_id=payload.get("chapter_id", ""),
+            section_id=payload.get("section_id", ""),
+            unit_ids=payload.get("unit_ids") or [],
+        )
+        weak_points = resolved.get("weak_points") or []
+        suggestions = resolved.get("suggestions") or []
+
+    job = generation_job_service.create_job(
+        db,
+        username=username,
+        course_id=COURSE_ID,
+        topic=resolved.get("topic") or "数据结构与算法学习诊断",
+        unit_id=(resolved.get("unit_ids") or [""])[0],
+        message="正在生成数据结构与算法补弱学习包",
+    )
+
+    type_map = [
+        ("course_note", artifact_types.COURSE_NOTE),
+        ("exercise_set", artifact_types.EXERCISE_SET),
+        ("code_lab", artifact_types.CODE_LAB),
+        ("remediation_report", artifact_types.DIAGNOSTIC_REPORT),
+    ]
+    artifacts = []
+    reason = f"依据「{resolved.get('topic')}」诊断记录、章节定位和知识单元证据生成。"
+    for kind, artifact_type in type_map:
+        content_data = _build_remediation_content(kind, resolved, weak_points, suggestions)
+        artifacts.append(_make_artifact(
+            db,
+            username,
+            resolved,
+            artifact_type,
+            content_data["title"],
+            content_data["summary"],
+            content_data["content"],
+            reason,
+        ))
+    db.commit()
+
+    artifact_ids = [item["artifact_id"] for item in artifacts]
+    job = generation_job_service.update_job(
+        db,
+        job["job_id"],
+        status="completed",
+        progress=100,
+        message="补弱学习包已生成，可立即查看。",
+        artifact_ids=artifact_ids,
+    )
+    generation_job_service.add_event(
+        db,
+        job["job_id"],
+        event="job_completed",
+        agent="EvaluationRemediationAgent",
+        message="已生成讲解、练习、代码实验和补弱报告。",
+        progress=100,
+    )
+    return {"generation_job": job, "artifacts": artifacts}

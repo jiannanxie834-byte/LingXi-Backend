@@ -194,7 +194,7 @@ def _infer_by_llm(message: str, eval_topic: str) -> Dict:
 你是《数据结构与算法》课程学习平台的语义接地模块。请判断学生输入是否属于本课程范围、真实主题、请求类型和是否需要代码内容。
 不要生成学习建议。
 不要猜测用户水平。如果用户没有明确说明水平，level 必须返回“未确认”。
-只有命中《数据结构与算法》课程图谱的主题才能返回 computer_science；深度学习、数据库、操作系统、计算机网络、外语、高数、金融等返回 out_of_course；主题不明确返回 unknown。
+只有命中《数据结构与算法》课程图谱的主题才能返回 computer_science；数据库、操作系统、计算机网络、外语、高数、金融等课程外主题返回 out_of_course；主题不明确返回 unknown。
 
 学生输入：{message}
 初步主题：{eval_topic}

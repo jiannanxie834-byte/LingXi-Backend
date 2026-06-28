@@ -1,7 +1,7 @@
 from app.agents.agent_result_dto import AgentResultDTO
 
 
-def run(topic: str = "深度学习知识点", unit_id: str = "") -> AgentResultDTO:
+def run(topic: str = "数据结构与算法知识点", unit_id: str = "") -> AgentResultDTO:
     output = {
         "type": "animation_storyboard",
         "title": f"{topic} 动画分镜",

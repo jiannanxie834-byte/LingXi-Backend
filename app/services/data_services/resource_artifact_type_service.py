@@ -38,7 +38,6 @@ DEPRECATED_ARTIFACT_TYPES = [
 ]
 
 LEGACY_TYPE_MAPPING = {
-    "PyTorch 实操案例": CODE_LAB,
     "交互动画规格": INTERACTIVE_ANIMATION,
     "课程实践项目任务书": PROJECT_BRIEF,
 }

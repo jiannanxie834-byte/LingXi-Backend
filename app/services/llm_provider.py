@@ -178,7 +178,25 @@ def extract_json_object(content: str):
     return parsed
 
 
-def chat_json(messages, required_fields=None, temperature=0.2, max_tokens=1200):
+def _json_max_tokens(default_value: int) -> int:
+    try:
+        return int(os.getenv("LLM_JSON_MAX_TOKENS", str(default_value)))
+    except ValueError:
+        return default_value
+
+
+def _should_retry_json_error(error: str) -> bool:
+    return any(
+        marker in str(error or "")
+        for marker in [
+            "LLM response contains incomplete JSON object",
+            "LLM response is not valid JSON",
+        ]
+    )
+
+
+def chat_json(messages, required_fields=None, temperature=0.2, max_tokens=3000):
+    max_tokens = _json_max_tokens(max_tokens)
     strict_messages = [
         {
             "role": "system",
@@ -191,44 +209,70 @@ def chat_json(messages, required_fields=None, temperature=0.2, max_tokens=1200):
         *messages,
     ]
 
-    result = chat(strict_messages, temperature=temperature, max_tokens=max_tokens, json_mode=True)
-    if not result.get("ok"):
-        return {
-            "ok": False,
-            "error": result.get("error", "LLM call failed"),
-            "content": result.get("content", ""),
-            "data": {},
-        }
+    def _parse_result(result):
+        if not result.get("ok"):
+            return {
+                "ok": False,
+                "error": result.get("error", "LLM call failed"),
+                "content": result.get("content", ""),
+                "data": {},
+            }
 
-    content = result.get("content", "")
-    try:
-        data = extract_json_object(content)
-    except ValueError as exc:
-        return {
-            "ok": False,
-            "error": str(exc),
-            "content": content,
-            "data": {},
-        }
+        content = result.get("content", "")
+        try:
+            data = extract_json_object(content)
+        except ValueError as exc:
+            return {
+                "ok": False,
+                "error": str(exc),
+                "content": content,
+                "data": {},
+            }
 
-    missing = [
-        field
-        for field in (required_fields or [])
-        if field not in data
-    ]
-    if missing:
+        missing = [
+            field
+            for field in (required_fields or [])
+            if field not in data
+        ]
+        if missing:
+            return {
+                "ok": False,
+                "error": f"LLM JSON response missing required fields: {', '.join(missing)}",
+                "content": content,
+                "data": data,
+            }
+
         return {
-            "ok": False,
-            "error": f"LLM JSON response missing required fields: {', '.join(missing)}",
+            "ok": True,
             "content": content,
             "data": data,
         }
 
-    return {
-        "ok": True,
-        "content": content,
-        "data": data,
-    }
+    result = chat(strict_messages, temperature=temperature, max_tokens=max_tokens, json_mode=True)
+    parsed = _parse_result(result)
+    if parsed.get("ok") or not _should_retry_json_error(parsed.get("error", "")):
+        return parsed
+
+    logger.warning("LLM JSON parse failed, retrying once: %s", parsed.get("error"))
+    retry_messages = [
+        *strict_messages,
+        {
+            "role": "user",
+            "content": (
+                "上一次输出不是完整 JSON。请只重新输出一个完整 JSON 对象。\n"
+                "不要输出 Markdown。\n"
+                "不要输出解释。\n"
+                "不要输出代码块。\n"
+                "不要输出多余文本。\n"
+                "JSON 必须能被 json.loads 直接解析。"
+            ),
+        },
+    ]
+    retry_result = chat(retry_messages, temperature=0.1, max_tokens=max_tokens, json_mode=True)
+    retry_parsed = _parse_result(retry_result)
+    if not retry_parsed.get("ok"):
+        retry_parsed["retried"] = True
+    return retry_parsed
 
 
 # =========================

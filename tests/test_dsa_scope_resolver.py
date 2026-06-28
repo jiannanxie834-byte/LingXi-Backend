@@ -11,7 +11,7 @@ class DsaScopeResolverTest(unittest.TestCase):
             "比较 BFS 和 DFS": "comparison",
             "我想做一个迷宫寻路项目": "project",
             "我总是写错递归终止条件": "remediation",
-            "我想学习 CNN": "out_of_course",
+            "我想学习数据库索引": "out_of_course",
         }
         for text, expected_scope in cases.items():
             with self.subTest(text=text):

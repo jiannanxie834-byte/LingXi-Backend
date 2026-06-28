@@ -33,7 +33,7 @@ def get_dsa_spec(resource_type: str) -> dict:
             "必须属于《数据结构与算法》课程范围，并绑定 chapter_id 与 unit_id",
             "本阶段只允许输出框架、结构和占位要求，不生成正式课程正文",
             "不得复制外部教材、题库或 LeetCode 题目原文",
-            "不得把深度学习、CNN、LSTM、Transformer 作为主演示内容",
+            "不得把课程外主题作为主演示内容",
         ],
     }
     if resource_type == artifact_types.CODE_LAB:

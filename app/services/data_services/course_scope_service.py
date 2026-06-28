@@ -25,7 +25,6 @@ CANONICAL_TOPIC_NAMES = {
 OUT_OF_COURSE_ALIASES = {
     "英语": ["英语", "英文", "english"],
     "高数": ["高数", "高等数学", "微积分"],
-    "深度学习": ["深度学习", "deep learning", "cnn", "lstm", "transformer", "神经网络"],
     "数据库": ["数据库", "mysql", "sql"],
     "操作系统": ["操作系统", "进程", "线程", "linux内核"],
     "计算机网络": ["计算机网络", "tcp", "udp", "http"],

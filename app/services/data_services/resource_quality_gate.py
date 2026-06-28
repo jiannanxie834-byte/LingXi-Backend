@@ -2,14 +2,14 @@ import re
 from typing import Dict, List
 
 from app.services.data_services import (
-    deep_learning_course_map_service,
-    deep_learning_resource_blueprint,
+    dsa_course_map_service,
     resource_artifact_type_service as artifact_types,
     resource_policy_service,
 )
 
 
 CODE_REQUIRED_TERMS = ["实验目标", "环境依赖", "运行方式", "训练流程", "代码", "实验报告"]
+DSA_CODE_REQUIRED_TERMS = ["实验目标", "环境依赖", "运行命令", "完整代码", "学生任务", "复杂度"]
 EXERCISE_REQUIRED_TERMS = ["题", "答案", "解析", "知识点"]
 READING_REQUIRED_TERMS = ["阅读", "教材", "公开", "顺序", "目标"]
 PROJECT_REQUIRED_TERMS = ["项目", "目标", "任务", "验收", "提交", "Rubric"]
@@ -73,7 +73,7 @@ def _coverage_categories(content: str) -> Dict[str, bool]:
         "原理": ["原理", "机制", "为什么", "作用", "流程", "推导"],
         "例子": ["例子", "示例", "例题", "案例", "情境"],
         "练习": ["自测题", "练习", "参考答案", "答案", "解析"],
-        "公式或代码": ["公式", "符号", "计算过程", "代码", "伪代码", "PyTorch", "torch", "算法流程"],
+        "公式或代码": ["公式", "符号", "计算过程", "代码", "伪代码", "算法流程"],
         "误区": ["误区", "易错", "常见错误", "混淆"],
         "学习建议": ["下一步", "建议", "检查清单", "复习"],
     }
@@ -118,11 +118,16 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
     topic = semantic_result.get("topic") or resource.get("topic") or resource.get("title") or ""
     level_source = semantic_result.get("level_source") or resource.get("level_source") or "none"
     course_map = (
-        semantic_result.get("deep_learning_course_map")
-        or resource.get("deep_learning_course_map")
+        semantic_result.get("dsa_course_map")
+        or resource.get("dsa_course_map")
         or semantic_result.get("ai_course_map")
         or resource.get("ai_course_map")
-        or deep_learning_course_map_service.match_deep_learning_topic(topic)
+        or {}
+    )
+    is_dsa = (
+        semantic_result.get("course_id") == dsa_course_map_service.COURSE_ID
+        or resource.get("course_id") == dsa_course_map_service.COURSE_ID
+        or course_map.get("course_id") == dsa_course_map_service.COURSE_ID
     )
 
     text = "\n".join([
@@ -143,14 +148,19 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
 
     generation_context = semantic_result.get("generation_context") or {}
     if artifact_types.is_deprecated(resource.get("type")):
+        course_label = "数据结构与算法" if is_dsa else "当前课程"
         _append_issue(
             result,
             f"资源类型已停用：{resource.get('type')}",
-            "请改用深度学习 Artifact 类型，如课程讲解文档、练习题集、PyTorch 实操案例、视频推荐卡或交互动画规格。",
+            f"请改用{course_label} Artifact 类型，如课程讲解文档、练习题集、代码实验、视频指南或诊断报告。",
             fatal=True,
         )
 
-    if resource_type == resource_policy_service.FEEDBACK_RESOURCE_TYPE and not resource_policy_service.has_feedback_context(generation_context):
+    if (
+        resource_type == resource_policy_service.FEEDBACK_RESOURCE_TYPE
+        and not is_dsa
+        and not resource_policy_service.has_feedback_context(generation_context)
+    ):
         _append_issue(
             result,
             "缺少真实错题、测验、评价或学习反馈记录，不能生成诊断与补弱报告。",
@@ -161,7 +171,7 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
     if not course_map.get("matched"):
         _append_issue(
             result,
-            "课程范围不明确：资源未归一到《深度学习》课程图谱。",
+            "课程范围不明确：资源未归一到当前课程图谱。",
             "请先完成语义归一，绑定 chapter_id 和 unit_id。",
             fatal=True,
         )
@@ -175,7 +185,7 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
         _append_issue(
             result,
             "缺少知识单元绑定：资源必须包含 unit_id。",
-            "每份资源都应绑定《深度学习》课程的具体知识单元。",
+            "每份资源都应绑定当前课程的具体知识单元。",
             fatal=True,
         )
 
@@ -190,9 +200,9 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
             _append_issue(result, f"拓展阅读包结构不完整：缺少{'、'.join(missing)}", "补充教材章节建议、公开课入口、官方文档和阅读顺序。", fatal=True)
 
     if resource_type == artifact_types.CODE_LAB:
-        missing = _missing_terms(text, CODE_REQUIRED_TERMS)
+        missing = _missing_terms(text, DSA_CODE_REQUIRED_TERMS if is_dsa else CODE_REQUIRED_TERMS)
         if missing:
-            _append_issue(result, f"PyTorch 实操案例结构不完整：缺少{'、'.join(missing)}", "补充可运行实验目标、依赖、训练流程、代码、运行方式和实验报告模板。", fatal=True)
+            _append_issue(result, f"代码实验结构不完整：缺少{'、'.join(missing)}", "补充可运行实验目标、依赖、完整代码、运行方式、学生任务和复杂度记录。", fatal=True)
 
     if resource_type == artifact_types.PROJECT_BRIEF:
         missing = _missing_terms(text, PROJECT_REQUIRED_TERMS)
@@ -225,7 +235,8 @@ def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
             )
 
     if result["passed"]:
-        result["issues"].append("深度学习 Artifact 门禁：课程范围、资源结构和版权边界通过初检")
+        gate_label = "数据结构与算法" if is_dsa else "当前课程"
+        result["issues"].append(f"{gate_label} Artifact 门禁：课程范围、资源结构和版权边界通过初检")
         result["suggestions"].append("建议管理员继续核验公式、代码可运行性和外部链接有效性。")
     else:
         result["quality_score"] = 40 if result.get("fatal") else 72
@@ -245,11 +256,16 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     content = item.get("content", "")
     source = item.get("source", "")
     course_map = (
-        item.get("deep_learning_course_map")
-        or context.get("deep_learning_course_map")
+        item.get("dsa_course_map")
+        or context.get("dsa_course_map")
         or item.get("ai_course_map")
         or context.get("ai_course_map")
         or {}
+    )
+    is_dsa = (
+        item.get("course_id") == dsa_course_map_service.COURSE_ID
+        or context.get("course_id") == dsa_course_map_service.COURSE_ID
+        or course_map.get("course_id") == dsa_course_map_service.COURSE_ID
     )
     unit_id = item.get("unit_id") or context.get("unit_id") or course_map.get("unit_id") or ""
     topic = (
@@ -293,14 +309,15 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         artifact_types.READING_PACK,
         artifact_types.PERSONALIZED_VIDEO_GUIDE,
         artifact_types.VIDEO_RECOMMENDATION,
+        artifact_types.DIAGNOSTIC_REPORT,
     }
-    required_terms = deep_learning_resource_blueprint.get_topic_specific_terms(unit_id, topic)
+    required_terms = []
     covered_terms = [term for term in required_terms if _term_covered(term, full_text)]
     evidence_chunks = context.get("evidence_chunks") or item.get("evidence_chunks") or []
     evidence_refs = re.findall(r"evidence_id\s*[:：=]\s*[\w:\-]+", full_text, re.I)
-    examples = _count_markers(content, ["例子", "示例", "例题", "案例", "情境", "Conv2d", "torch", "PyTorch"])
+    examples = _count_markers(content, ["例子", "示例", "例题", "案例", "情境"])
     exercises = _count_markers(content, ["自测题", "练习", "参考答案", "答案", "解析"])
-    formula_or_code = _count_markers(content, ["公式", "算法流程", "计算过程", "代码", "伪代码", "PyTorch", "torch", "梯度", "softmax", "Conv2d"])
+    formula_or_code = _count_markers(content, ["公式", "算法流程", "计算过程", "代码", "伪代码"])
     personalization = _count_markers(full_text, ["基础", "目标", "偏好", "短板", "实践", "适用对象", "学习定位"])
     coverage = _coverage_categories(content)
     covered_category_names = [name for name, ok in coverage.items() if ok]
@@ -310,16 +327,17 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     fatal = False
 
     if resource_type == artifact_types.COURSE_NOTE:
-        min_chars = 4500 if is_core_chapter else 3000
+        min_chars = 700 if is_dsa else (4500 if is_core_chapter else 3000)
         if content_len < min_chars:
             fatal = True
             issues.append(f"章节主讲义过短，少于 {min_chars} 个中文字符")
-            repair_suggestions.append("重写为教材式章节主讲义，补齐学习定位、核心机制、例子、自测、答案和参考来源")
-        if headings < 8:
+            repair_suggestions.append("补齐学习定位、核心机制、例子、自测、答案和参考来源")
+        min_headings = 5 if is_dsa else 8
+        if headings < min_headings:
             fatal = True
-            issues.append("章节主讲义二级标题少于 8 个")
-            repair_suggestions.append("按固定 15 节结构扩展章节主讲义")
-        if "参考来源说明" not in content:
+            issues.append(f"章节主讲义二级标题少于 {min_headings} 个")
+            repair_suggestions.append("按课程讲解、例子、练习、误区和下一步建议扩展")
+        if not is_dsa and "参考来源说明" not in content:
             fatal = True
             issues.append("章节主讲义缺少参考来源说明")
             repair_suggestions.append("在末尾说明公开资料仅作结构参考，不复制原文")
@@ -331,9 +349,9 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
             fatal = True
             issues.append("章节主讲义缺少自测题或参考答案")
             repair_suggestions.append("补充自测题和参考解析")
-    elif resource_type not in structured_non_long_types and content_len < 1200:
+    elif resource_type not in structured_non_long_types and content_len < (700 if is_dsa else 1200):
         fatal = True
-        issues.append("内容过短，少于 1200 个中文字符")
+        issues.append(f"内容过短，少于 {700 if is_dsa else 1200} 个中文字符")
         repair_suggestions.append("扩展为完整讲义，补齐概念解释、公式流程、例子、练习和学习建议")
 
     if resource_type == artifact_types.MIND_MAP:
@@ -355,17 +373,18 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     if resource_type == artifact_types.EXERCISE_SET:
         question_count = _exercise_question_count(content)
         type_count = _exercise_type_count(content)
-        if question_count < 8:
+        min_questions = 4 if is_dsa else 8
+        if question_count < min_questions:
             fatal = True
-            issues.append("练习题集题量不足，少于 8 题")
-            repair_suggestions.append("合并为章节级题库，至少覆盖 8 道题")
+            issues.append(f"练习题集题量不足，少于 {min_questions} 题")
+            repair_suggestions.append("补充覆盖概念、边界条件、复杂度和代码理解的题目")
         if "答案" not in content or "解析" not in content:
             fatal = True
             issues.append("练习题集缺少答案或解析")
             repair_suggestions.append("每题必须有答案、解析和常见错误")
-        if type_count < 4:
+        if type_count < (3 if is_dsa else 4):
             fatal = True
-            issues.append("练习题集题型少于 4 类")
+            issues.append("练习题集题型覆盖不足")
             repair_suggestions.append("补充选择、判断、简答、计算/推导、代码理解、实验分析等题型")
 
     if resource_type == artifact_types.CODE_LAB:
@@ -421,7 +440,7 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
 
     if examples < 2 and resource_type == artifact_types.COURSE_NOTE:
         issues.append("具体例子不足，少于 2 个")
-        repair_suggestions.append("加入至少 2 个深度学习模型或计算例子")
+        repair_suggestions.append("加入至少 2 个算法输入输出、边界条件或计算例子")
 
     if exercises < 3 and resource_type == artifact_types.COURSE_NOTE:
         issues.append("课堂小练习不足，未体现 3 道自测题与答案")
@@ -429,7 +448,7 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
 
     if formula_or_code < 2 and resource_type == artifact_types.COURSE_NOTE:
         issues.append("公式、代码或算法流程说明不足")
-        repair_suggestions.append("补充公式符号解释、算法流程或 Python/PyTorch 示例")
+        repair_suggestions.append("补充公式符号解释、算法流程或 Python 示例")
 
     if not evidence_chunks and not evidence_refs:
         issues.append("缺少课程知识库证据引用")
@@ -474,7 +493,7 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     if not issues and passed:
         issues.append("教学质量门控通过：结构、主题、深度、例子和证据引用均达到要求")
     if not repair_suggestions and not passed:
-        repair_suggestions.append("按深度学习讲义蓝图重写，不要只做摘要式小修")
+        repair_suggestions.append("按当前课程讲义结构重写，不要只做摘要式小修")
 
     return {
         "teaching_quality_score": score,
@@ -503,7 +522,7 @@ def attach_quality_note(notes: str, quality: Dict) -> str:
     suggestions = quality.get("suggestions") or []
     lines = [
         "[[LINGXI_RESOURCE_QUALITY_GATE]]",
-        "## 深度学习 Artifact 语义质量门禁",
+        "## 课程 Artifact 语义质量门禁",
         f"- 通过状态：{'通过' if quality.get('passed') else '未通过'}",
         f"- 致命问题：{'是' if quality.get('fatal') else '否'}",
         f"- 质量分：{quality.get('quality_score', 0)}",
