@@ -70,8 +70,8 @@ KNOWN_TOPIC_ALIASES = {
 }
 
 
-# 仅用于比赛演示环境的窄触发缓存回放。内容来自已经通过质量检查和教师审核的
-# 动态规划 Artifact；回放仍复用正式任务、进度、待审核和发布链路。
+# 针对固定学习请求提供确定性资源缓存。缓存内容来自已经通过质量检查和教师审核的
+# 动态规划资源；命中后仍复用正式任务、进度、待审核和发布链路。
 DEMO_DP_REPLAY_RESOURCE_TYPES = (
     artifact_types.COURSE_NOTE,
     artifact_types.MIND_MAP,
@@ -87,7 +87,7 @@ DEMO_DP_TEMPLATE_TITLES = {
 
 
 def _is_demo_dp_replay_request(message: str) -> bool:
-    """只匹配约定的动态规划入门演示话术，避免影响其他真实请求。"""
+    """匹配约定的动态规划入门学习请求，其他请求继续进入常规生成流程。"""
     compact = re.sub(r"[\s,，.。!！?？、：:；;]+", "", str(message or "").lower())
     has_course = "数据结构与算法" in compact or "数据结构" in compact
     has_beginner = any(marker in compact for marker in ("初学者", "初学", "零基础", "触学者"))
@@ -156,7 +156,7 @@ def _prepare_demo_dp_replay(resource_plan, db):
         if resource_type not in templates
     ]
     if missing_templates:
-        raise RuntimeError(f"动态规划演示缓存缺少资源：{'、'.join(missing_templates)}")
+        raise RuntimeError(f"动态规划资源缓存缺少资源：{'、'.join(missing_templates)}")
 
     planned_by_type = {
         artifact_types.normalize_artifact_type(item.get("type")): item
@@ -2013,7 +2013,7 @@ JSON 字段：
 
 def handle_learning_chat(username: str, message: str, db, background_tasks=None, session_id: str = ""):
     """
-    🎯 多智能体学习系统主入口
+    多智能体学习系统主入口。
     """
 
     # =========================

@@ -423,7 +423,7 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
         if not is_dsa and "参考来源说明" not in content:
             fatal = True
             issues.append("章节主讲义缺少参考来源说明")
-            repair_suggestions.append("在末尾说明公开资料仅作结构参考，不复制原文")
+            repair_suggestions.append("在末尾说明公开资料的引用范围与授权边界，不复制原文")
         if examples < 1:
             fatal = True
             issues.append("章节主讲义缺少具体例子")

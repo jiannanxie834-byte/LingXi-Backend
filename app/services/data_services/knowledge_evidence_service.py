@@ -357,7 +357,7 @@ def _score_candidate(query, terms, topic_fields, body_fields, keywords=None):
 
 
 def search_course_evidence(db: Session, query: str, limit: int = 4, min_score: float = MIN_RELEVANCE_SCORE, include_irrelevant: bool = False):
-    """从课程知识点和已开放或框架占位资源中检索回答依据，用于防幻觉和演示证据链。"""
+    """从课程知识点和已开放或框架占位资源中检索回答依据，用于事实核验和证据追踪。"""
     terms = _query_terms(query)
     if not terms:
         return []

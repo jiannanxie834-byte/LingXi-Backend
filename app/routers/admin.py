@@ -92,7 +92,7 @@ async def demo_readiness(db: Session = Depends(get_db)):
             "label": "已开放学习资源",
             "ok": len(passed_resources) >= 10,
             "value": f"{len(passed_resources)} 份",
-            "target": "演示资源工厂可查阅、可导出",
+            "target": "资源工厂支持查阅与导出",
         },
         {
             "key": "review_queue",
@@ -106,7 +106,7 @@ async def demo_readiness(db: Session = Depends(get_db)):
             "label": "学习效果评价",
             "ok": db.query(EvaluationRecord).count() > 0,
             "value": f"{db.query(EvaluationRecord).count()} 条记录",
-            "target": "可演示诊断与补弱报告、路线调整",
+            "target": "支持诊断报告、补弱建议与路线调整",
         },
         {
             "key": "chat_history",
@@ -120,7 +120,7 @@ async def demo_readiness(db: Session = Depends(get_db)):
             "label": "大模型配置",
             "ok": os.getenv("LINGXI_LLM_PROVIDER", "spark") == "spark" and bool(os.getenv("SPARK_API_PASSWORD")),
             "value": "讯飞星火",
-            "target": "比赛演示环境统一使用讯飞星火并已配置访问凭证",
+            "target": "运行环境使用讯飞星火并已配置访问凭证",
         },
     ]
 

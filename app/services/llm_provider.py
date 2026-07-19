@@ -206,7 +206,7 @@ def extract_json_object(content: str):
     try:
         parsed = json.loads(json_text)
     except json.JSONDecodeError as exc:
-        # 长 Markdown 正文中常含有真实换行符。某些 OpenAI 兼容接口会
+        # 长 Markdown 正文中常含有真实换行符。部分兼容式接口会
         # 把它们直接放入 JSON 字符串，导致返回内容可读但不能被 json.loads
         # 解析。这里只转义字符串内的控制字符，不修改模型语义内容。
         if "Invalid control character" not in str(exc):

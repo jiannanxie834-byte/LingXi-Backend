@@ -18,7 +18,7 @@ LEGACY_PROFILE_TERMS = []
 
 
 # =========================
-# 🔹 Tag 处理
+# 标签处理
 # =========================
 
 def merge_tags(old_tags: List[str], new_tags: List[str]) -> List[str]:
@@ -330,7 +330,7 @@ def _load_profile_evidence(db, username: str) -> Dict:
 
 
 # =========================
-# 🔹 学习强度 / 活跃度
+# 学习强度与活跃度
 # =========================
 
 def calculate_learning_intensity(hours: int) -> str:
@@ -352,7 +352,7 @@ def calculate_engagement(message_len: int) -> int:
 
 
 # =========================
-# 🔹 学习等级
+# 学习等级
 # =========================
 
 def calculate_level(hours: int, score: int = 0) -> str:
@@ -371,7 +371,7 @@ def calculate_level(hours: int, score: int = 0) -> str:
 
 
 # =========================
-# 🔹 学习画像构建（核心）
+# 学习画像构建
 # =========================
 
 def build_profile(
@@ -401,7 +401,7 @@ def build_profile(
 
 
 # =========================
-# 🔹 学习状态更新（不操作DB，只算结果）
+# 学习状态计算
 # =========================
 
 def update_learning_state(
@@ -426,7 +426,7 @@ def update_learning_state(
 
 
 # =========================
-# 🔹 学习路径辅助判断
+# 学习路径辅助判断
 # =========================
 
 def infer_learning_focus(intent: str) -> List[str]:
