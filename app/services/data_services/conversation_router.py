@@ -103,30 +103,24 @@ AMBIGUOUS_TEXTS = {
     "。。。",
 }
 
-RESOURCE_ACTION_MARKERS = (
-    "规划",
-    "路线",
-    "计划",
-    "练习",
-    "习题",
-    "题",
-    "错题",
-    "刷题",
-    "资源",
-    "资料",
-    "课件",
-    "ppt",
-    "导图",
-    "实操",
-    "项目",
-    "生成",
-    "推荐",
-    "模板",
-    "怎么做",
-    "怎么写",
-    "怎么用",
-    "区别",
-    "对比",
+# 只有明确要求产出学习材料或学习安排时，才允许进入资源主链路。
+# “题”“区别”“怎么做”等词本身也可能只是普通提问，不能据此启动资源生成。
+EXPLICIT_GENERATION_MARKERS = (
+    "生成资源",
+    "生成资料",
+    "生成课件",
+    "生成导图",
+    "生成练习",
+    "生成题库",
+    "学习路线",
+    "学习计划",
+    "学习包",
+    "规划路线",
+    "制定计划",
+    "推荐资源",
+    "推荐资料",
+    "给我出题",
+    "帮我出题",
 )
 
 LEARNING_START_PATTERNS = (
@@ -336,16 +330,42 @@ def _is_topic_rejection(text: str) -> bool:
 
 def _looks_like_learning_request(text: str) -> bool:
     normalized = _normalize(text)
-    if any(marker in normalized for marker in RESOURCE_ACTION_MARKERS):
+    if any(marker in normalized for marker in EXPLICIT_GENERATION_MARKERS):
+        return True
+    if re.search(
+        r"(?:生成|制作|整理|推荐).{0,20}(?:资源|资料|课件|ppt|导图|题库|练习|项目|学习包)",
+        normalized,
+        re.IGNORECASE,
+    ):
         return True
     return bool(_extract_topic_by_patterns(text, LEARNING_START_PATTERNS))
 
 
+def _requests_plain_answer(text: str) -> bool:
+    normalized = _normalize(text)
+    if re.search(r"(?:只|仅)(?:需要)?(?:直接)?回答", normalized):
+        return True
+    no_resources = bool(re.search(r"(?:不要|无需|不需要)(?:生成)?(?:任何)?(?:资源|资料)", normalized))
+    no_path = bool(re.search(r"(?:不要|无需|不需要)(?:生成)?(?:学习)?(?:路线|计划)", normalized))
+    return no_resources and no_path
+
+
 def _looks_like_concept_question(text: str) -> bool:
     normalized = _normalize(text)
-    if any(marker in normalized for marker in RESOURCE_ACTION_MARKERS):
+    if any(marker in normalized for marker in EXPLICIT_GENERATION_MARKERS):
         return False
-    return bool(_extract_topic_by_patterns(text, CONCEPT_QUESTION_PATTERNS, allow_known_fallback=False))
+    if _extract_topic_by_patterns(text, CONCEPT_QUESTION_PATTERNS, allow_known_fallback=False):
+        return True
+    return any(
+        re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        for pattern in (
+            r"(?:为什么|为何|怎么理解|如何理解)",
+            r"(?:时间|空间)?复杂度(?:是|为|等于|是多少|怎么(?:算|分析))",
+            r"(?:这段|下面|上述).{0,20}(?:代码|程序).{0,20}(?:执行|运行|循环|边界|复杂度)",
+            r"(?:区别|差别|不同|对比)(?:是什么|在哪|有哪些|呢|吗)?",
+            r"(?:对不对|正确吗|有没有错|哪里错了|会执行几次|执行多少次)",
+        )
+    )
 
 
 def route_turn(db: Session, username: str, session_id: str, text: str) -> TurnRoute:
@@ -358,6 +378,13 @@ def route_turn(db: Session, username: str, session_id: str, text: str) -> TurnRo
             route_type="clarification_needed",
             topic=last_topic,
             student_reply=replies.reply_clarification_needed(),
+        )
+
+    # 学生的显式指令优先级最高：硬性禁止意图、规划、画像和资源链路。
+    if _requests_plain_answer(raw_text):
+        return TurnRoute(
+            route_type="plain_qa",
+            topic=_extract_known_topic(raw_text) or last_topic,
         )
 
     if _is_topic_rejection(raw_text):
@@ -433,10 +460,11 @@ def route_turn(db: Session, username: str, session_id: str, text: str) -> TurnRo
     if _looks_like_concept_question(raw_text):
         return TurnRoute(
             route_type="concept_question",
-            should_run_intent_agent=True,
-            should_run_retrieval=True,
-            should_update_profile=True,
-            topic=_extract_topic_by_patterns(raw_text, CONCEPT_QUESTION_PATTERNS, allow_known_fallback=False),
+            topic=(
+                _extract_topic_by_patterns(raw_text, CONCEPT_QUESTION_PATTERNS, allow_known_fallback=False)
+                or _extract_known_topic(raw_text)
+                or last_topic
+            ),
         )
 
     if _looks_like_learning_request(raw_text):
@@ -458,13 +486,8 @@ def route_turn(db: Session, username: str, session_id: str, text: str) -> TurnRo
             topic=last_topic,
         )
 
+    # 无法确认要生成路线或资源时，默认按普通问答处理，避免误触发昂贵主链路。
     return TurnRoute(
-        route_type="learning_request",
-        should_run_full_agents=True,
-        should_run_intent_agent=True,
-        should_run_retrieval=True,
-        should_run_planner=True,
-        should_generate_resources=True,
-        should_update_profile=True,
-        topic=last_topic,
+        route_type="plain_qa",
+        topic=_extract_known_topic(raw_text) or last_topic,
     )

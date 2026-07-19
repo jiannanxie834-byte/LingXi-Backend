@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.schemas import User
+from app.services.security_service import hash_password, verify_password
 from app.services.data_services.knowledge_tag_service import summarize_knowledge_tags
 
 
@@ -50,11 +51,16 @@ def check_user_login(username: str, password: str):
                 "message": "用户不存在"
             }
 
-        if user.password != password:
+        password_ok, upgraded_hash = verify_password(password, user.password)
+        if not password_ok:
             return {
                 "success": False,
                 "message": "密码错误"
             }
+
+        if upgraded_hash:
+            user.password = upgraded_hash
+            db.commit()
 
         return {
             "success": True,
@@ -92,7 +98,7 @@ def create_user(username: str, password: str, nickname: str = ""):
         user = User(
             username=username,
             nickname=(nickname or username).strip(),
-            password=password,
+            password=hash_password(password),
             role="student",
             avatar="",
             bio="这个人十分神秘什么都没留下哟",
@@ -165,7 +171,7 @@ def update_user_profile(
             user.avatar = avatar
 
         if password is not None and password != "":
-            user.password = password
+            user.password = hash_password(password)
 
         db.commit()
         db.refresh(user)

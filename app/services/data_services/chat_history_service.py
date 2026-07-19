@@ -91,6 +91,7 @@ def _message_to_dict(message: ChatMessage):
             "content_type": content_type,
             "progress": _public_progress_from_metadata(metadata),
             "cards": metadata.get("cards") if isinstance(metadata.get("cards"), list) else [],
+            "resource_status": metadata.get("resource_status") if isinstance(metadata.get("resource_status"), dict) else {},
             "trace_id": metadata.get("trace_id") or message.id,
             "route_type": metadata.get("route_type") or "",
         })

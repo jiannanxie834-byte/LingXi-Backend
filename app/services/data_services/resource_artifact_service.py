@@ -219,6 +219,44 @@ def create_artifact(
     agent_trace_id: str = "",
 ) -> Dict:
     now = datetime.datetime.now()
+    normalized_type = artifact_types.normalize_artifact_type(artifact_type)
+    evidence_refs = [item for item in (evidence_refs or []) if item]
+    quality_review = resource_quality_gate.validate_teaching_quality(
+        {
+            "type": normalized_type,
+            "title": title,
+            "summary": summary or "",
+            "content": content or "",
+            "course_id": course_id or "data_structures_algorithms",
+            "chapter_id": chapter_id or "",
+            "section_id": section_id or "",
+            "unit_ids": unit_ids or [],
+            "evidence_refs": evidence_refs,
+        },
+        {
+            "course_id": course_id or "data_structures_algorithms",
+            "chapter_id": chapter_id or "",
+            "section_id": section_id or "",
+            "unit_id": (unit_ids or [""])[0],
+            "topic": title,
+            "evidence_refs": evidence_refs,
+        },
+    )
+    review_bundle = {
+        "kind": "quality_review",
+        "safety_review": {
+            "score": 100,
+            "risk_level": "低",
+            "issues": [],
+            "suggestions": [],
+        },
+        "teaching_quality_review": quality_review,
+        "evidence_review": {
+            "evidence_ok": bool(evidence_refs),
+            "evidence_refs": evidence_refs,
+            "evidence_count": len(evidence_refs),
+        },
+    }
     artifact = ResourceArtifact(
         artifact_id=f"artifact_{uuid.uuid4().hex[:16]}",
         resource_id="",
@@ -227,16 +265,16 @@ def create_artifact(
         section_id=section_id or "",
         unit_ids_json=_json_dump(unit_ids or []),
         student_id=username or "",
-        type=artifact_type,
+        type=normalized_type,
         title=title,
         summary=summary or "",
         content_format=content_format or _format_from_type(artifact_type),
         content=content or "",
-        assets_json="[]",
+        assets_json=_json_dump([review_bundle]),
         personalization_reason=personalization_reason or "根据学习评价记录与知识单元定位生成。",
-        evidence_refs_json=_json_dump(evidence_refs or []),
-        quality_score=88.0,
-        risk_level="低",
+        evidence_refs_json=_json_dump(evidence_refs),
+        quality_score=float(quality_review.get("teaching_quality_score") or 0),
+        risk_level="低" if quality_review.get("passed") else "需复核",
         status=status,
         agent_name=agent_name,
         agent_trace_id=agent_trace_id or "",

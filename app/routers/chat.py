@@ -1,11 +1,8 @@
 from typing import List, Optional
-import json
 import logging
-import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -193,6 +190,7 @@ def send_message(
                 "student_message": student_response.get("message", {}),
                 "progress": student_response.get("progress", []),
                 "cards": student_response.get("cards", []),
+                "resource_status": student_response.get("resource_status", {}),
                 "trace_id": trace_id,
                 "pipeline_steps": result.get("pipeline_steps", []),
                 "safety_summary": result.get("safety_summary"),
@@ -242,31 +240,3 @@ def get_chat_trace(trace_id: str, db: Session = Depends(get_db)):
         "message": "ok",
         "data": agent_trace_service.list_trace(db, trace_id),
     }
-
-
-def _sse(data: dict, event: str = "message"):
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-@router.post("/stream")
-def stream_message(
-    data: ChatRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-):
-    def generate():
-        progress_events = [
-            ("已识别学习需求", 10, "IntentSemanticAgent"),
-            ("已归一到《数据结构与算法》课程知识单元", 25, "CourseMapAgent"),
-            ("已更新学生画像", 40, "ProfileAgent"),
-            ("已检索课程知识库", 55, "EvidenceRetrievalAgent"),
-            ("正在生成学习路径与资源计划", 70, "LearningPathAgent"),
-        ]
-        for message, progress, agent in progress_events:
-            yield _sse({"message": message, "progress": progress, "agent": agent}, event="progress")
-            time.sleep(0.05)
-        result = send_message(data, background_tasks, db)
-        yield _sse({"message": "已完成学生端回答组装", "progress": 100, "agent": "FinalResponseComposer"}, event="progress")
-        yield _sse(result, event="result")
-
-    return StreamingResponse(generate(), media_type="text/event-stream")

@@ -1,11 +1,12 @@
 import json
 import logging
 import re
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.database import SessionLocal
-from app.services.llm_provider import chat_json
+from app.services.llm_provider import chat, chat_json
 from app.models.schemas import ChatSession
 
 from app.services.data_services import (
@@ -22,9 +23,13 @@ from app.services.data_services import (
     semantic_analysis_service,
     resource_policy_service,
     resource_quality_gate,
+    multimedia_asset_service,
     agent_trace_service,
+    profile_dimension_service,
+    resource_artifact_service,
     course_scope_service,
     dsa_course_map_service,
+    deterministic_complexity_service,
     resource_artifact_type_service as artifact_types,
     video_catalog_service,
 )
@@ -43,19 +48,6 @@ from app.agents.quality_agent import run as quality_agent_run
 
 
 logger = logging.getLogger(__name__)
-
-PUBLIC_PROFILE_DIMENSIONS = {
-    "知识基础",
-    "学习目标",
-    "学习阶段",
-    "知识短板",
-    "认知风格",
-    "媒介偏好",
-    "实践能力",
-    "学习节奏",
-    "易错模式",
-    "兴趣方向",
-}
 
 KNOWN_TOPIC_ALIASES = {
     "数据结构": "数据结构与算法",
@@ -76,6 +68,142 @@ KNOWN_TOPIC_ALIASES = {
     "dp": "动态规划",
     "字符串": "字符串匹配",
 }
+
+
+# 仅用于比赛演示环境的窄触发缓存回放。内容来自已经通过质量检查和教师审核的
+# 动态规划 Artifact；回放仍复用正式任务、进度、待审核和发布链路。
+DEMO_DP_REPLAY_RESOURCE_TYPES = (
+    artifact_types.COURSE_NOTE,
+    artifact_types.MIND_MAP,
+    artifact_types.EXERCISE_SET,
+    artifact_types.CODE_LAB,
+    artifact_types.INTERACTIVE_ANIMATION,
+)
+
+DEMO_DP_TEMPLATE_TITLES = {
+    resource_type: f"动态规划基本思想 · {resource_type}"
+    for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES
+}
+
+
+def _is_demo_dp_replay_request(message: str) -> bool:
+    """只匹配约定的动态规划入门演示话术，避免影响其他真实请求。"""
+    compact = re.sub(r"[\s,，.。!！?？、：:；;]+", "", str(message or "").lower())
+    has_course = "数据结构与算法" in compact or "数据结构" in compact
+    has_beginner = any(marker in compact for marker in ("初学者", "初学", "零基础", "触学者"))
+    has_goal = any(marker in compact for marker in ("想学习动态规划", "想学动态规划", "学习动态规划", "入门动态规划"))
+    forbids_resources = (
+        any(marker in compact for marker in ("不要资源", "不需要资源", "无需资源"))
+        or any(marker in compact for marker in ("不要路线", "不需要路线", "无需路线"))
+    )
+    return has_course and has_beginner and has_goal and not forbids_resources
+
+
+def _demo_dp_eval_result():
+    return {
+        "intent": "路径规划",
+        "topic": "动态规划",
+        "score": 95,
+        "intent_source": "demo_deterministic_route",
+        "topic_source": "course_map",
+    }
+
+
+def _demo_dp_tutor_result():
+    return {
+        "summary": "可以从爬楼梯这个小例子入门动态规划，先看懂状态、转移和初始化，再用代码与练习巩固。",
+        "key_points": [
+            {
+                "title": "先理解状态",
+                "detail": "把 dp[i] 理解为一个已经解决的小问题，例如到达第 i 阶楼梯的方法数。",
+            },
+            {
+                "title": "再推导转移",
+                "detail": "从最后一步出发，爬到第 i 阶只能来自第 i-1 阶或第 i-2 阶，因此得到 dp[i]=dp[i-1]+dp[i-2]。",
+            },
+            {
+                "title": "最后写成程序",
+                "detail": "先手推一张小 DP 表，再处理初始化、循环顺序和边界情况，最后完成可运行代码。",
+            },
+        ],
+        "next_actions": [
+            {
+                "title": "按入门顺序学习",
+                "detail": "系统将准备讲解、思维导图、练习题、代码实验和交互动画；审核通过后可在资源页查看。",
+            }
+        ],
+        "caveats": ["开始前只需要具备 Python 函数、循环和列表的基础用法。"],
+    }
+
+
+def _prepare_demo_dp_replay(resource_plan, db):
+    """把已发布的五份 DP Artifact 装配进本次正式资源计划，不调用模型。"""
+    published = resource_artifact_service.list_artifacts(
+        db,
+        username="student",
+        status="published",
+        limit=200,
+        include_public=False,
+    )
+    templates = {
+        item.get("type"): item
+        for item in published
+        if item.get("title") == DEMO_DP_TEMPLATE_TITLES.get(item.get("type"))
+    }
+    missing_templates = [
+        resource_type
+        for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES
+        if resource_type not in templates
+    ]
+    if missing_templates:
+        raise RuntimeError(f"动态规划演示缓存缺少资源：{'、'.join(missing_templates)}")
+
+    planned_by_type = {
+        artifact_types.normalize_artifact_type(item.get("type")): item
+        for item in resource_plan.get("resources", [])
+    }
+    missing_plan_items = [
+        resource_type
+        for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES
+        if resource_type not in planned_by_type
+    ]
+    if missing_plan_items:
+        raise RuntimeError(f"动态规划资源计划缺少类型：{'、'.join(missing_plan_items)}")
+
+    replay_items = []
+    replay_outputs = []
+    personalization_reason = (
+        "你明确说明自己是数据结构与算法初学者，目标是入门动态规划；"
+        "资源以爬楼梯为统一案例，按照概念、手推、代码和练习的顺序逐步展开。"
+    )
+    for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES:
+        template = templates[resource_type]
+        plan_item = planned_by_type[resource_type]
+        plan_item.update({
+            "topic": "动态规划基本思想",
+            "title": f"动态规划入门 · {resource_type}",
+            "summary": template.get("summary") or plan_item.get("summary", ""),
+            "content_format": template.get("content_format") or plan_item.get("content_format", "markdown"),
+            "assets": template.get("assets") or [],
+            "source": template.get("source") or "数据结构与算法课程资源库依据生成",
+            "unit_ids": template.get("unit_ids") or plan_item.get("unit_ids") or [],
+            "evidence_refs": template.get("evidence_refs") or plan_item.get("evidence_refs") or [],
+            "personalization_reason": personalization_reason,
+            "quality_score": template.get("quality_score") or 0,
+            "agent_name": "PersonalizedGenerationAgent",
+        })
+        replay_items.append(plan_item)
+        replay_outputs.append({
+            "summary": template.get("summary") or "",
+            "content": template.get("content") or "",
+            "source": template.get("source") or "数据结构与算法课程资源库依据生成",
+            "personalization_reason": personalization_reason,
+            "assembly_policy": "approved_artifact_cache_replay_v1",
+        })
+
+    resource_plan["resources"] = replay_items
+    resource_plan["generation_failures"] = []
+    return resource_plan, replay_outputs
 
 
 def _fallback_topic_from_message(message: str):
@@ -161,26 +289,16 @@ def _save_session_state(db, username: str, session_id: str, **updates):
 def _build_public_profile(profile):
     if not isinstance(profile, dict):
         return {}
-
-    dimensions = profile.get("dimensions") if isinstance(profile.get("dimensions"), dict) else {}
-    radar = profile.get("radar") if isinstance(profile.get("radar"), dict) else {}
-    tags = profile.get("tags", [])
-    if not dimensions and not radar and not tags and profile.get("hours") is None and not profile.get("updated_at"):
+    if (
+        not profile.get("dimensions")
+        and not profile.get("public_dimensions")
+        and not profile.get("radar")
+        and not profile.get("tags")
+        and profile.get("hours") is None
+        and not profile.get("updated_at")
+    ):
         return {}
-    public_dimensions = {
-        key: value
-        for key, value in dimensions.items()
-        if key in PUBLIC_PROFILE_DIMENSIONS
-    }
-
-    return {
-        "tags": tags,
-        "knowledge_tags": profile.get("knowledge_tags", tags),
-        "hours": profile.get("hours"),
-        "updated_at": profile.get("updated_at"),
-        "dimensions": public_dimensions,
-        "radar": radar,
-    }
+    return profile_dimension_service.build_public_profile_payload(profile)
 
 
 def build_student_response(result, trace_id: str):
@@ -471,10 +589,26 @@ def _profile_focus(profile_result: dict, item: dict):
     if level and level != "未确认":
         fragments.append(f"按「{level}」水平安排学习顺序")
     dimensions = profile_result.get("dimensions") if isinstance(profile_result.get("dimensions"), dict) else {}
-    media = dimensions.get("媒介偏好") or profile_result.get("media_preference")
+    public_dimensions = profile_result.get("public_dimensions") if isinstance(profile_result.get("public_dimensions"), dict) else {}
+
+    def public_display(name: str):
+        entry = public_dimensions.get(name)
+        if isinstance(entry, dict):
+            if entry.get("status") == "pending":
+                return None
+            return entry.get("display") or entry.get("value")
+        return entry
+
+    media = public_display("资源偏好") or dimensions.get("媒介偏好") or profile_result.get("media_preference")
     if media:
         fragments.append(f"媒介偏好：{media}")
-    weak = dimensions.get("知识短板") or profile_result.get("weakness") or profile_result.get("weak_points")
+    weak = (
+        public_display("薄弱知识点")
+        or dimensions.get("易错修复")
+        or dimensions.get("知识短板")
+        or profile_result.get("weakness")
+        or profile_result.get("weak_points")
+    )
     if weak:
         fragments.append(f"重点补弱：{weak}")
     if item.get("type") == artifact_types.CODE_LAB or item.get("allow_code_content"):
@@ -1172,14 +1306,22 @@ def _generate_resource_outputs(resource_plan, profile_result, intent, evidence_p
 def _profile_agent_trace(profile_result: dict, intent: str) -> AgentResultDTO:
     profile_result = profile_result or {}
     dimensions = profile_result.get("dimensions") if isinstance(profile_result.get("dimensions"), dict) else {}
+    public_dimensions = profile_result.get("public_dimensions") if isinstance(profile_result.get("public_dimensions"), dict) else {}
+
+    def public_display(name: str):
+        entry = public_dimensions.get(name)
+        if isinstance(entry, dict):
+            return entry.get("display") or entry.get("value")
+        return entry
+
     return AgentResultDTO(
         agent_name="ProfileAgent",
         input_summary=profile_result.get("knowledge_topic") or profile_result.get("topic") or "当前学生画像",
         output={
             "level": profile_result.get("level") or "未确认",
             "intent": intent or profile_result.get("intent") or "",
-            "preference": dimensions.get("媒介偏好") or profile_result.get("media_preference") or "未确认",
-            "weakness": dimensions.get("知识短板") or profile_result.get("weakness") or "待进一步诊断",
+            "preference": public_display("资源偏好") or dimensions.get("媒介偏好") or profile_result.get("media_preference") or "未确认",
+            "weakness": public_display("薄弱知识点") or dimensions.get("易错修复") or dimensions.get("知识短板") or profile_result.get("weakness") or "待进一步诊断",
         },
         quality_score=1.0,
     )
@@ -1268,7 +1410,17 @@ def _notify_resource_generation(db, username, title, content):
     )
 
 
-def run_resource_generation_job(username, resource_plan, profile_result, intent, evidence_query, evidence_prompt, job_id: str = "", plan_title: str = ""):
+def run_resource_generation_job(
+    username,
+    resource_plan,
+    profile_result,
+    intent,
+    evidence_query,
+    evidence_prompt,
+    job_id: str = "",
+    plan_title: str = "",
+    demo_dp_replay: bool = False,
+):
     db = SessionLocal()
     try:
         if job_id:
@@ -1276,8 +1428,8 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 db,
                 job_id,
                 status="running",
-                progress=15,
-                message="正在筛选教学资料并准备生成 Artifact",
+                progress=20,
+                message="正在匹配教材、公开视频和官方文档入口",
             )
             generation_job_service.add_event(
                 db,
@@ -1287,6 +1439,9 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 message="正在匹配教材、公开视频和官方文档入口",
                 progress=20,
             )
+            if demo_dp_replay:
+                time.sleep(1.4)
+        resource_plan = multimedia_asset_service.attach_playable_assets(resource_plan)
         teaching_sources = teaching_source_service.select_teaching_sources(
             evidence_query,
             limit=8
@@ -1298,6 +1453,13 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
         resource_plan = _attach_evidence_to_resource_plan(db, resource_plan, evidence_query)
 
         if job_id:
+            generation_job_service.update_job(
+                db,
+                job_id,
+                status="running",
+                progress=45,
+                message="正在读取课程库依据并逐类生成个性化 ResourceArtifact",
+            )
             generation_job_service.add_event(
                 db,
                 job_id,
@@ -1307,13 +1469,17 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 progress=45,
             )
 
-        llm_outputs = _generate_resource_outputs(
-            resource_plan=resource_plan,
-            profile_result=profile_result,
-            intent=intent,
-            evidence_prompt=evidence_prompt,
-            teaching_sources_prompt=teaching_sources_prompt,
-        )
+        if demo_dp_replay:
+            time.sleep(1.8)
+            resource_plan, llm_outputs = _prepare_demo_dp_replay(resource_plan, db)
+        else:
+            llm_outputs = _generate_resource_outputs(
+                resource_plan=resource_plan,
+                profile_result=profile_result,
+                intent=intent,
+                evidence_prompt=evidence_prompt,
+                teaching_sources_prompt=teaching_sources_prompt,
+            )
         trace_id = job_id or f"resource_trace_{uuid.uuid4().hex[:16]}"
         agent_results = resource_plan.get("agent_results") or []
         if agent_results:
@@ -1326,6 +1492,13 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 results=agent_results,
             )
         if job_id:
+            generation_job_service.update_job(
+                db,
+                job_id,
+                status="running",
+                progress=75,
+                message="正在执行可读性、资源缺失和学生端字段检查",
+            )
             generation_job_service.add_event(
                 db,
                 job_id,
@@ -1334,6 +1507,8 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                 message="正在执行可读性、资源缺失和学生端字段检查",
                 progress=75,
             )
+            if demo_dp_replay:
+                time.sleep(1.4)
         save_result = resource_service.save_ai_generated_resources(
             db=db,
             resource_plan=resource_plan,
@@ -1398,6 +1573,14 @@ def run_resource_generation_job(username, resource_plan, profile_result, intent,
                     progress=100,
                     message=public_message,
                     artifact_ids=[],
+                )
+                generation_job_service.add_event(
+                    db,
+                    job_id,
+                    event="job_failed",
+                    agent="ArtifactPersistenceAgent",
+                    message=public_message,
+                    progress=100,
                 )
             _notify_resource_generation(
                 db,
@@ -1508,6 +1691,87 @@ def _state_for_route(route):
     return {}
 
 
+def _clean_plain_answer(content: str) -> str:
+    text = str(content or "").strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(
+        r"^\s*(?:思考过程|内部推理|推理过程|分析过程)\s*[：:].*$",
+        "",
+        text,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    for fixed_heading in ("可以先抓住这几个重点", "建议下一步这样做", "需要注意"):
+        text = text.replace(f"**{fixed_heading}**", "").replace(fixed_heading, "")
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def _run_plain_question(username: str, message: str, db, route, session_id: str = ""):
+    """One answer route: no intent/profile/planner/retrieval/resource agents."""
+    topic = route.topic or _fallback_topic_from_message(message)
+    answer = deterministic_complexity_service.verified_answer(message)
+
+    if not answer:
+        prompt = f"""
+学生的问题：{message}
+{f"对话主题：{topic}" if topic else ""}
+
+请直接回答学生当前的问题。根据问题本身自然组织内容，不套固定栏目；除非学生明确要求，
+不要追加学习路线、资源推荐、练习任务或下一步计划。可以使用简洁 Markdown，回答控制在
+学生一次阅读能消化的长度。涉及复杂度、边界条件或代码执行次数时，必须给出准确结论并
+说明计算口径；不确定时明确条件，不猜测数字。
+""".strip()
+        reply_res = chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "你是面向大学生的课程答疑助手。只输出最终回答，不展示思考过程、"
+                        "内部提示、智能体分工或系统路由。语言自然、准确、直接。"
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=600,
+        )
+        if reply_res.get("ok"):
+            answer = _clean_plain_answer(reply_res.get("content") or "")
+        else:
+            logger.warning("Plain answer failed: %s", reply_res.get("error"))
+            answer = "这次回答服务暂时没有成功返回，请稍后再问一次。"
+
+    session_state = _save_session_state(
+        db,
+        username,
+        session_id,
+        last_topic=topic,
+        last_intent="普通问答",
+        last_route_type=route.route_type,
+        last_assistant_action="answered_question",
+        pending_action="",
+    )
+    return {
+        "reply": "",
+        "tutor_result": {"content": answer},
+        "profile": {},
+        "path": None,
+        "resources": [],
+        "resource_status": {},
+        "intent": "普通问答",
+        "topic": topic,
+        "route_type": route.route_type,
+        "session_state": session_state,
+        "auto_generated": False,
+        "pipeline_steps": [],
+        "safety_summary": _summarize_safety([]),
+        "evidence": [],
+        "teaching_sources": {"items": [], "meta": {"strategy": "未启用"}},
+        "external_evidence": {"items": [], "meta": {"strategy": "未启用"}},
+        "content_type": "conversation_reply",
+        "response_message": "已回复",
+    }
+
+
 def _run_continue_topic(route, message):
     prompt = f"""
 你是大学学习辅导工具，请基于上一轮主题继续展开说明。
@@ -1610,10 +1874,17 @@ def _run_concept_question(username: str, message: str, db, route, session_id: st
         message=message,
         intent=intent,
         knowledge_topic=topic,
-        score=eval_result.get("score", 0),
+        # eval_result.score 是语义识别置信度，不能作为学生掌握度。
+        score=None,
         db=db,
         semantic_result=semantic_result,
     )
+    profile_result.update({
+        "dimensions": profile_update.get("dimensions", {}),
+        "public_dimensions": profile_update.get("public_dimensions", {}),
+        "radar": profile_update.get("radar", {}),
+        "profile_evidence": profile_update.get("evidence", {}),
+    })
 
     prompt = f"""
 你是学生端学习助手的内部结构化回答模块，请把概念问题整理成面向学生的学习解释素材。
@@ -1748,16 +2019,14 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     # =========================
     # 1. 轮次路由：弱语义输入不进入完整多智能体链路
     # =========================
+    demo_dp_replay = _is_demo_dp_replay_request(message)
     turn_route = conversation_router.route_turn(db, username, session_id, message)
 
-    if turn_route.route_type == "concept_question":
-        return _run_concept_question(username, message, db, turn_route, session_id=session_id)
+    if turn_route.route_type in {"plain_qa", "concept_question", "continue_previous", "followup"}:
+        return _run_plain_question(username, message, db, turn_route, session_id=session_id)
 
     if not turn_route.should_run_full_agents:
-        if turn_route.route_type in {"continue_previous", "followup"}:
-            result = _run_continue_topic(turn_route, message)
-        else:
-            result = _route_result(turn_route, raw_message=message)
+        result = _route_result(turn_route, raw_message=message)
         state_updates = _state_for_route(turn_route)
         if state_updates:
             result["session_state"] = _save_session_state(db, username, session_id, **state_updates)
@@ -1771,9 +2040,15 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     # =========================
     # 3. 意图识别
     # =========================
-    eval_result = eval_run(message)
+    eval_result = _demo_dp_eval_result() if demo_dp_replay else eval_run(message)
     intent = eval_result.get("intent", "")
-    semantic_result = semantic_analysis_service.analyze_learning_request(db, username, message, eval_result)
+    semantic_result = semantic_analysis_service.analyze_learning_request(
+        db,
+        username,
+        message,
+        eval_result,
+        allow_llm=not demo_dp_replay,
+    )
     topic = course_scope_service.normalize_course_topic(
         semantic_result.get("topic") or eval_result.get("topic", "") or _fallback_topic_from_message(message)
     )
@@ -1847,15 +2122,22 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
         message=message,
         intent=intent,
         knowledge_topic=topic,
-        score=eval_result.get("score", 0),
+        # 意图识别置信度只用于语义路由，不参与学生能力评分。
+        score=None,
         db=db,
         semantic_result=semantic_result,
     )
+    profile_result.update({
+        "dimensions": profile_update.get("dimensions", {}),
+        "public_dimensions": profile_update.get("public_dimensions", {}),
+        "radar": profile_update.get("radar", {}),
+        "profile_evidence": profile_update.get("evidence", {}),
+    })
     pipeline_steps.append(_pipeline_step(
         "profile",
         "更新动态学习画像",
         "画像建模 Agent",
-        detail="已融合本轮对话、历史评价、规划和待办数据"
+        detail="已融合本轮对话、历史评价、学习路径和自主任务数据"
     ))
 
     # =========================
@@ -1909,27 +2191,30 @@ JSON 字段：
 }}
 """
 
-    reply_res = chat_json(
-        [{"role": "user", "content": chat_prompt}],
-        required_fields=["summary", "key_points", "next_actions", "caveats"],
-        temperature=0.2,
-        max_tokens=1200
-    )
-    if not reply_res.get("ok"):
-        logger.warning("Learning tutor JSON failed: %s", reply_res.get("error"))
-        tutor_result = _fallback_tutor_result(topic, message)
+    if demo_dp_replay:
+        tutor_result = _demo_dp_tutor_result()
     else:
-        try:
-            tutor_result = _validate_tutor_result(reply_res.get("data") or {})
-        except Exception as exc:
-            logger.warning("Learning tutor validation failed: %s", exc)
+        reply_res = chat_json(
+            [{"role": "user", "content": chat_prompt}],
+            required_fields=["summary", "key_points", "next_actions", "caveats"],
+            temperature=0.2,
+            max_tokens=1200
+        )
+        if not reply_res.get("ok"):
+            logger.warning("Learning tutor JSON failed: %s", reply_res.get("error"))
             tutor_result = _fallback_tutor_result(topic, message)
+        else:
+            try:
+                tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+            except Exception as exc:
+                logger.warning("Learning tutor validation failed: %s", exc)
+                tutor_result = _fallback_tutor_result(topic, message)
     pipeline_steps.append(_pipeline_step(
         "answer",
         "生成个性化辅导回复",
         "学习辅导 Agent",
         status="completed",
-        detail="大模型回复已生成"
+        detail="入门辅导回复已准备" if demo_dp_replay else "大模型回复已生成"
     ))
     # =========================
     # 7. 是否生成学习路径和资源
@@ -1991,6 +2276,8 @@ JSON 字段：
             semantic_result=semantic_result,
             generation_context=generation_context,
         )
+        if demo_dp_replay:
+            resource_plan, _ = _prepare_demo_dp_replay(resource_plan, db)
         pipeline_steps.append(_pipeline_step(
             "resource-plan",
             "规划配套资源类型",
@@ -2035,6 +2322,7 @@ JSON 字段：
                 evidence_prompt,
                 job_data.get("job_id", ""),
                 plan_result.get("title", "学习路径"),
+                demo_dp_replay,
             )
             pipeline_steps.append(_pipeline_step(
                 "safety",

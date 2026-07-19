@@ -10,6 +10,7 @@ from app.models.schemas import (
     EvaluationRecord,
     LearningPlan,
     Resource,
+    ResourceArtifact,
     ResourceType,
     User,
 )
@@ -153,7 +154,10 @@ def _load_recommendation_context(db: Session, username: str):
     if username:
         recent_records = (
             db.query(EvaluationRecord)
-            .filter(EvaluationRecord.username == username)
+            .filter(
+                EvaluationRecord.username == username,
+                ~EvaluationRecord.diagnosis_type.like("legacy_invalid%"),
+            )
             .order_by(EvaluationRecord.created_at.desc())
             .limit(6)
             .all()
@@ -783,6 +787,13 @@ def save_ai_generated_resources(
     for index, plan_item in enumerate(resource_plan.get("resources", [])):
         llm_item = llm_outputs[index] if index < len(llm_outputs) else {}
         title = plan_item.get("title") or plan_item.get("topic") or "未命名资源"
+        if not llm_item or llm_item.get("missing"):
+            skipped.append({
+                "title": title,
+                "type": artifact_types.normalize_artifact_type(plan_item.get("type", artifact_types.COURSE_NOTE)),
+                "issues": [llm_item.get("error") or "讯飞星火未返回可用内容，本类资源已停止落库。"],
+            })
+            continue
         unit_id = plan_item.get("unit_id") or semantic_result.get("unit_id", "")
         unit_ids = (
             plan_item.get("unit_ids")
@@ -799,6 +810,8 @@ def save_ai_generated_resources(
             "agent_name": plan_item.get("agent_name", ""),
             "agent_trace_id": plan_item.get("agent_trace_id", ""),
             "personalization_reason": llm_item.get("personalization_reason") or plan_item.get("personalization_reason", ""),
+            "assembly_policy": llm_item.get("assembly_policy") or "",
+            "assets": plan_item.get("assets") or [],
             "subject_category": plan_item.get("subject_category") or semantic_result.get("subject_category", "unknown"),
             "level": plan_item.get("level") or semantic_result.get("level", "未确认"),
             "level_source": plan_item.get("level_source") or semantic_result.get("level_source", "none"),
@@ -871,7 +884,11 @@ def save_ai_generated_resources(
             item.get("agent_notes", ""),
             teaching_quality,
         )
-        if teaching_quality.get("fatal") or teaching_quality.get("teaching_quality_score", 0) < 60:
+        if (
+            not teaching_quality.get("passed")
+            or teaching_quality.get("teaching_quality_score", 0)
+            < resource_quality_gate.TEACHING_PUBLISH_SCORE
+        ):
             skipped.append({
                 "title": item.get("title"),
                 "type": item.get("type"),
@@ -918,11 +935,30 @@ def insert_generated_resources(
                 or item.get("course_id") == "data_structures_algorithms"
                 and bool(item.get("personalization_reason"))
             )
-            existing = None if is_personalized_artifact else (
-                db.query(Resource)
-                .filter(Resource.title == title, Resource.type == r_type)
-                .first()
-            )
+            existing = None
+            if is_personalized_artifact:
+                matching_artifacts = (
+                    db.query(ResourceArtifact)
+                    .filter(
+                        ResourceArtifact.student_id == (applicant_username or ""),
+                        ResourceArtifact.type == r_type,
+                        ResourceArtifact.title == title,
+                        ResourceArtifact.status != "archived",
+                    )
+                    .order_by(ResourceArtifact.updated_at.desc())
+                    .all()
+                )
+                primary_artifact = matching_artifacts[0] if matching_artifacts else None
+                if primary_artifact and primary_artifact.resource_id:
+                    existing = db.query(Resource).filter(Resource.id == primary_artifact.resource_id).first()
+                for duplicate_artifact in matching_artifacts[1:]:
+                    duplicate_artifact.status = "archived"
+            else:
+                existing = (
+                    db.query(Resource)
+                    .filter(Resource.title == title, Resource.type == r_type)
+                    .first()
+                )
 
             if existing:
                 existing.summary = item.get("summary", existing.summary or "")

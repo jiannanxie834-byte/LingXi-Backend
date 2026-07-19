@@ -129,7 +129,7 @@ def list_events(db: Session, job_id: str) -> List[Dict]:
     rows = (
         db.query(GenerationJobEvent)
         .filter(GenerationJobEvent.job_id == job_id)
-        .order_by(GenerationJobEvent.created_at.asc())
+        .order_by(GenerationJobEvent.created_at.asc(), GenerationJobEvent.progress.asc())
         .all()
     )
     return [event_to_dict(row) for row in rows]

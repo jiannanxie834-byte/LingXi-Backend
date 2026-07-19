@@ -52,7 +52,7 @@ def _clean_text(value):
     text = str(value or "").strip()
     for marker in INTERNAL_TEXT_MARKERS:
         text = text.replace(marker, "")
-    return text.strip(" ，,。；;：:")
+    return text.strip()
 
 
 def _strip_internal_fields(value):
@@ -69,11 +69,11 @@ def _strip_internal_fields(value):
     return value
 
 
-def _format_structured_items(title, items):
+def _format_structured_items(items):
     if not isinstance(items, list) or not items:
         return []
 
-    lines = [f"**{title}**"]
+    lines = []
     for item in items:
         if isinstance(item, dict):
             item_title = _clean_text(item.get("title") or "")
@@ -89,7 +89,7 @@ def _format_structured_items(title, items):
             if text:
                 lines.append(f"- {text}")
 
-    return lines if len(lines) > 1 else []
+    return lines
 
 
 def _compose_content_from_tutor(tutor_result):
@@ -102,11 +102,11 @@ def _compose_content_from_tutor(tutor_result):
     if summary:
         sections.append(summary)
 
-    key_points = _format_structured_items("可以先抓住这几个重点", tutor_result.get("key_points"))
+    key_points = _format_structured_items(tutor_result.get("key_points"))
     if key_points:
         sections.append("\n".join(key_points))
 
-    next_actions = _format_structured_items("建议下一步这样做", tutor_result.get("next_actions"))
+    next_actions = _format_structured_items(tutor_result.get("next_actions"))
     if next_actions:
         sections.append("\n".join(next_actions))
 
@@ -116,7 +116,7 @@ def _compose_content_from_tutor(tutor_result):
         if _clean_text(item)
     ] if isinstance(tutor_result.get("caveats"), list) else []
     if caveats:
-        sections.append("\n".join(["**需要注意**", *[f"- {item}" for item in caveats]]))
+        sections.append("\n".join(f"> {item}" for item in caveats))
 
     return "\n\n".join(section for section in sections if section).strip()
 

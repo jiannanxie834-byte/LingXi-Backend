@@ -149,14 +149,19 @@ def infer_topic_level_from_evidence(db, username: str, topic: str, subject_categ
     try:
         records = (
             db.query(EvaluationRecord)
-            .filter(EvaluationRecord.username == username)
+            .filter(
+                EvaluationRecord.username == username,
+                ~EvaluationRecord.diagnosis_type.like("legacy_invalid%"),
+            )
             .order_by(EvaluationRecord.created_at.desc())
             .limit(20)
             .all()
         )
         matched_scores = [
-            record.score or 0
+            record.score
             for record in records
+            if record.score is not None
+            and str(record.diagnosis_type or "") in diagnosis_engine_service.VERIFIED_EVALUATION_TYPES
             if _topic_matches_text(topic, subject_category, " ".join([
                 record.topic or "",
                 record.level or "",
@@ -249,7 +254,10 @@ def _load_profile_evidence(db, username: str) -> Dict:
     try:
         records = (
             db.query(EvaluationRecord)
-            .filter(EvaluationRecord.username == username)
+            .filter(
+                EvaluationRecord.username == username,
+                ~EvaluationRecord.diagnosis_type.like("legacy_invalid%"),
+            )
             .order_by(EvaluationRecord.created_at.desc())
             .limit(10)
             .all()
@@ -263,7 +271,11 @@ def _load_profile_evidence(db, username: str) -> Dict:
             record_text = " ".join([record.topic or "", record.weak_points or "", record.suggestions or "", record.wrong_notes or ""])
             if _contains_legacy_terms(record_text):
                 continue
-            scores.append(record.score or 0)
+            if (
+                record.score is not None
+                and str(record.diagnosis_type or "") in diagnosis_engine_service.VERIFIED_EVALUATION_TYPES
+            ):
+                scores.append(record.score)
             if record.topic:
                 topics.append(record.topic)
             weak_points.extend(_safe_json_load(record.weak_points, []))

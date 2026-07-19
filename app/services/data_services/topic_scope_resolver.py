@@ -109,13 +109,32 @@ COMPARISON_MARKERS = [
 PROJECT_MARKERS = [
     "项目",
     "实战",
-    "实验",
-    "实践",
     "做一个",
     "完成一个",
     "训练一个",
     "实现一个",
-    "代码实验",
+]
+
+TARGET_CUE_MARKERS = [
+    "不理解",
+    "没理解",
+    "不懂",
+    "不会",
+    "看不懂",
+    "想学习",
+    "想学",
+    "请讲",
+    "讲解",
+    "重点学习",
+]
+
+BACKGROUND_CUE_MARKERS = [
+    "学过",
+    "已经学过",
+    "掌握了",
+    "已经掌握",
+    "会用",
+    "熟悉",
 ]
 
 DIAGNOSTIC_MARKERS = [
@@ -193,6 +212,16 @@ def _score_alias(alias: str) -> int:
     return max(4, len(compact_alias))
 
 
+def _learning_target_bonus(compact_message: str, alias_position: int) -> int:
+    """Prefer the topic the student wants help with over stated prerequisites."""
+    if alias_position < 0:
+        return 0
+    prefix = compact_message[max(0, alias_position - 18):alias_position]
+    target_bonus = 22 if any(_compact(marker) in prefix for marker in TARGET_CUE_MARKERS) else 0
+    background_penalty = 16 if any(_compact(marker) in prefix for marker in BACKGROUND_CUE_MARKERS) else 0
+    return target_bonus - background_penalty
+
+
 def _find_unit_matches(message: str) -> List[Dict]:
     compact_message = _compact(message)
     if not compact_message:
@@ -210,13 +239,14 @@ def _find_unit_matches(message: str) -> List[Dict]:
             if not compact_alias or compact_alias not in compact_message:
                 continue
             current = matches_by_unit.get(unit["unit_id"])
-            score = _score_alias(alias) + boost
+            position = compact_message.find(compact_alias)
+            score = _score_alias(alias) + boost + _learning_target_bonus(compact_message, position)
             if current is None or score > current["score"]:
                 matches_by_unit[unit["unit_id"]] = {
                     "unit": unit,
                     "label": _topic_label(alias),
                     "score": score,
-                    "position": compact_message.find(compact_alias),
+                    "position": position,
                 }
 
     matches = list(matches_by_unit.values())

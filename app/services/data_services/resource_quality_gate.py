@@ -1,4 +1,6 @@
+import ast
 import re
+from collections import Counter
 from typing import Dict, List
 
 from app.services.data_services import (
@@ -15,6 +17,7 @@ READING_REQUIRED_TERMS = ["阅读", "教材", "公开", "顺序", "目标"]
 PROJECT_REQUIRED_TERMS = ["项目", "目标", "任务", "验收", "提交", "Rubric"]
 VIDEO_REQUIRED_TERMS = ["原始链接", "公开视频", "推荐片段", "版权"]
 ANIMATION_REQUIRED_TERMS = ["animation", "动画", "步骤", "高亮", "规格"]
+TEACHING_PUBLISH_SCORE = 70
 UNSUPPORTED_LEVEL_TERMS = ["进阶学习者", "高阶学习者", "已掌握", "已经具备"]
 TEACHING_REVIEW_START = "[[LINGXI_TEACHING_QUALITY_REVIEW]]"
 TEACHING_REVIEW_END = "[[/LINGXI_TEACHING_QUALITY_REVIEW]]"
@@ -24,6 +27,27 @@ FAKE_SOURCE_PATTERNS = [
     r"某教材",
     r"待补充链接",
     r"虚构",
+]
+STRONG_PLACEHOLDER_PATTERNS = [
+    r"该类资源暂未完善",
+    r"参考答案需要根据.*补全",
+    r"当前匹配小节暂未配置",
+    r"本阶段只输出.*占位",
+    r"\bplaceholder\b",
+    r"\bTODO\b",
+    r"待实现",
+    r"待补充",
+    r"补全(?:此处|核心逻辑)",
+]
+GENERIC_FALLBACK_PATTERNS = [
+    r"很多错误来自还没确认问题边界",
+    r"能用自然语言讲清楚，通常比直接背模板更稳",
+    r"套模板但不解释条件",
+    r"问题如何被表示、状态如何变化、结果如何验证",
+    r"这份讲解不是直接复制课程小节",
+    r"处理的是序列、集合、树、图，还是一个可以拆分成子问题的过程",
+    r"先写下你对.*的当前理解，以及最不确定的一个问题",
+    r"用 5 句话复述核心流程，并完成 2 道基础题",
 ]
 
 
@@ -58,7 +82,7 @@ def _exercise_question_count(text: str) -> int:
 
 
 def _exercise_type_count(text: str) -> int:
-    types = ["选择题", "判断题", "简答题", "计算题", "推导题", "代码理解题", "实验分析题"]
+    types = ["选择题", "判断题", "简答题", "计算题", "推导题", "过程题", "代码题", "代码理解题", "实验分析题"]
     return sum(1 for item in types if item in (text or ""))
 
 
@@ -108,6 +132,30 @@ def _term_covered(term: str, text: str) -> bool:
 
 def _has_fake_source(text: str) -> bool:
     return any(re.search(pattern, text, re.I) for pattern in FAKE_SOURCE_PATTERNS)
+
+
+def _pattern_hits(text: str, patterns: List[str]) -> List[str]:
+    return [pattern for pattern in patterns if re.search(pattern, text or "", re.I)]
+
+
+def _python_code_blocks(text: str) -> List[str]:
+    return [block.strip() for block in re.findall(r"```python\s*(.*?)```", text or "", re.S | re.I) if block.strip()]
+
+
+def _python_code_is_valid(text: str) -> bool:
+    blocks = _python_code_blocks(text)
+    if not blocks:
+        return False
+    try:
+        for block in blocks:
+            ast.parse(block)
+        return True
+    except SyntaxError:
+        return False
+
+
+def _real_urls(text: str) -> List[str]:
+    return [url.rstrip(".,)）]》") for url in re.findall(r"https?://[^\s<>。，]+", text or "", re.I)]
 
 
 def validate_resource_semantics(resource: Dict, semantic_result: Dict) -> Dict:
@@ -335,6 +383,31 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     issues = []
     repair_suggestions = []
     fatal = False
+    duplicate_nodes = 0
+    code_placeholders = []
+    excessive_repetition = False
+
+    if not str(content or "").strip():
+        fatal = True
+        issues.append("资源正文为空")
+        repair_suggestions.append("必须生成真实可用的学习内容后才能发布")
+
+    if item.get("assembly_policy") == "personalized_generation_fallback":
+        fatal = True
+        issues.append("检测到降级模板产物，禁止作为真实资源发布")
+        repair_suggestions.append("重新调用讯飞星火生成；失败时保留失败状态，不使用本地模板替代")
+
+    placeholder_hits = _pattern_hits(content, STRONG_PLACEHOLDER_PATTERNS)
+    if placeholder_hits:
+        fatal = True
+        issues.append("内容包含占位符或未完成说明")
+        repair_suggestions.append("删除占位内容，提供可直接学习、作答或运行的完整产物")
+
+    fallback_hits = _pattern_hits(content, GENERIC_FALLBACK_PATTERNS)
+    if fallback_hits:
+        fatal = True
+        issues.append("内容命中通用降级模板，与具体知识点绑定不足")
+        repair_suggestions.append("使用当前知识点的定义、输入输出、算法步骤和边界案例重写")
 
     if resource_type == artifact_types.COURSE_NOTE:
         min_chars = 700 if is_dsa else (4500 if is_core_chapter else 3000)
@@ -378,6 +451,12 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
             fatal = True
             issues.append("思维导图层级过浅，不足以表达章节知识结构")
             repair_suggestions.append("至少展开中心主题、一级知识点、二级细节、前置关系和易混点")
+        normalized_nodes = [re.sub(r"\s+", "", line) for line in non_empty_lines[1:]]
+        duplicate_nodes = len(normalized_nodes) - len(set(normalized_nodes))
+        if duplicate_nodes >= 2:
+            fatal = True
+            issues.append(f"思维导图存在 {duplicate_nodes} 个重复节点")
+            repair_suggestions.append("合并同义节点，每个分支只保留一个清晰知识层级")
 
     if resource_type == artifact_types.EXERCISE_SET:
         question_count = _exercise_question_count(content)
@@ -395,6 +474,37 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
             fatal = True
             issues.append("练习题集题型覆盖不足")
             repair_suggestions.append("补充选择、判断、简答、计算/推导、代码理解、实验分析等题型")
+        answer_count = len(re.findall(r"(^|\n)\s*(?:[-*]\s*)?(?:\*\*)?(?:答案|参考答案)(?:\*\*)?\s*[:：]", content, re.M))
+        explanation_count = len(re.findall(r"(^|\n)\s*(?:[-*]\s*)?(?:\*\*)?(?:解析|答案解析)(?:\*\*)?\s*[:：]", content, re.M))
+        if answer_count < question_count or explanation_count < question_count:
+            fatal = True
+            issues.append("练习题集并非每题都有独立答案和解析")
+            repair_suggestions.append("为每道题逐题补齐参考答案、解析、知识点和常见错误")
+        question_sections = re.split(r"(?=^###\s*题目\s*\d+)", content, flags=re.M)
+        choice_sections = [
+            section for section in question_sections
+            if section.strip() and "选择题" in section.splitlines()[0]
+        ]
+        for section in choice_sections:
+            options = re.findall(r"(^|\n)\s*[A-D][.\u3001]、?\s*\S+", section)
+            answer_is_letter = re.search(r"(?:\*\*)?答案(?:\*\*)?\s*[:：]\s*[A-D](?:\s|$)", section)
+            if len(options) < 4 or not answer_is_letter:
+                fatal = True
+                issues.append("选择题缺少 A-D 四个独立选项，或答案不是可核验的选项字母")
+                repair_suggestions.append("选择题必须给出 A-D 四个选项，参考答案只写一个选项字母")
+                break
+
+        repeated_lines = Counter(
+            _normalize_topic_for_check(line)
+            for line in content.splitlines()
+            if len(_normalize_topic_for_check(line)) >= 20
+            and not line.lstrip().startswith(("#", "---", "|"))
+        )
+        if any(count >= 3 for count in repeated_lines.values()):
+            fatal = True
+            excessive_repetition = True
+            issues.append("多道题重复使用同一段模板答案/解析，未绑定具体题目")
+            repair_suggestions.append("每题根据题干和知识点单独编写答案、解析和常见错误")
 
     if resource_type == artifact_types.CODE_LAB:
         required = ["完整代码", "运行命令", "学生任务", "常见报错"]
@@ -403,6 +513,20 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
             fatal = True
             issues.append(f"代码实验结构不完整：缺少{'、'.join(missing)}")
             repair_suggestions.append("代码实验必须包含完整可运行代码、运行方式、学生任务、调参建议和常见报错")
+        code_placeholders = _pattern_hits(content, [r"\bTODO\b", r"\bpass\b", r"补全此处", r"补全核心逻辑"])
+        if code_placeholders:
+            fatal = True
+            issues.append("代码实验仍包含 TODO/pass/补全逻辑等占位代码")
+            repair_suggestions.append("提供可直接运行的参考实现，学生任务可单独给出骨架")
+        if not _python_code_is_valid(content):
+            fatal = True
+            issues.append("代码实验缺少语法可通过的 Python 完整代码块")
+            repair_suggestions.append("对所有 Python 代码块进行 ast.parse 语法校验")
+        test_count = len(re.findall(r"\bassert\b|\btest_[a-zA-Z0-9_]+\b|测试用例\s*[1-9]", content))
+        if test_count < 3:
+            fatal = True
+            issues.append("代码实验少于 3 个可核验测试")
+            repair_suggestions.append("补充普通、边界和异常输入的 assert 测试")
 
     if resource_type in {artifact_types.READING_PACK, artifact_types.PERSONALIZED_VIDEO_GUIDE, artifact_types.VIDEO_RECOMMENDATION}:
         required = ["观看/阅读前准备", "观看/阅读中关注点", "观看/阅读后任务", "版权说明"]
@@ -411,6 +535,18 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
             fatal = True
             issues.append(f"阅读/视频指南结构不完整：缺少{'、'.join(missing)}")
             repair_suggestions.append("阅读/视频指南不能只是链接列表，必须提供前中后任务和版权说明")
+        if resource_type in {artifact_types.PERSONALIZED_VIDEO_GUIDE, artifact_types.VIDEO_RECOMMENDATION} and not _real_urls(content):
+            fatal = True
+            issues.append("视频资源没有任何可核验的原始 HTTP(S) 入口")
+            repair_suggestions.append("只发布具有真实原始链接、平台来源和观看任务的视频指南")
+
+    if resource_type == artifact_types.INTERACTIVE_ANIMATION:
+        assets = item.get("assets") or context.get("assets") or []
+        playable_assets = [asset for asset in assets if isinstance(asset, dict) and asset.get("url") and asset.get("mime_type") in {"text/html", "video/mp4", "video/webm"}]
+        if not playable_assets:
+            fatal = True
+            issues.append("交互动画只有文字规格，没有可播放产物")
+            repair_suggestions.append("绑定可打开的 HTML 动画或视频文件后再发布")
 
     normalized_topic = _normalize_topic_for_check(topic)
     normalized_full_text = _normalize_topic_for_check(full_text)
@@ -461,9 +597,21 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
 
     score = 0
     score += 20 if normalized_topic and normalized_topic in normalized_full_text else 6
-    score += min(15, headings * 2)
+    structure_score = min(20, headings * 3)
+    if resource_type == artifact_types.MIND_MAP:
+        structure_score = min(20, max(0, len([line for line in content.splitlines() if line.strip()]) - 2))
+    elif resource_type == artifact_types.EXERCISE_SET:
+        structure_score = min(20, _exercise_question_count(content) * 3 + _exercise_type_count(content) * 2)
+    elif resource_type == artifact_types.CODE_LAB:
+        structure_score = 20 if _python_code_is_valid(content) else 0
+    elif resource_type in {artifact_types.PERSONALIZED_VIDEO_GUIDE, artifact_types.VIDEO_RECOMMENDATION}:
+        structure_score = min(20, len(_real_urls(content)) * 5 + headings * 2)
+    elif resource_type == artifact_types.INTERACTIVE_ANIMATION:
+        assets = item.get("assets") or context.get("assets") or []
+        structure_score = 20 if any(isinstance(asset, dict) and asset.get("url") for asset in assets) else 0
+    score += structure_score
     if resource_type in compact_artifact_types:
-        score += 18 if not fatal else 8
+        score += 20 if not fatal else 5
     elif resource_type in structured_non_long_types:
         score += 18 if content_len >= 600 else 12
     else:
@@ -478,23 +626,25 @@ def validate_teaching_quality(item: Dict, context: Dict) -> Dict:
     score += 5 if evidence_chunks or evidence_refs else 0
     if resource_type == artifact_types.COURSE_NOTE:
         score = min(100, score + min(5, len(covered_category_names)))
-    if resource_type in compact_artifact_types and not fatal:
-        score = max(score, 86)
-    if resource_type == artifact_types.EXERCISE_SET and not fatal:
-        score = max(score, 86)
-    if resource_type == artifact_types.CODE_LAB and not fatal:
-        score = max(score, 88)
-    if resource_type == artifact_types.PROJECT_BRIEF and not fatal:
-        score = max(score, 86)
-    if resource_type in {
-        artifact_types.READING_PACK,
-        artifact_types.PERSONALIZED_VIDEO_GUIDE,
-        artifact_types.VIDEO_RECOMMENDATION,
-    } and not fatal:
-        score = max(score, 84)
     score = max(0, min(100, int(score)))
+    if fatal:
+        score = min(score, 69)
+    if not str(content or "").strip():
+        score = 0
+    elif placeholder_hits or code_placeholders:
+        score = min(score, 30)
+    elif fallback_hits or item.get("assembly_policy") == "personalized_generation_fallback":
+        score = min(score, 40)
+    elif duplicate_nodes >= 2:
+        score = min(score, 40)
+    elif excessive_repetition:
+        score = min(score, 40)
 
-    passed = not fatal and score >= 80
+    passed = not fatal and score >= TEACHING_PUBLISH_SCORE
+    if not passed and not issues:
+        issues.append(
+            f"综合教学质量分 {score}，未达到 {TEACHING_PUBLISH_SCORE} 分发布线"
+        )
     if not issues and passed:
         issues.append("教学质量门控通过：结构、主题、深度、例子和证据引用均达到要求")
     if not repair_suggestions and not passed:

@@ -9,6 +9,7 @@ from app.services.data_services import (
     feedback_service
 )
 from app.services.data_services.knowledge_tag_service import summarize_knowledge_tags
+from app.services.security_service import create_access_token
 
 router = APIRouter()
 
@@ -38,7 +39,7 @@ async def login(data: Union[dict, Any]):
             return {
                 "code": 200,
                 "message": "登录成功",
-                "token": f"lingxi_{user_info['username']}",
+                "token": create_access_token(user_info["username"], user_info.get("role", "student")),
                 "data": user_info
             }
 

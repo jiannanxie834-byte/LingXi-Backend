@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -11,16 +12,22 @@ load_env_file()
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SPARK_API_URL = "https://spark-api-open.xf-yun.com/v1/chat/completions"
-DEFAULT_DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
+DEFAULT_SPARK_API_URL = "https://spark-api-open.xf-yun.com/x2/chat/completions"
 
 
 def _get_provider():
-    return os.getenv("LINGXI_LLM_PROVIDER", "local").strip().lower()
+    return os.getenv("LINGXI_LLM_PROVIDER", "spark").strip().lower()
 
 
 def _debug_enabled():
     return os.getenv("LINGXI_DEBUG_LLM", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _debug(message, *args):
@@ -36,15 +43,7 @@ def _get_provider_config():
             "provider": "spark",
             "api_key": os.getenv("SPARK_API_PASSWORD", "").strip(),
             "api_url": os.getenv("SPARK_API_URL", DEFAULT_SPARK_API_URL).strip(),
-            "model": os.getenv("SPARK_MODEL", "generalv3").strip(),
-        }
-
-    if provider == "deepseek":
-        return {
-            "provider": "deepseek",
-            "api_key": os.getenv("DEEPSEEK_API_KEY", "").strip(),
-            "api_url": os.getenv("DEEPSEEK_API_URL", DEFAULT_DEEPSEEK_API_URL).strip(),
-            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-v4-pro").strip(),
+            "model": os.getenv("SPARK_MODEL", "spark-x").strip(),
         }
 
     return {
@@ -60,7 +59,7 @@ def _get_provider_config():
 # =========================
 def is_enabled():
     config = _get_provider_config()
-    enabled = config["provider"] in {"spark", "deepseek"} and bool(config["api_key"])
+    enabled = config["provider"] == "spark" and bool(config["api_key"])
     return enabled
 
 
@@ -112,6 +111,42 @@ def _parse_llm_response(data, provider):
         "ok": True,
         "content": content
     }
+
+
+def _parse_spark_sse_response(response):
+    content_parts = []
+    for raw_line in response:
+        line = raw_line.decode("utf-8", errors="ignore").strip()
+        if not line:
+            continue
+        if line.startswith("data:"):
+            line = line[5:].strip()
+        if line == "[DONE]":
+            break
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("code") not in {None, 0}:
+            return {
+                "ok": False,
+                "error": event.get("message") or f"Spark SSE error {event.get('code')}",
+                "content": "".join(content_parts),
+            }
+        for choice in event.get("choices") or []:
+            delta = choice.get("delta") or choice.get("message") or {}
+            content = delta.get("content") or ""
+            if isinstance(content, list):
+                content = "".join(
+                    item.get("text", "") if isinstance(item, dict) else str(item)
+                    for item in content
+                )
+            if content:
+                content_parts.append(str(content))
+    content = "".join(content_parts)
+    if not content:
+        return {"ok": False, "error": "empty SSE content", "content": ""}
+    return {"ok": True, "content": content}
 
 
 def extract_json_object(content: str):
@@ -167,10 +202,47 @@ def extract_json_object(content: str):
     if end < 0:
         raise ValueError("LLM response contains incomplete JSON object")
 
+    json_text = text[start:end]
     try:
-        parsed = json.loads(text[start:end])
+        parsed = json.loads(json_text)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"LLM response is not valid JSON: {exc}") from exc
+        # 长 Markdown 正文中常含有真实换行符。某些 OpenAI 兼容接口会
+        # 把它们直接放入 JSON 字符串，导致返回内容可读但不能被 json.loads
+        # 解析。这里只转义字符串内的控制字符，不修改模型语义内容。
+        if "Invalid control character" not in str(exc):
+            raise ValueError(f"LLM response is not valid JSON: {exc}") from exc
+        repaired = []
+        in_string = False
+        escaped = False
+        for char in json_text:
+            if not in_string:
+                repaired.append(char)
+                if char == '"':
+                    in_string = True
+                continue
+            if escaped:
+                repaired.append(char)
+                escaped = False
+            elif char == "\\":
+                repaired.append(char)
+                escaped = True
+            elif char == '"':
+                repaired.append(char)
+                in_string = False
+            elif char == "\n":
+                repaired.append("\\n")
+            elif char == "\r":
+                repaired.append("\\r")
+            elif char == "\t":
+                repaired.append("\\t")
+            elif ord(char) < 0x20:
+                repaired.append(f"\\u{ord(char):04x}")
+            else:
+                repaired.append(char)
+        try:
+            parsed = json.loads("".join(repaired))
+        except json.JSONDecodeError as repaired_exc:
+            raise ValueError(f"LLM response is not valid JSON: {repaired_exc}") from repaired_exc
 
     if not isinstance(parsed, dict):
         raise ValueError("LLM JSON response must be an object")
@@ -191,6 +263,7 @@ def _should_retry_json_error(error: str) -> bool:
         for marker in [
             "LLM response contains incomplete JSON object",
             "LLM response is not valid JSON",
+            "LLM JSON response missing required fields",
         ]
     )
 
@@ -233,6 +306,8 @@ def chat_json(messages, required_fields=None, temperature=0.2, max_tokens=3000):
             field
             for field in (required_fields or [])
             if field not in data
+            or data.get(field) is None
+            or (isinstance(data.get(field), str) and not data.get(field).strip())
         ]
         if missing:
             return {
@@ -254,13 +329,15 @@ def chat_json(messages, required_fields=None, temperature=0.2, max_tokens=3000):
         return parsed
 
     logger.warning("LLM JSON parse failed, retrying once: %s", parsed.get("error"))
+    required_fields_hint = "、".join(required_fields or [])
     retry_messages = [
         *strict_messages,
         {
             "role": "user",
             "content": (
                 "上一次输出不是完整 JSON。请只重新输出一个完整 JSON 对象。\n"
-                "不要输出 Markdown。\n"
+                + (f"必须包含这些字段：{required_fields_hint}。\n" if required_fields_hint else "")
+                + "不要输出 Markdown。\n"
                 "不要输出解释。\n"
                 "不要输出代码块。\n"
                 "不要输出多余文本。\n"
@@ -285,16 +362,28 @@ def chat(messages, temperature=0.5, max_tokens=1200, json_mode=False):
     config = _get_provider_config()
     timeout = int(os.getenv("LLM_TIMEOUT_SECONDS", "20"))
 
+    use_spark_stream = (
+        config["provider"] == "spark"
+        and config["model"] == "spark-x"
+        and _env_bool("SPARK_STREAM", True)
+    )
     payload = {
         "model": config["model"],
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
-        "stream": False,
+        "stream": use_spark_stream,
     }
-    if json_mode and config["provider"] == "deepseek":
-        payload["response_format"] = {"type": "json_object"}
-
+    if config["provider"] == "spark" and config["model"] == "spark-x":
+        # X2 默认开启深度思考。资源生成属于有明确结构的教学写作，
+        # 关闭思考可避免推理消耗挤占正文 token 和触发网关空闲超时。
+        payload["thinking"] = {
+            "type": os.getenv("SPARK_THINKING", "disabled").strip().lower() or "disabled"
+        }
+        # 讯飞 X2 支持在非流式请求中定期发送空行保活。
+        if not use_spark_stream:
+            payload["keep_alive"] = _env_bool("SPARK_KEEP_ALIVE", True)
+        payload["user"] = "lingxi-resource-agent"
     _debug(
         "LLM request provider=%s model=%s url=%s messages=%s max_tokens=%s",
         config["provider"],
@@ -314,18 +403,39 @@ def chat(messages, temperature=0.5, max_tokens=1200, json_mode=False):
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="ignore")
-        logger.warning("LLM HTTP error: %s; body=%s", e, err_body[:500])
-        return {"ok": False, "error": str(e), "content": ""}
-    except urllib.error.URLError as e:
-        logger.warning("LLM URL error: %s", e)
-        return {"ok": False, "error": str(e), "content": ""}
-    except TimeoutError as e:
-        logger.warning("LLM request timeout: %s", e)
-        return {"ok": False, "error": "LLM request timeout", "content": ""}
+    data = None
+    stream_result = None
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if use_spark_stream:
+                    stream_result = _parse_spark_sse_response(resp)
+                else:
+                    data = json.loads(resp.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="ignore")
+            logger.warning("LLM HTTP error: %s; body=%s", e, err_body[:500])
+            if attempt == 0 and e.code in {408, 429, 500, 502, 503, 504}:
+                time.sleep(0.4)
+                continue
+            return {"ok": False, "error": f"HTTP {e.code}: {err_body[:240] or e.reason}", "content": ""}
+        except urllib.error.URLError as e:
+            logger.warning("LLM URL error: %s", e)
+            if attempt == 0:
+                time.sleep(0.4)
+                continue
+            return {"ok": False, "error": str(e), "content": ""}
+        except TimeoutError as e:
+            logger.warning("LLM request timeout: %s", e)
+            if attempt == 0:
+                time.sleep(0.4)
+                continue
+            return {"ok": False, "error": "LLM request timeout", "content": ""}
+
+    if stream_result is not None:
+        return stream_result
+    if data is None:
+        return {"ok": False, "error": "LLM request failed", "content": ""}
 
     return _parse_llm_response(data, config["provider"])

@@ -1,4 +1,6 @@
+import ast
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List
 
 from app.agents.agent_result_dto import AgentResultDTO
@@ -6,7 +8,6 @@ from app.services.data_services import resource_artifact_type_service as artifac
 from app.services.llm_provider import chat_json
 
 
-EMPTY_TEXT = "该类资源暂未完善"
 MAX_EVIDENCE_CHARS = 1600
 
 
@@ -30,14 +31,21 @@ def _list_value(value, limit: int = 6) -> str:
 def _profile_summary(profile: Dict) -> str:
     profile = profile or {}
     dimensions = profile.get("dimensions") if isinstance(profile.get("dimensions"), dict) else {}
+    public_dimensions = profile.get("public_dimensions") if isinstance(profile.get("public_dimensions"), dict) else {}
+
+    def public_value(name: str, fallback=""):
+        entry = public_dimensions.get(name)
+        if isinstance(entry, dict):
+            return entry.get("display") or entry.get("value") or fallback
+        return entry or fallback
+
     fields = [
-        ("知识基础", dimensions.get("知识基础") or profile.get("level") or "未确认"),
-        ("学习目标", dimensions.get("学习目标") or profile.get("goal") or profile.get("intent") or "完成当前主题学习"),
-        ("知识短板", dimensions.get("知识短板") or profile.get("weakness") or "需要通过本轮任务继续诊断"),
-        ("认知风格", dimensions.get("认知风格") or profile.get("cognitive_style") or "文字讲解配合例题"),
-        ("媒介偏好", dimensions.get("媒介偏好") or profile.get("media_preference") or "图解/代码示例/练习巩固"),
-        ("实践能力", dimensions.get("实践能力") or profile.get("practice_ability") or "未确认"),
-        ("易错模式", dimensions.get("易错模式") or profile.get("mistake_pattern") or "边界条件、概念迁移和模板套用需重点观察"),
+        ("当前知识水平", public_value("当前知识水平", dimensions.get("知识基础") or profile.get("level") or "待诊断")),
+        ("学习目标", public_value("学习目标", dimensions.get("学习目标") or profile.get("goal") or profile.get("intent") or "完成当前主题学习")),
+        ("练习表现", public_value("练习表现", dimensions.get("练习表现") or "暂无有效作答")),
+        ("薄弱知识点", public_value("薄弱知识点", dimensions.get("易错修复") or profile.get("weakness") or "待练习诊断")),
+        ("路径执行", public_value("路径执行", dimensions.get("规划执行") or "尚无执行记录")),
+        ("资源偏好", public_value("资源偏好", dimensions.get("媒介偏好") or profile.get("media_preference") or "待确认")),
     ]
     return "\n".join(f"- {key}：{value}" for key, value in fields)
 
@@ -95,6 +103,7 @@ def _artifact_instruction(resource_type: str, topic: str) -> str:
 必须包含二级标题：学习定位、核心概念、一步步理解、关键流程、例子、常见误区、小结、下一步建议。
 课程讲解文档只负责把概念讲清楚，不要生成成套练习题，不要设置“自测题/参考答案”章节；练习题由“练习题集”模块单独负责。
 正文不少于 900 个中文字符，围绕「{topic}」和学生当前问题重写讲解。
+至少完整展开 2 个不同例子：一个用来推导基本状态转移，一个用来解释边界或选择分支，不得只提例子名称。
 """
     if resource_type == artifact_types.MIND_MAP:
         return f"""
@@ -125,13 +134,26 @@ mindmap
 生成新的个性化练习题集，不要原样复制题库。
 必须包含 4-6 道题，覆盖选择题、判断题、简答题、代码/过程题等至少 3 类。
 每题标题必须使用 `### 题目 1｜选择题` 这种格式。
-每题必须包含：知识点、题目、答案、解析、常见错误。
+每题必须包含：知识点、题目、答案、解析、常见错误；主观题还必须包含评分要点。
+选择题必须给出 A-D 四个独立选项，答案只写选项字母；判断题答案只写“对”或“错”。
+不要在题目标题之外使用“题目 N”格式，避免结构解析歧义。
 """
     if resource_type == artifact_types.CODE_LAB:
         return f"""
 生成新的个性化代码实验。
-必须包含：实验目标、环境依赖、完整代码、运行命令、学生任务、提示、参考答案、复杂度记录、常见报错。
+必须包含：实验目标、环境依赖、完整代码、运行命令、学生任务、参考实现、至少 3 个可运行测试、复杂度记录、常见报错。
 代码任务可参考资源库模板，但需要根据学生当前问题改写。
+完整代码必须可直接保存为 Python 文件运行，不得包含 TODO、pass、“补全此处”或伪代码占位。
+至少 3 个测试必须直接写在同一个 Python 代码块中，使用 assert 覆盖普通、边界和长输入；仅写 print、注释或测试表格不算可运行测试。
+整份资源只允许出现 1 个 `python` 代码块：函数实现、3 个以上 assert 和可直接运行的主入口全部放在该代码块中，必须通过 Python `ast.parse`。
+"""
+    if resource_type == artifact_types.INTERACTIVE_ANIMATION:
+        return f"""
+生成一份面向学生的「{topic}」交互动画学习说明。
+必须包含：动画目标、可交互参数、播放/暂停/单步/重置操作、每个状态的高亮规则、观看任务、动画后练习。
+正文要对已附加的可播放 HTML 动画进行真实操作指引，不得写“占位”、“待实现”或虚构视频链接。
+动画后练习不得包含 TODO、pass 或需要补全的代码骨架；如果给出代码，必须是完整可运行示例。
+所有代码必须放在标准 Markdown 围栏中，例如以 ```python 开始、以 ``` 结束；禁止只输出单独一行 `python` 后直接跟代码。
 """
     if resource_type == artifact_types.DIAGNOSTIC_REPORT:
         return f"""
@@ -145,7 +167,45 @@ mindmap
 必须包含：观看/阅读前准备、观看/阅读中关注点、暂停思考问题、观看/阅读后任务、关联练习、关联代码实验、版权说明。
 如依据中有公开视频链接，必须保留原始 source_url 并为每个链接设计观看任务；不得下载、搬运或重新托管。
 """
+    if resource_type == artifact_types.READING_PACK:
+        return f"""
+生成新的个性化拓展阅读包，作为当前主题没有可核验视频时的第五类资源。
+必须包含：观看/阅读前准备、观看/阅读中关注点、暂停思考问题、观看/阅读后任务、推荐阅读顺序、关联练习、关联代码实验、版权说明。
+优先使用课程资源库中的小节讲义、章节阅读指南和 evidence 依据，不得虚构教材、论文、博客、公开课或 URL。
+没有真实链接时直接给出课程章节和知识点阅读顺序，不要写“待补充链接”“暂无资源”或其他占位内容。
+"""
     return f"生成一份新的个性化「{resource_type}」，必须结合学生画像和课程依据重写，不能复制资源库原文。"
+
+
+def _enforce_catalog_video_links(content: str, retrieval: Dict) -> str:
+    videos = [item for item in (retrieval or {}).get("video_items") or [] if isinstance(item, dict)]
+    allowed = [
+        item for item in videos
+        if str(item.get("source_url") or "").startswith(("http://", "https://"))
+    ][:3]
+    if not allowed:
+        return content
+
+    allowed_urls = {str(item.get("source_url")) for item in allowed}
+
+    def clean_markdown_link(match):
+        label, url = match.group(1), match.group(2)
+        return match.group(0) if url in allowed_urls else label
+
+    cleaned = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", clean_markdown_link, content or "")
+    for match in list(re.finditer(r"https?://[^\s<>]+", cleaned)):
+        raw_url = match.group(0).rstrip(".,，。；;)）]")
+        if raw_url not in allowed_urls:
+            cleaned = cleaned.replace(match.group(0), "")
+
+    missing = [item for item in allowed if item.get("source_url") not in cleaned]
+    if missing:
+        lines = ["", "## 知识库公开视频链接", ""]
+        for item in missing:
+            focus = "、".join(item.get("watch_focus") or []) or "当前主题的核心流程与常见误区"
+            lines.append(f"- [{item.get('title') or '公开视频'}]({item.get('source_url')})：观看时重点记录{focus}。")
+        cleaned = cleaned.rstrip() + "\n" + "\n".join(lines)
+    return cleaned.strip()
 
 
 MINDMAP_GROUPS = [
@@ -197,266 +257,130 @@ def _normalize_mindmap_content(content: str, topic: str) -> str:
     if not diagram.lower().startswith("mindmap"):
         return text
 
-    bare_match = re.match(r"mindmap\s+root(?:\(\((.*?)\)\)|\((.*?)\)|\[(.*?)\]|\{(.*?)\}|([^\s]+))\s*(.*)$", diagram, re.S | re.I)
+    bare_match = None
+    if "\n" not in diagram:
+        bare_match = re.match(r"mindmap\s+root(?:\(\((.*?)\)\)|\((.*?)\)|\[(.*?)\]|\{(.*?)\}|([^\s]+))\s*(.*)$", diagram, re.S | re.I)
     if bare_match:
         root = next((value for value in bare_match.groups()[:5] if value), None) or topic
         nodes = [item for item in re.split(r"\s+", bare_match.group(6) or "") if item]
         if len(nodes) >= 6:
-            return _rebuild_grouped_mindmap(root, nodes)
+            return _dedupe_mindmap_nodes(_rebuild_grouped_mindmap(root, nodes))
 
     lines = [line.rstrip() for line in diagram.splitlines() if line.strip()]
     root_line = next((line.strip() for line in lines if line.strip().lower().startswith("root")), "")
     child_lines = [line for line in lines if not line.strip().lower().startswith(("mindmap", "root"))]
     is_flat = len(child_lines) >= 8 and all((len(line) - len(line.lstrip(" "))) <= 4 for line in child_lines)
     if not is_flat:
-        return diagram
+        return _dedupe_mindmap_nodes(diagram)
 
     root_match = re.match(r"root(?:\(\((.*?)\)\)|\((.*?)\)|\[(.*?)\]|\{(.*?)\}|(.*))", root_line, re.I)
     root = topic
     if root_match:
         root = next((value for value in root_match.groups() if _clean_text(value)), None) or topic
     nodes = [line.strip() for line in child_lines]
-    return _rebuild_grouped_mindmap(root, nodes)
+    return _dedupe_mindmap_nodes(_rebuild_grouped_mindmap(root, nodes))
 
 
-def _fallback_content(resource_type: str, topic: str, student_question: str, profile: Dict, retrieval: Dict) -> Dict:
-    profile_text = _profile_summary(profile)
-    topic = topic or "当前主题"
-    if resource_type == artifact_types.MIND_MAP:
-        content = f"""mindmap
-  root(({topic}))
-    学习定位
-      当前问题：{student_question or topic}
-      基础状态：先按入门诊断处理
-    前置知识
-      先复习定义
-      再看适用条件
-      最后处理边界情况
-    核心理解
-      概念含义
-      操作流程
-      复杂度影响
-    易错点
-      套模板但不解释条件
-      忽略边界输入
-      无法手推一个小例子
-    练习方向
-      概念辨析
-      手推过程
-      代码补全
-    下一步
-      完成 3 道基础题
-      复盘错误原因
-"""
-    elif resource_type == artifact_types.EXERCISE_SET:
-        content = f"""# {topic} 个性化练习题集
+def _normalize_code_lab_content(content: str) -> str:
+    """Restore a Markdown fence only when the model's raw code is valid Python.
 
-### 题目 1｜选择题
-知识点：{topic} 的适用条件。
-题目：学习「{topic}」时，第一步最应该确认什么？
-答案：先确认定义、适用条件和输入输出约束。
-解析：很多错误来自还没确认问题边界就套模板。
-常见错误：只记结论，不说明为什么适用。
+    Spark's JSON mode may omit triple backticks while preserving the `python`
+    language marker. The quality gate still performs the authoritative AST
+    validation; this normalization only makes an already complete program
+    machine-extractable.
+    """
+    text = _clean_text(content)
+    if not text or re.search(r"```python\s*.*?```", text, re.S | re.I):
+        return text
 
-### 题目 2｜判断题
-知识点：{topic} 的掌握标准。
-题目：只要代码能跑通样例，就说明已经掌握「{topic}」。对还是错？
-答案：错。
-解析：还需要能解释边界条件、复杂度和失败场景。
-常见错误：忽略空输入、重复元素或极端规模。
+    match = re.search(
+        r"(?P<heading>^##\s*完整代码[^\n]*\n)(?P<code>.*?)(?=^##\s+|\Z)",
+        text,
+        re.S | re.M,
+    )
+    if not match:
+        return text
 
-### 题目 3｜简答题
-知识点：{topic} 的核心思想。
-题目：用自己的话解释「{topic}」的核心思想。
-答案：应围绕问题如何被表示、状态如何变化、结果如何验证来说明。
-解析：能用自然语言讲清楚，通常比直接背模板更稳。
-常见错误：只写关键词，不描述过程。
+    code = match.group("code").strip()
+    code = re.sub(r"^python\s*\n", "", code, count=1, flags=re.I)
+    try:
+        ast.parse(code)
+    except SyntaxError:
+        return text
 
-### 题目 4｜过程题
-知识点：{topic} 的手推过程。
-题目：构造一个最小例子，手推「{topic}」的关键步骤。
-答案：选择 3-5 个元素或一个小规模输入，逐步写出每一步变化。
-解析：手推能暴露对边界和更新顺序的理解漏洞。
-常见错误：跳过中间状态。
+    replacement = f'{match.group("heading")}```python\n{code}\n```\n\n'
+    return (text[:match.start()] + replacement + text[match.end():]).strip()
 
-## 练习顺序
-先完成选择题和判断题，确认你能说清楚「{topic}」的适用条件；再做简答题，检查自己是否能不用模板解释核心思想；最后做过程题，把每一步变化写出来。不要只看答案是否一致，要看你的推理是否能覆盖边界情况。
 
-## 复盘清单
-1. 我是否能说明「{topic}」解决的问题类型？
-2. 我是否写出了输入、输出和关键约束？
-3. 我是否能解释为什么这一步更新合法？
-4. 我是否检查了空输入、单元素、重复元素或极端规模？
-5. 我是否能给出时间复杂度和空间复杂度？
-"""
-    elif resource_type == artifact_types.CODE_LAB:
-        content = f"""# {topic} 个性化代码实验
+CODE_LANGUAGE_RE = re.compile(
+    r"^(python|py|javascript|js|typescript|ts|java|cpp|c\+\+|c|go|rust|bash|shell|sql)$",
+    re.I,
+)
+CODE_START_RE = re.compile(
+    r"^(def\s+|class\s+|from\s+\S+\s+import\s+|import\s+|if\s+.+:|for\s+.+:|while\s+.+:|"
+    r"try:|with\s+.+:|return\s+|raise\s+|print\s*\(|assert\s+|[A-Za-z_]\w*\s*=|#)"
+)
 
-## 实验目标
-围绕「{topic}」完成一个最小可运行实现，并能解释输入、输出、复杂度和边界情况。
 
-## 环境依赖
-- Python 3.10+
-- 终端运行：`python main.py`
+def _normalize_markdown_code_blocks(content: str) -> str:
+    """Repair a bare language marker without changing ordinary prose."""
+    lines = str(content or "").splitlines()
+    output = []
+    inside_fence = False
+    repairing = False
 
-## 完整代码
-```python
-def solve(data):
-    \"\"\"根据当前主题补全核心逻辑。\"\"\"
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if repairing and re.match(r"^#{2,6}\s+", stripped):
+            while output and not output[-1].strip():
+                output.pop()
+            output.extend(["```", ""])
+            repairing = False
+
+        if not repairing and stripped.startswith("```"):
+            inside_fence = not inside_fence
+            output.append(line)
+            continue
+
+        next_line = next(
+            (candidate.strip() for candidate in lines[index + 1:] if candidate.strip()),
+            "",
+        )
+        if (
+            not inside_fence
+            and not repairing
+            and CODE_LANGUAGE_RE.match(stripped)
+            and CODE_START_RE.match(next_line)
+        ):
+            language = "python" if stripped.lower() in {"py", "python"} else stripped.lower()
+            output.append(f"```{language}")
+            repairing = True
+            continue
+
+        output.append(line)
+
+    if repairing:
+        while output and not output[-1].strip():
+            output.pop()
+        output.append("```")
+    return "\n".join(output).strip()
+
+
+def _dedupe_mindmap_nodes(diagram: str) -> str:
+    """只删除 Mermaid 中完全相同的重复节点，不改写模型生成的教学内容。"""
     result = []
-    for item in data:
-        # TODO: 根据 {topic} 的规则更新 result
-        result.append(item)
-    return result
-
-if __name__ == "__main__":
-    sample = [1, 2, 3]
-    print(solve(sample))
-```
-
-## 运行命令
-```bash
-python main.py
-```
-
-## 学生任务
-1. 写出输入输出含义。
-2. 补全核心更新逻辑。
-3. 增加一个边界用例。
-4. 记录时间复杂度和空间复杂度。
-
-## 提示
-先用最小样例手推，再写代码；不要直接套模板。
-
-## 参考答案
-参考答案需要根据你选择的具体题目补全，重点是解释为什么每一步更新合法。
-
-## 复杂度记录
-写出循环次数、辅助空间和输入规模之间的关系。
-
-## 常见报错
-- 空输入没有处理。
-- 下标越界。
-- 更新顺序导致旧状态被覆盖。
-
-## 实验复盘
-完成代码后，请不要只看输出是否等于样例。你需要补充至少 3 个测试：最小输入、普通输入和边界输入。每个测试都写清楚预期输出，并说明为什么这个输出符合「{topic}」的规则。最后把代码中的核心变量变化画成表格，这能帮助你发现循环条件、更新顺序和返回值位置的问题。
-
-## 实验报告
-实验报告建议包含：题目目标、输入输出定义、核心算法流程、完整代码、运行截图或运行结果、复杂度分析、遇到的错误和修复方式。对当前基础阶段来说，能写清楚“为什么这么更新”比写出更短的代码更重要。
-"""
-    elif resource_type == artifact_types.PERSONALIZED_VIDEO_GUIDE:
-        videos = retrieval.get("video_items") or []
-        video_lines = []
-        for video in videos[:4]:
-            if not isinstance(video, dict):
-                continue
-            title = video.get("title") or "公开视频"
-            url = video.get("source_url") or ""
-            focus = "、".join(video.get("watch_focus") or [])
-            before = "；".join(video.get("before_watch") or [])
-            after = "；".join(video.get("after_watch_tasks") or [])
-            if url:
-                video_lines.append(f"- [{title}]({url})：观看重点：{focus or topic}；观看前：{before or '先写下当前疑问'}；观看后：{after or '完成一次复述和一道练习'}。")
-        content = f"""# {topic} 个性化视频与阅读学习指南
-
-## 观看/阅读前准备
-先写下你对「{topic}」的当前理解，以及最不确定的一个问题。
-
-## 观看/阅读中关注点
-- 关注定义和适用条件。
-- 暂停手推一个小例子。
-- 记录和你当前问题直接相关的步骤。
-
-## 暂停思考问题
-为什么这个方法适用于当前输入？如果输入为空、重复或规模很大会怎样？
-
-## 观看/阅读后任务
-用 5 句话复述核心流程，并完成 2 道基础题。
-
-## 推荐视频链接
-{chr(10).join(video_lines) if video_lines else "- 当前匹配小节暂未配置公开视频链接，先使用课程讲解、导图、练习题和代码实验完成学习。"}
-
-## 关联练习
-优先做概念辨析题和过程手推题，再进入代码补全。
-
-## 关联代码实验
-把核心过程写成函数，并补充边界用例。
-
-## 版权说明
-公开视频和阅读材料仅保留原始入口与学习任务，不下载、不搬运、不重新托管。
-"""
-    elif resource_type == artifact_types.DIAGNOSTIC_REPORT:
-        content = f"""# {topic} 诊断与补弱报告
-
-## 当前卡点
-你当前的问题是：{student_question or topic}。系统暂未看到完整作答记录，因此先按学习表达和画像做轻量诊断。
-
-## 可能错因
-- 定义和适用条件没有分清。
-- 只记模板，没有手推过程。
-- 边界输入和复杂度分析容易被跳过。
-
-## 薄弱知识
-{profile_text}
-
-## 补弱步骤
-1. 回到定义，用一句话说明主题解决什么问题。
-2. 用最小样例手推一次。
-3. 写出边界情况。
-4. 完成 3 道基础题并复盘错误。
-
-## 当天任务
-完成一份概念解释、一张手绘流程图和两道基础题。
-
-## 三天复盘任务
-第一天补概念，第二天补代码，第三天做混合题。
-
-## 后续练习建议
-先做基础题，再做变式题，最后做综合题。
-"""
-    else:
-        content = f"""# 为你定制的 {topic} 讲解
-
-## 学习定位
-当前问题：{student_question or topic}。这份讲解不是直接复制课程小节，而是把课程资源库中的定义、例题方向和常见误区重新组织成适合你当前卡点的学习材料。先按“能说清楚概念、能手推过程、能写出边界条件”的目标来学，不急着背模板。
-
-## 核心概念
-「{topic}」的核心不是某个孤立结论，而是理解它解决什么问题、输入输出是什么、为什么这个方法或结构适用。学习时要先说清楚对象：处理的是序列、集合、树、图，还是一个可以拆分成子问题的过程；再说明操作：是查找、插入、删除、遍历、转移，还是维护某种约束；最后说明代价：时间复杂度和空间复杂度分别由什么决定。
-
-## 一步步理解
-1. 找到问题对象。
-2. 明确状态或数据结构。
-3. 手推最小例子。
-4. 检查边界条件。
-5. 再把手推过程翻译成代码或伪代码。
-6. 用复杂度分析验证这个方法是否适合输入规模。
-
-## 例子
-示例一：如果题目给出 3-5 个元素，先不要写代码，先在纸上标出每一步变量、指针、队列、栈或状态数组的变化。你需要能解释“这一步为什么合法”，而不是只得到最后答案。
-
-示例二：把同一个输入改成空输入、只有一个元素、存在重复元素或规模很大的情况，再检查原来的思路是否仍然成立。很多算法错误不是概念不会，而是边界条件没有被纳入同一套流程。
-
-例题：请用一句话说明「{topic}」适合解决哪类问题，再写出一个最小输入并手推完整过程。答案不要求长，但必须包含输入、关键步骤、输出和复杂度。
-
-## 常见误区
-- 只记结论。
-- 不说明适用条件。
-- 忽略边界输入。
-- 把相似概念混在一起，例如把“能访问”误认为“复杂度一定低”，或者把“模板能套”误认为“状态定义已经正确”。
-- 写代码时先写循环，再回头猜变量含义，导致调试时不知道错误发生在哪一步。
-
-## 小结
-学习「{topic}」时，最重要的是把定义、适用条件、关键流程和复杂度来源连成一条线。你应该能说清楚它适合解决什么问题、每一步为什么成立、哪些输入会触发边界情况，以及它和相近知识点有什么区别。
-
-## 下一步建议
-如果你已经能复述本讲解的核心流程，可以进入配套“练习题集”模块做题；如果你还不能解释边界条件，先回到“例子”和“常见误区”两节，把最小样例和边界样例重新手推一遍。
-"""
-    return {
-        "summary": f"根据你的问题「{student_question or topic}」生成的个性化{resource_type}。",
-        "content": content,
-        "personalization_reason": f"结合当前问题、学生画像和课程资源库依据生成，不直接复制原始资源。",
-    }
+    seen = set()
+    for line in (diagram or "").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.lower() == "mindmap" or stripped.lower().startswith("root"):
+            result.append(line)
+            continue
+        normalized = re.sub(r"\s+", "", stripped)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(line)
+    return "\n".join(result).strip()
 
 
 def _generate_one(item: Dict, location: Dict, profile: Dict, retrieval: Dict) -> Dict:
@@ -498,12 +422,23 @@ Artifact 类型：
   "personalization_reason": "一句话说明如何结合了学生问题、画像和课程依据"
 }}
 """
+    error_message = "讯飞星火未返回有效内容"
     try:
+        token_budget = {
+            artifact_types.COURSE_NOTE: 3600,
+            artifact_types.CODE_LAB: 5200,
+            artifact_types.EXERCISE_SET: 3600,
+            artifact_types.PERSONALIZED_VIDEO_GUIDE: 2400,
+            artifact_types.INTERACTIVE_ANIMATION: 2400,
+            artifact_types.MIND_MAP: 1800,
+        }.get(resource_type, 2600)
         result = chat_json(
             [{"role": "user", "content": prompt}],
-            required_fields=["summary", "content", "personalization_reason"],
-            temperature=0.35,
-            max_tokens=2600,
+            # 正文才是资源的必需字段；摘要和个性化说明属于展示元数据，
+            # 模型偶尔漏掉时使用下方已有的系统默认值，不能让整包五类资源回滚。
+            required_fields=["content"],
+            temperature=0.25,
+            max_tokens=token_budget,
         )
         if result.get("ok"):
             data = result.get("data") or {}
@@ -511,6 +446,14 @@ Artifact 类型：
             if content:
                 if resource_type == artifact_types.MIND_MAP:
                     content = _normalize_mindmap_content(content, topic)
+                elif resource_type == artifact_types.CODE_LAB:
+                    content = _normalize_code_lab_content(content)
+                    content = _normalize_markdown_code_blocks(content)
+                elif resource_type == artifact_types.PERSONALIZED_VIDEO_GUIDE:
+                    content = _normalize_markdown_code_blocks(content)
+                    content = _enforce_catalog_video_links(content, retrieval)
+                else:
+                    content = _normalize_markdown_code_blocks(content)
                 return {
                     "summary": _clean_text(data.get("summary")) or item.get("summary") or "",
                     "content": content,
@@ -519,17 +462,18 @@ Artifact 类型：
                     "assembly_policy": "personalized_generation_from_grounded_context",
                     "missing": False,
                 }
-    except Exception:
-        pass
+        error_message = _clean_text(result.get("error")) or error_message
+    except Exception as exc:
+        error_message = _clean_text(exc) or error_message
 
-    fallback = _fallback_content(resource_type, topic, student_question, profile, retrieval)
-    if resource_type == artifact_types.MIND_MAP:
-        fallback["content"] = _normalize_mindmap_content(fallback.get("content") or "", topic)
     return {
-        **fallback,
-        "source": "数据结构与算法课程资源库依据生成",
-        "assembly_policy": "personalized_generation_fallback",
-        "missing": False,
+        "summary": "",
+        "content": "",
+        "source": "",
+        "personalization_reason": "",
+        "assembly_policy": "generation_failed_no_fallback",
+        "missing": True,
+        "error": error_message[:240],
     }
 
 
@@ -538,22 +482,35 @@ def run(resources: List[Dict], location: Dict, profile: Dict, retrieval: Dict) -
     location = location or {}
     profile = profile or {}
     retrieval = retrieval or {}
-    packaged = [_generate_one(item, location, profile, retrieval) for item in resources]
+    packaged = [None] * len(resources)
+    # 资源生成优先保证单次输出完整；串行调用避免并发触发 QPS 限制后返回降级模板。
+    max_workers = 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(_generate_one, item, location, profile, retrieval): index
+            for index, item in enumerate(resources)
+        }
+        for future in as_completed(future_map):
+            packaged[future_map[future]] = future.result()
 
     dto = AgentResultDTO(
         agent_name="PersonalizedGenerationAgent",
         input_summary=location.get("topic") or "数据结构与算法个性化学习包",
         output={
-            "resource_count": len(packaged),
+            "resource_count": sum(1 for item in packaged if not item.get("missing")),
             "types": [item.get("type") for item in resources],
             "assembly_policy": "personalized_generation_from_grounded_context",
             "grounding_used": True,
             "profile_used": bool(profile),
-            "minimum_resource_count_met": len(packaged) >= 5,
+            "minimum_resource_count_met": sum(1 for item in packaged if not item.get("missing")) >= 5,
             "missing_count": sum(1 for item in packaged if item.get("missing")),
         },
         evidence_refs=location.get("evidence_refs") or [],
-        quality_score=1.0 if len(packaged) >= 5 else 0.75,
-        warnings=[] if len(packaged) >= 5 else ["个性化学习包资源类型少于 5 类"],
+        quality_score=sum(1 for item in packaged if not item.get("missing")) / max(1, len(packaged)),
+        warnings=[
+            f"{resources[index].get('type')}生成失败：{item.get('error') or '未知原因'}"
+            for index, item in enumerate(packaged)
+            if item.get("missing")
+        ],
     )
     return {"dto": dto, "outputs": packaged}

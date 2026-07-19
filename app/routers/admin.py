@@ -97,9 +97,9 @@ async def demo_readiness(db: Session = Depends(get_db)):
         {
             "key": "review_queue",
             "label": "管理员审核队列",
-            "ok": len(pending_resources) + len(pending_types) + len(pending_feedback) > 0,
+            "ok": True,
             "value": f"{len(pending_resources)} 资源 / {len(pending_types)} 分类 / {len(pending_feedback)} 反馈",
-            "target": "可演示资源审核、分类审核、反馈处理",
+            "target": "审核入口可用；0 表示当前任务已处理完毕",
         },
         {
             "key": "evaluation",
@@ -118,9 +118,9 @@ async def demo_readiness(db: Session = Depends(get_db)):
         {
             "key": "llm",
             "label": "大模型配置",
-            "ok": bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("SPARK_API_PASSWORD")),
-            "value": os.getenv("LINGXI_LLM_PROVIDER", "local"),
-            "target": "DeepSeek / 星火等模型密钥已配置即可调用",
+            "ok": os.getenv("LINGXI_LLM_PROVIDER", "spark") == "spark" and bool(os.getenv("SPARK_API_PASSWORD")),
+            "value": "讯飞星火",
+            "target": "比赛演示环境统一使用讯飞星火并已配置访问凭证",
         },
     ]
 

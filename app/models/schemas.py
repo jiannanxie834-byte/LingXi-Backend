@@ -285,6 +285,15 @@ class ExerciseAttempt(Base):
     created_at = Column(DateTime, nullable=True)
 
 
+class ExerciseAnswerReveal(Base):
+    __tablename__ = "exercise_answer_reveals"
+
+    reveal_id = Column(String(64), primary_key=True, index=True)
+    username = Column(String(64), nullable=False, index=True)
+    artifact_id = Column(String(64), nullable=False, index=True)
+    revealed_at = Column(DateTime, nullable=True)
+
+
 class ResourceFeedback(Base):
     __tablename__ = "resource_feedback"
 

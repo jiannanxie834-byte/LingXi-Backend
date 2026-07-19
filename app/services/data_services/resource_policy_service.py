@@ -271,7 +271,10 @@ def build_generation_context(
     try:
         records = (
             db.query(EvaluationRecord)
-            .filter(EvaluationRecord.username == username)
+            .filter(
+                EvaluationRecord.username == username,
+                ~EvaluationRecord.diagnosis_type.like("legacy_invalid%"),
+            )
             .order_by(EvaluationRecord.created_at.desc())
             .limit(20)
             .all()

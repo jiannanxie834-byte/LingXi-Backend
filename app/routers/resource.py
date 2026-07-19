@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -11,6 +11,7 @@ from app.services.data_services import resource_artifact_service
 from app.services.data_services import pptx_export_service
 from app.services.data_services import knowledge_evidence_service
 from app.services.data_services import dsa_course_content_service
+from app.services.data_services import exercise_question_service
 
 router = APIRouter(prefix="/resource", tags=["知识库模块"])
 
@@ -159,31 +160,41 @@ async def export_resource_pptx(res_id: str, db: Session = Depends(get_db)):
 
 @router.get("/artifacts")
 async def list_resource_artifacts(
+    request: Request,
     username: str = "",
     status: str = "",
     limit: int = 50,
     include_public: bool = True,
     db: Session = Depends(get_db),
 ):
+    claims = getattr(request.state, "auth", {}) or {}
+    current_username = str(claims.get("sub") or "")
+    if claims.get("role") != "admin":
+        username = current_username
+    artifacts = resource_artifact_service.list_artifacts(
+        db,
+        username=username,
+        status=status,
+        limit=limit,
+        include_public=include_public,
+    )
     return {
         "code": 200,
         "message": "ok",
-        "data": resource_artifact_service.list_artifacts(
-            db,
-            username=username,
-            status=status,
-            limit=limit,
-            include_public=include_public,
-        ),
+        "data": [exercise_question_service.public_artifact(item) for item in artifacts],
     }
 
 
 @router.get("/artifacts/{artifact_id}")
-async def get_resource_artifact(artifact_id: str, db: Session = Depends(get_db)):
+async def get_resource_artifact(artifact_id: str, request: Request, db: Session = Depends(get_db)):
     data = resource_artifact_service.get_artifact(db, artifact_id)
     if not data:
         raise HTTPException(status_code=404, detail="Artifact 不存在")
-    return {"code": 200, "message": "ok", "data": data}
+    claims = getattr(request.state, "auth", {}) or {}
+    owner = str(data.get("student_id") or "")
+    if owner and owner != claims.get("sub") and claims.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="无权查看这份个性化资源")
+    return {"code": 200, "message": "ok", "data": exercise_question_service.public_artifact(data)}
 
 
 @router.get("/artifacts/{artifact_id}/export/pptx")

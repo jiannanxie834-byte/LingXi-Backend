@@ -22,6 +22,20 @@ class DsaScopeResolverTest(unittest.TestCase):
         self.assertIn(result["scope_level"], {"chapter", "unit"})
         self.assertEqual(result["chapter_id"], "chapter_10_dynamic_programming")
 
+    def test_explicit_weakness_wins_over_known_prerequisites(self):
+        result = resolve_topic_scope(
+            "我是计算机专业大二学生，学过数组和链表，但不理解动态规划的状态定义与转移方程，"
+            "偏好图解和代码实践。请为我制定学习路径并生成配套资源。"
+        )
+        self.assertEqual(result["chapter_id"], "chapter_10_dynamic_programming")
+        self.assertNotEqual(result["scope_level"], "project")
+        self.assertIn("动态规划", result["display_topic"])
+
+    def test_code_practice_preference_is_not_a_project_request(self):
+        result = resolve_topic_scope("我不懂二分查找，偏好图解和代码实践")
+        self.assertNotEqual(result["scope_level"], "project")
+        self.assertEqual(result["primary_unit_id"], "dsa_binary_search")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,6 +35,10 @@ def run(outputs: List[Dict]) -> dict:
     cleaned = []
     warnings = []
     for item in outputs:
+        if item.get("missing"):
+            cleaned.append(dict(item))
+            warnings.append(item.get("error") or "某类资源生成失败，已停止落库")
+            continue
         content = str(item.get("content") or "")
         issues = []
         for pattern in FORBIDDEN_PATTERNS:
@@ -53,9 +57,9 @@ def run(outputs: List[Dict]) -> dict:
         agent_name="QualityAgent",
         input_summary="学习包学生端展示质量检查",
         output={
-            "checked_resources": len(cleaned),
+            "checked_resources": sum(1 for item in cleaned if not item.get("missing")),
             "cleaned_resources": len(warnings),
-            "minimum_resource_count_met": len(cleaned) >= 5,
+            "minimum_resource_count_met": sum(1 for item in cleaned if not item.get("missing")) >= 5,
             "student_visible": True,
         },
         quality_score=1.0 if not warnings else 0.85,

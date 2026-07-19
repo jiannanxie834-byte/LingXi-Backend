@@ -243,16 +243,26 @@ def init_seeding_data():
     """Initialize default demo accounts when the user table is empty."""
     db = SessionLocal()
     from app.models.schemas import User
+    from app.services.security_service import hash_password, is_password_hash
     
     try:
         exist_user = db.query(User).first()
         if not exist_user:
-            print("Empty database detected; creating default admin and student accounts.")
+            admin_password = os.getenv("LINGXI_DEMO_ADMIN_PASSWORD", "").strip()
+            student_password = os.getenv("LINGXI_DEMO_STUDENT_PASSWORD", "").strip()
+            if not admin_password or not student_password:
+                print(
+                    "Empty database detected; demo accounts were not created because "
+                    "LINGXI_DEMO_ADMIN_PASSWORD / LINGXI_DEMO_STUDENT_PASSWORD are unset."
+                )
+                return
+
+            print("Empty database detected; creating configured admin and student accounts.")
             
             admin_user = User(
                 username="admin",
                 nickname="管理员",
-                password="123456",  # 比赛演示用简易明文，后期可加加密
+                password=hash_password(admin_password),
                 role="admin",
                 avatar="",
                 bio="全站最高权限智能系统控制枢纽",
@@ -263,7 +273,7 @@ def init_seeding_data():
             student_user = User(
                 username="student",
                 nickname="学生用户",
-                password="123456",
+                password=hash_password(student_password),
                 role="student",
                 avatar="",
                 bio="正在学习《数据结构与算法》课程，重点关注复杂度分析、二分边界与动态规划",
@@ -276,7 +286,16 @@ def init_seeding_data():
             db.commit()
             print("Default accounts created: admin / student.")
         else:
-            print("Existing database detected; skipping default account initialization.")
+            migrated = 0
+            for user in db.query(User).all():
+                if not is_password_hash(user.password):
+                    user.password = hash_password(user.password)
+                    migrated += 1
+            if migrated:
+                db.commit()
+                print(f"Existing database detected; migrated {migrated} account password hashes.")
+            else:
+                print("Existing database detected; account password hashes are ready.")
     except Exception as e:
         print(f"Default account initialization failed: {e}")
         db.rollback()

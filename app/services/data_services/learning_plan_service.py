@@ -183,6 +183,27 @@ def normalize_plan_text(plan: dict) -> dict:
     return item
 
 
+def refresh_plan_resource_statuses(db: Session, plan: dict) -> dict:
+    item = dict(plan or {})
+    tasks = []
+    for task in item.get("tasks", []) or []:
+        next_task = dict(task)
+        resources = []
+        for resource in next_task.get("resources", []) or []:
+            if not isinstance(resource, dict):
+                resources.append(resource)
+                continue
+            next_resource = dict(resource)
+            artifact_id = next_resource.get("artifact_id") or (next_resource.get("query") or {}).get("artifact_id") or ""
+            if artifact_id:
+                next_resource["status"] = _artifact_status(db, artifact_id, next_resource.get("status") or "")
+            resources.append(next_resource)
+        next_task["resources"] = resources
+        tasks.append(next_task)
+    item["tasks"] = tasks
+    return item
+
+
 # =========================
 # Learning Plan
 # =========================
@@ -231,7 +252,10 @@ def _save_user_plans_to_db(db: Session, username: str, plans_list: list):
 
 def get_plans_by_username(db: Session, username: str):
     stored = _load_user_plans_from_db(db, username)
-    plans = [normalize_plan_text(plan) for plan in (stored if stored is not None else [])]
+    plans = [
+        refresh_plan_resource_statuses(db, normalize_plan_text(plan))
+        for plan in (stored if stored is not None else [])
+    ]
     return _sort_plans_newest_first(_normalize_plan_timestamps(plans))
 
 
@@ -322,33 +346,29 @@ def attach_artifacts_to_plan(db: Session, username: str, plan_title: str, resour
 
 def delete_plan_route(db: Session, username: str, route_id: str):
     plans = get_plans_by_username(db, username)
-
     new_plans = [
-        p for p in plans
-        if str(p.get("id")) != str(route_id)
+        plan for plan in plans
+        if str(plan.get("id")) != str(route_id)
     ]
-
     save_user_plans(db, username, new_plans)
     return True
 
 
 def delete_plan_task(db: Session, username: str, route_id: str, task_id: str):
     plans = get_plans_by_username(db, username)
-
     for plan in plans:
         if str(plan.get("id")) == str(route_id):
             plan["tasks"] = [
-                t for t in plan.get("tasks", [])
-                if str(t.get("id")) != str(task_id)
+                task for task in plan.get("tasks", [])
+                if str(task.get("id")) != str(task_id)
             ]
             break
-
     save_user_plans(db, username, plans)
     return True
 
 
 # =========================
-# Todo List
+# Student Todo List
 # =========================
 
 def _load_user_todos_from_db(db: Session, username: str):
@@ -358,12 +378,9 @@ def _load_user_todos_from_db(db: Session, username: str):
             .filter(TodoList.username == username)
             .first()
         )
-
         if not record:
             return None
-
         return json.loads(record.todos_json or "[]")
-
     except Exception:
         return []
 
@@ -375,17 +392,13 @@ def _save_user_todos_to_db(db: Session, username: str, todos_list: list):
             .filter(TodoList.username == username)
             .first()
         )
-
         if not record:
             record = TodoList(username=username)
             db.add(record)
-
         record.todos_json = json.dumps(todos_list or [], ensure_ascii=False)
-        record.updated_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+        record.updated_at = _now_text()
         db.commit()
         return True
-
     except Exception:
         db.rollback()
         return False
@@ -400,7 +413,6 @@ def get_todos_by_username(db: Session, username: str):
         {"id": 1, "content": "完成复杂度分析基础练习", "done": True},
         {"id": 2, "content": "复习二分查找边界条件", "done": False},
     ]
-
     _save_user_todos_to_db(db, username, default_todos)
     return default_todos
 

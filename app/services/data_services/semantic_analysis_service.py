@@ -253,14 +253,21 @@ def _infer_by_llm(message: str, eval_topic: str) -> Dict:
     return data
 
 
-def analyze_learning_request(db, username: str, message: str, eval_result: Dict) -> Dict:
+def analyze_learning_request(
+    db,
+    username: str,
+    message: str,
+    eval_result: Dict,
+    *,
+    allow_llm: bool = True,
+) -> Dict:
     from app.services.data_services import profile_service
 
     eval_topic = (eval_result or {}).get("topic") or ""
     rule_result = {}
 
     ambiguous_language_topic = _compact(eval_topic) in {"语法", "grammar", "语言"}
-    if not ambiguous_language_topic:
+    if allow_llm and not ambiguous_language_topic:
         llm_result = _infer_by_llm(message, eval_topic)
         if llm_result:
             rule_result = {
