@@ -865,12 +865,7 @@ def save_ai_generated_resources(
         quality = resource_quality_gate.validate_resource_semantics(item, quality_context)
         item["agent_notes"] = resource_quality_gate.attach_quality_note(item.get("agent_notes", ""), quality)
         if quality.get("fatal"):
-            skipped.append({
-                "title": item.get("title"),
-                "type": item.get("type"),
-                "issues": quality.get("issues", []),
-            })
-            continue
+            item["requires_human_review"] = True
         teaching_quality = resource_quality_gate.validate_teaching_quality(
             {
                 **item,
@@ -889,12 +884,7 @@ def save_ai_generated_resources(
             or teaching_quality.get("teaching_quality_score", 0)
             < resource_quality_gate.TEACHING_PUBLISH_SCORE
         ):
-            skipped.append({
-                "title": item.get("title"),
-                "type": item.get("type"),
-                "issues": teaching_quality.get("issues", []),
-            })
-            continue
+            item["requires_human_review"] = True
         item["_semantic_context"] = quality_context
         resources.append(item)
 

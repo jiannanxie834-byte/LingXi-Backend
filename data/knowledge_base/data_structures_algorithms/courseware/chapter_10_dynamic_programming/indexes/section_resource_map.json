@@ -14,7 +14,6 @@
     ],
     "code_task_filters": [],
     "video_guide_filters": [
-      "ch10_video01_dp_state_transition"
     ]
   },
   "sec_10_state_definition": {
@@ -29,7 +28,6 @@
     ],
     "code_task_filters": [],
     "video_guide_filters": [
-      "ch10_video01_dp_state_transition"
     ]
   },
   "sec_10_transition_equation": {
@@ -47,7 +45,6 @@
       "ch10_code01_climbing_stairs"
     ],
     "video_guide_filters": [
-      "ch10_video01_dp_state_transition"
     ]
   },
   "sec_10_table_order": {

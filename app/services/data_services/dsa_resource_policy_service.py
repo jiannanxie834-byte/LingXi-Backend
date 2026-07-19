@@ -7,7 +7,7 @@ DEFAULT_DSA_LEARNING_PACKAGE_TYPES = [
     artifact_types.MIND_MAP,
     artifact_types.EXERCISE_SET,
     artifact_types.CODE_LAB,
-    artifact_types.INTERACTIVE_ANIMATION,
+    artifact_types.PERSONALIZED_VIDEO_GUIDE,
 ]
 
 DSA_POST_EXERCISE_REMEDIATION_TYPES = [
@@ -49,8 +49,6 @@ def select_dsa_resource_types(context: dict) -> list[str]:
         str(course_map.get("display_topic") or ""),
         str(course_map.get("unit_id") or ""),
     ]).lower()
-    is_dynamic_programming = "动态规划" in topic_text or "dsa_dp" in topic_text
-
     videos = video_catalog_service.search_videos(
         unit_id=course_map.get("unit_id") or context.get("primary_unit_id") or "",
         topic=context.get("display_topic") or context.get("topic") or course_map.get("normalized_topic") or "",
@@ -64,13 +62,7 @@ def select_dsa_resource_types(context: dict) -> list[str]:
         for item in videos
     )
 
-    replacement_type = (
-        artifact_types.INTERACTIVE_ANIMATION
-        if is_dynamic_programming
-        else artifact_types.PERSONALIZED_VIDEO_GUIDE
-        if has_real_video
-        else artifact_types.READING_PACK
-    )
+    replacement_type = artifact_types.PERSONALIZED_VIDEO_GUIDE if has_real_video else artifact_types.READING_PACK
     resource_types = [
         replacement_type if resource_type == artifact_types.INTERACTIVE_ANIMATION else resource_type
         for resource_type in resource_types

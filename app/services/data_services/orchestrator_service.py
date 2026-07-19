@@ -3,7 +3,6 @@ import logging
 import re
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.database import SessionLocal
 from app.services.llm_provider import chat, chat_json
@@ -23,10 +22,8 @@ from app.services.data_services import (
     semantic_analysis_service,
     resource_policy_service,
     resource_quality_gate,
-    multimedia_asset_service,
     agent_trace_service,
     profile_dimension_service,
-    resource_artifact_service,
     course_scope_service,
     dsa_course_map_service,
     deterministic_complexity_service,
@@ -68,142 +65,6 @@ KNOWN_TOPIC_ALIASES = {
     "dp": "动态规划",
     "字符串": "字符串匹配",
 }
-
-
-# 针对固定学习请求提供确定性资源缓存。缓存内容来自已经通过质量检查和教师审核的
-# 动态规划资源；命中后仍复用正式任务、进度、待审核和发布链路。
-DEMO_DP_REPLAY_RESOURCE_TYPES = (
-    artifact_types.COURSE_NOTE,
-    artifact_types.MIND_MAP,
-    artifact_types.EXERCISE_SET,
-    artifact_types.CODE_LAB,
-    artifact_types.INTERACTIVE_ANIMATION,
-)
-
-DEMO_DP_TEMPLATE_TITLES = {
-    resource_type: f"动态规划基本思想 · {resource_type}"
-    for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES
-}
-
-
-def _is_demo_dp_replay_request(message: str) -> bool:
-    """匹配约定的动态规划入门学习请求，其他请求继续进入常规生成流程。"""
-    compact = re.sub(r"[\s,，.。!！?？、：:；;]+", "", str(message or "").lower())
-    has_course = "数据结构与算法" in compact or "数据结构" in compact
-    has_beginner = any(marker in compact for marker in ("初学者", "初学", "零基础", "触学者"))
-    has_goal = any(marker in compact for marker in ("想学习动态规划", "想学动态规划", "学习动态规划", "入门动态规划"))
-    forbids_resources = (
-        any(marker in compact for marker in ("不要资源", "不需要资源", "无需资源"))
-        or any(marker in compact for marker in ("不要路线", "不需要路线", "无需路线"))
-    )
-    return has_course and has_beginner and has_goal and not forbids_resources
-
-
-def _demo_dp_eval_result():
-    return {
-        "intent": "路径规划",
-        "topic": "动态规划",
-        "score": 95,
-        "intent_source": "demo_deterministic_route",
-        "topic_source": "course_map",
-    }
-
-
-def _demo_dp_tutor_result():
-    return {
-        "summary": "可以从爬楼梯这个小例子入门动态规划，先看懂状态、转移和初始化，再用代码与练习巩固。",
-        "key_points": [
-            {
-                "title": "先理解状态",
-                "detail": "把 dp[i] 理解为一个已经解决的小问题，例如到达第 i 阶楼梯的方法数。",
-            },
-            {
-                "title": "再推导转移",
-                "detail": "从最后一步出发，爬到第 i 阶只能来自第 i-1 阶或第 i-2 阶，因此得到 dp[i]=dp[i-1]+dp[i-2]。",
-            },
-            {
-                "title": "最后写成程序",
-                "detail": "先手推一张小 DP 表，再处理初始化、循环顺序和边界情况，最后完成可运行代码。",
-            },
-        ],
-        "next_actions": [
-            {
-                "title": "按入门顺序学习",
-                "detail": "系统将准备讲解、思维导图、练习题、代码实验和交互动画；审核通过后可在资源页查看。",
-            }
-        ],
-        "caveats": ["开始前只需要具备 Python 函数、循环和列表的基础用法。"],
-    }
-
-
-def _prepare_demo_dp_replay(resource_plan, db):
-    """把已发布的五份 DP Artifact 装配进本次正式资源计划，不调用模型。"""
-    published = resource_artifact_service.list_artifacts(
-        db,
-        username="student",
-        status="published",
-        limit=200,
-        include_public=False,
-    )
-    templates = {
-        item.get("type"): item
-        for item in published
-        if item.get("title") == DEMO_DP_TEMPLATE_TITLES.get(item.get("type"))
-    }
-    missing_templates = [
-        resource_type
-        for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES
-        if resource_type not in templates
-    ]
-    if missing_templates:
-        raise RuntimeError(f"动态规划资源缓存缺少资源：{'、'.join(missing_templates)}")
-
-    planned_by_type = {
-        artifact_types.normalize_artifact_type(item.get("type")): item
-        for item in resource_plan.get("resources", [])
-    }
-    missing_plan_items = [
-        resource_type
-        for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES
-        if resource_type not in planned_by_type
-    ]
-    if missing_plan_items:
-        raise RuntimeError(f"动态规划资源计划缺少类型：{'、'.join(missing_plan_items)}")
-
-    replay_items = []
-    replay_outputs = []
-    personalization_reason = (
-        "你明确说明自己是数据结构与算法初学者，目标是入门动态规划；"
-        "资源以爬楼梯为统一案例，按照概念、手推、代码和练习的顺序逐步展开。"
-    )
-    for resource_type in DEMO_DP_REPLAY_RESOURCE_TYPES:
-        template = templates[resource_type]
-        plan_item = planned_by_type[resource_type]
-        plan_item.update({
-            "topic": "动态规划基本思想",
-            "title": f"动态规划入门 · {resource_type}",
-            "summary": template.get("summary") or plan_item.get("summary", ""),
-            "content_format": template.get("content_format") or plan_item.get("content_format", "markdown"),
-            "assets": template.get("assets") or [],
-            "source": template.get("source") or "数据结构与算法课程资源库依据生成",
-            "unit_ids": template.get("unit_ids") or plan_item.get("unit_ids") or [],
-            "evidence_refs": template.get("evidence_refs") or plan_item.get("evidence_refs") or [],
-            "personalization_reason": personalization_reason,
-            "quality_score": template.get("quality_score") or 0,
-            "agent_name": "PersonalizedGenerationAgent",
-        })
-        replay_items.append(plan_item)
-        replay_outputs.append({
-            "summary": template.get("summary") or "",
-            "content": template.get("content") or "",
-            "source": template.get("source") or "数据结构与算法课程资源库依据生成",
-            "personalization_reason": personalization_reason,
-            "assembly_policy": "approved_artifact_cache_replay_v1",
-        })
-
-    resource_plan["resources"] = replay_items
-    resource_plan["generation_failures"] = []
-    return resource_plan, replay_outputs
 
 
 def _fallback_topic_from_message(message: str):
@@ -1083,11 +944,12 @@ def _request_resource_output(prompt, item):
     return _validate_resource_output(res.get("data") or {}, resource_type=item.get("type", ""))
 
 
-def _public_generation_message(success_count: int, failed_count: int) -> str:
+def _public_generation_message(success_count: int, failed_count: int, fallback_count: int = 0) -> str:
+    fallback_note = f"其中 {fallback_count} 类由课程知识库规则补齐，" if fallback_count else ""
     if success_count > 0 and failed_count <= 0:
-        return f"已为你生成 {success_count} 类个性化学习资源。"
+        return f"已为你生成 {success_count} 类个性化学习资源，{fallback_note}均已进入管理员审核。"
     if success_count > 0:
-        return f"已为你生成 {success_count} 类个性化学习资源，另外 {failed_count} 类生成失败，可稍后重试。"
+        return f"已为你生成 {success_count} 类个性化学习资源，{fallback_note}另外 {failed_count} 类生成失败，可稍后重试。"
     return "学习包生成失败，请稍后重试，或尝试输入更具体的问题，例如“我不懂动态规划状态转移”。"
 
 
@@ -1157,9 +1019,6 @@ def repair_resource_content_with_feedback(plan_item, draft, quality_result, evid
 
 
 def _generate_one_resource_output(item, profile_result, intent, evidence_prompt, teaching_sources_prompt):
-    if _is_dsa_plan_item(item):
-        return _generate_dsa_resource_from_library(item, profile_result, intent)
-
     resource_type = artifact_types.normalize_artifact_type(item.get("type", ""))
     structured_only_types = {
         artifact_types.VIDEO_RECOMMENDATION,
@@ -1260,47 +1119,72 @@ def _generate_resource_outputs(resource_plan, profile_result, intent, evidence_p
     if not items:
         return []
 
-    if all(_is_dsa_plan_item(item) for item in items):
-        return _generate_dsa_package_outputs(resource_plan, profile_result, intent)
-
-    llm_outputs = [None] * len(items)
+    llm_outputs = []
+    kept_items = []
     failures = []
-    max_workers = min(4, len(items))
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_map = {
-            executor.submit(
-                _generate_one_resource_output,
-                item,
-                profile_result,
-                intent,
-                evidence_prompt,
-                teaching_sources_prompt,
-            ): index
-            for index, item in enumerate(items)
-        }
-        for future in as_completed(future_map):
-            index = future_map[future]
+    fallbacks = []
+    for item in items:
+        last_error = None
+        for attempt in range(2):
             try:
-                llm_outputs[index] = future.result()
+                output = _generate_one_resource_output(
+                    item,
+                    profile_result,
+                    intent,
+                    evidence_prompt,
+                    teaching_sources_prompt,
+                )
+                kept_items.append(item)
+                llm_outputs.append(output)
+                last_error = None
+                break
             except Exception as exc:
-                item = items[index]
+                last_error = exc
+                if attempt == 0:
+                    logger.info(
+                        "Retrying resource generation: type=%s title=%s error=%s",
+                        item.get("type") or "学习资源",
+                        item.get("title") or item.get("topic") or "未命名 Artifact",
+                        exc,
+                    )
+                    time.sleep(1.0)
+
+        if last_error is not None:
+            if _is_dsa_plan_item(item):
+                fallback_output = _generate_dsa_resource_from_library(item, profile_result, intent)
+                fallback_output["assembly_policy"] = "runtime_grounded_fallback"
+                item["agent_name"] = "GroundedFallbackAgent"
+                item["agent_notes"] = "讯飞星火结构化输出未通过校验，本候选资源由当前课程知识库在本次任务中即时补齐，仍需管理员审核。"
+                kept_items.append(item)
+                llm_outputs.append(fallback_output)
+                fallbacks.append({
+                    "title": item.get("title") or item.get("topic") or "未命名 Artifact",
+                    "type": item.get("type") or "学习资源",
+                    "issues": [str(last_error)],
+                })
+                logger.warning(
+                    "Resource generation used grounded runtime fallback: type=%s title=%s error=%s",
+                    item.get("type") or "学习资源",
+                    item.get("title") or item.get("topic") or "未命名 Artifact",
+                    last_error,
+                )
+            else:
+                logger.warning(
+                    "Resource generation failed: type=%s title=%s error=%s",
+                    item.get("type") or "学习资源",
+                    item.get("title") or item.get("topic") or "未命名 Artifact",
+                    last_error,
+                )
                 failures.append({
                     "title": item.get("title") or item.get("topic") or "未命名 Artifact",
                     "type": item.get("type") or "学习资源",
-                    "issues": [str(exc)],
+                    "issues": [str(last_error)],
                 })
-
-    kept_items = []
-    kept_outputs = []
-    for index, output in enumerate(llm_outputs):
-        if output is None:
-            continue
-        kept_items.append(items[index])
-        kept_outputs.append(output)
 
     resource_plan["resources"] = kept_items
     resource_plan["generation_failures"] = failures
-    return kept_outputs
+    resource_plan["generation_fallbacks"] = fallbacks
+    return llm_outputs
 
 
 def _profile_agent_trace(profile_result: dict, intent: str) -> AgentResultDTO:
@@ -1419,7 +1303,6 @@ def run_resource_generation_job(
     evidence_prompt,
     job_id: str = "",
     plan_title: str = "",
-    demo_dp_replay: bool = False,
 ):
     db = SessionLocal()
     try:
@@ -1439,9 +1322,6 @@ def run_resource_generation_job(
                 message="正在匹配教材、公开视频和官方文档入口",
                 progress=20,
             )
-            if demo_dp_replay:
-                time.sleep(1.4)
-        resource_plan = multimedia_asset_service.attach_playable_assets(resource_plan)
         teaching_sources = teaching_source_service.select_teaching_sources(
             evidence_query,
             limit=8
@@ -1469,17 +1349,13 @@ def run_resource_generation_job(
                 progress=45,
             )
 
-        if demo_dp_replay:
-            time.sleep(1.8)
-            resource_plan, llm_outputs = _prepare_demo_dp_replay(resource_plan, db)
-        else:
-            llm_outputs = _generate_resource_outputs(
-                resource_plan=resource_plan,
-                profile_result=profile_result,
-                intent=intent,
-                evidence_prompt=evidence_prompt,
-                teaching_sources_prompt=teaching_sources_prompt,
-            )
+        llm_outputs = _generate_resource_outputs(
+            resource_plan=resource_plan,
+            profile_result=profile_result,
+            intent=intent,
+            evidence_prompt=evidence_prompt,
+            teaching_sources_prompt=teaching_sources_prompt,
+        )
         trace_id = job_id or f"resource_trace_{uuid.uuid4().hex[:16]}"
         agent_results = resource_plan.get("agent_results") or []
         if agent_results:
@@ -1507,8 +1383,6 @@ def run_resource_generation_job(
                 message="正在执行可读性、资源缺失和学生端字段检查",
                 progress=75,
             )
-            if demo_dp_replay:
-                time.sleep(1.4)
         save_result = resource_service.save_ai_generated_resources(
             db=db,
             resource_plan=resource_plan,
@@ -1532,7 +1406,8 @@ def run_resource_generation_job(
         ]
         count = len(resources)
         failed_count = len(skipped_resources)
-        public_message = _public_generation_message(count, failed_count)
+        fallback_count = len(resource_plan.get("generation_fallbacks", []) or [])
+        public_message = _public_generation_message(count, failed_count, fallback_count)
         if count:
             learning_plan_service.attach_artifacts_to_plan(
                 db=db,
@@ -2019,7 +1894,6 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     # =========================
     # 1. 轮次路由：弱语义输入不进入完整多智能体链路
     # =========================
-    demo_dp_replay = _is_demo_dp_replay_request(message)
     turn_route = conversation_router.route_turn(db, username, session_id, message)
 
     if turn_route.route_type in {"plain_qa", "concept_question", "continue_previous", "followup"}:
@@ -2040,14 +1914,14 @@ def handle_learning_chat(username: str, message: str, db, background_tasks=None,
     # =========================
     # 3. 意图识别
     # =========================
-    eval_result = _demo_dp_eval_result() if demo_dp_replay else eval_run(message)
+    eval_result = eval_run(message)
     intent = eval_result.get("intent", "")
     semantic_result = semantic_analysis_service.analyze_learning_request(
         db,
         username,
         message,
         eval_result,
-        allow_llm=not demo_dp_replay,
+        allow_llm=True,
     )
     topic = course_scope_service.normalize_course_topic(
         semantic_result.get("topic") or eval_result.get("topic", "") or _fallback_topic_from_message(message)
@@ -2191,30 +2065,27 @@ JSON 字段：
 }}
 """
 
-    if demo_dp_replay:
-        tutor_result = _demo_dp_tutor_result()
+    reply_res = chat_json(
+        [{"role": "user", "content": chat_prompt}],
+        required_fields=["summary", "key_points", "next_actions", "caveats"],
+        temperature=0.2,
+        max_tokens=1200
+    )
+    if not reply_res.get("ok"):
+        logger.warning("Learning tutor JSON failed: %s", reply_res.get("error"))
+        tutor_result = _fallback_tutor_result(topic, message)
     else:
-        reply_res = chat_json(
-            [{"role": "user", "content": chat_prompt}],
-            required_fields=["summary", "key_points", "next_actions", "caveats"],
-            temperature=0.2,
-            max_tokens=1200
-        )
-        if not reply_res.get("ok"):
-            logger.warning("Learning tutor JSON failed: %s", reply_res.get("error"))
+        try:
+            tutor_result = _validate_tutor_result(reply_res.get("data") or {})
+        except Exception as exc:
+            logger.warning("Learning tutor validation failed: %s", exc)
             tutor_result = _fallback_tutor_result(topic, message)
-        else:
-            try:
-                tutor_result = _validate_tutor_result(reply_res.get("data") or {})
-            except Exception as exc:
-                logger.warning("Learning tutor validation failed: %s", exc)
-                tutor_result = _fallback_tutor_result(topic, message)
     pipeline_steps.append(_pipeline_step(
         "answer",
         "生成个性化辅导回复",
         "学习辅导 Agent",
         status="completed",
-        detail="入门辅导回复已准备" if demo_dp_replay else "大模型回复已生成"
+        detail="大模型回复已生成"
     ))
     # =========================
     # 7. 是否生成学习路径和资源
@@ -2276,8 +2147,6 @@ JSON 字段：
             semantic_result=semantic_result,
             generation_context=generation_context,
         )
-        if demo_dp_replay:
-            resource_plan, _ = _prepare_demo_dp_replay(resource_plan, db)
         pipeline_steps.append(_pipeline_step(
             "resource-plan",
             "规划配套资源类型",
@@ -2322,7 +2191,6 @@ JSON 字段：
                 evidence_prompt,
                 job_data.get("job_id", ""),
                 plan_result.get("title", "学习路径"),
-                demo_dp_replay,
             )
             pipeline_steps.append(_pipeline_step(
                 "safety",

@@ -276,9 +276,9 @@ def test_template_exercise_without_real_options_is_rejected():
     assert any("模板答案" in issue for issue in review["issues"])
 
 
-def test_default_dsa_package_uses_real_interactive_animation_mainline():
-    assert artifact_types.INTERACTIVE_ANIMATION in dsa_resource_policy_service.DEFAULT_DSA_LEARNING_PACKAGE_TYPES
-    assert artifact_types.PERSONALIZED_VIDEO_GUIDE not in dsa_resource_policy_service.DEFAULT_DSA_LEARNING_PACKAGE_TYPES
+def test_default_dsa_package_uses_verifiable_video_guide_mainline():
+    assert artifact_types.PERSONALIZED_VIDEO_GUIDE in dsa_resource_policy_service.DEFAULT_DSA_LEARNING_PACKAGE_TYPES
+    assert artifact_types.INTERACTIVE_ANIMATION not in dsa_resource_policy_service.DEFAULT_DSA_LEARNING_PACKAGE_TYPES
 
 
 def test_dsa_multimodal_type_follows_topic_and_catalog(monkeypatch):
@@ -296,8 +296,8 @@ def test_dsa_multimodal_type_follows_topic_and_catalog(monkeypatch):
         "dsa_course_map": {"unit_id": "dsa_postorder_traversal", "scope_level": "concept"},
     })
 
-    assert artifact_types.INTERACTIVE_ANIMATION in dp_types
-    assert artifact_types.PERSONALIZED_VIDEO_GUIDE not in dp_types
+    assert artifact_types.PERSONALIZED_VIDEO_GUIDE in dp_types
+    assert artifact_types.INTERACTIVE_ANIMATION not in dp_types
     assert artifact_types.PERSONALIZED_VIDEO_GUIDE in tree_types
     assert artifact_types.INTERACTIVE_ANIMATION not in tree_types
 

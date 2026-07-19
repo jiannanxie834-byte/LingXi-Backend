@@ -13,7 +13,6 @@ from app.models.base import (
 def init_db():
     from app.models import schemas  # noqa: F401
     from app.services.data_services.knowledge_seed_service import seed_initial_course_knowledge_base
-    from app.services.data_services.multimedia_asset_service import attach_to_existing_demo_artifacts
 
     Base.metadata.create_all(bind=engine)
     init_schema_migrations()
@@ -29,8 +28,5 @@ def init_db():
             )
         else:
             print(f"Initial course knowledge base sync failed: {result.get('message')}")
-        attached = attach_to_existing_demo_artifacts(db)
-        if attached:
-            print(f"Attached playable DP animation to {attached} existing Artifact(s).")
     finally:
         db.close()
